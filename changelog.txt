@@ -1,4 +1,15 @@
 
+2015-08-16 - Alpha version
+  Changes:
+   - JIT: minor optimization of emitted ARM code
+   - JIT: bugfix for cycle count
+   - JIT: bugfix in emitted code (CMP.W, CMP.B, TST.W and TST. B)
+   - JIT: disabled option which caused many problems in Picasso96 (JIT now ~15% slower...)
+   - Fixed handling of HDs
+   - Bugfix: switch from non JIT to JIT now working after first reset
+   - DMS file support
+   - Bugfix in FPU: AIBB now working
+   
 2015-05-26 - Alpha version
   Changes:
    - Commandline options available:

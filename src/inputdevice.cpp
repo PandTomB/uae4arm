@@ -208,7 +208,6 @@ void do_mouse_hack (void)
       //------------------------------------------
       // New stylus<->follow mouse mode
       //------------------------------------------
-      printf("do_mouse_hack: sprvbfl=%d\n", sprvbfl);
 	    if (sprvbfl && (sprvbfl-- > 1)) 
       {
         int stylusxpos, stylusypos;          

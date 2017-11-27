@@ -40,9 +40,6 @@ static int red_bits, green_bits, blue_bits;
 static int red_shift, green_shift, blue_shift;
 
 int screen_is_picasso;
-static char picasso_invalid_lines[1201];
-static int picasso_has_invalid_lines;
-static int picasso_invalid_start, picasso_invalid_stop;
 static int picasso_maxw = 0, picasso_maxh = 0;
 
 static int bitdepth, bit_unit;
@@ -174,11 +171,11 @@ static void open_screen(struct uae_prefs *p)
     if(prSDLScreen == NULL || prSDLScreen->w != p->gfx_size.width || prSDLScreen->h != p->gfx_size.height)
     {
 #if defined(PANDORA) && !defined(WIN32)
-  	  prSDLScreen = SDL_SetVideoMode(p->gfx_size.width, p->gfx_size.height, 16, SDL_SWSURFACE|SDL_FULLSCREEN|SDL_DOUBLEBUF);
+  	  prSDLScreen = SDL_SetVideoMode(p->gfx_size.width, p->gfx_size.height, 16, SDL_HWSURFACE|SDL_FULLSCREEN|SDL_DOUBLEBUF);
 #elif defined(PANDORA) && defined(WIN32)
   	  prSDLScreen = SDL_SetVideoMode(p->gfx_size.width, p->gfx_size.height, 16, SDL_SWSURFACE|SDL_DOUBLEBUF);
 #else
-  	  prSDLScreen = SDL_SetVideoMode(p->gfx_size.width, p->gfx_size.height, 16, SDL_SWSURFACE|SDL_FULLSCREEN);
+  	  prSDLScreen = SDL_SetVideoMode(p->gfx_size.width, p->gfx_size.height, 16, SDL_HWSURFACE|SDL_FULLSCREEN);
 #endif
     }
   }
@@ -190,7 +187,6 @@ static void open_screen(struct uae_prefs *p)
   }
   if(prSDLScreen != NULL)
   {
-    SDL_LockSurface(prSDLScreen);
     init_row_map();
   }
 }
@@ -242,14 +238,14 @@ int check_prefs_changed_gfx (void)
 
 int lockscr (void)
 {
-  // We lock the surface directly after create and flip
+  SDL_LockSurface(prSDLScreen);
   return 1;
 }
 
 
 void unlockscr (void)
 {
-  // We lock the surface directly after create and flip, so no unlock here
+  SDL_UnlockSurface(prSDLScreen);
 }
 
 void flush_block ()
@@ -268,8 +264,6 @@ void flush_block ()
 	    savestate_state = 0;
     }
   }
-
- 	SDL_UnlockSurface (prSDLScreen);
 
   unsigned long start = read_processor_time();
   if(start < next_synctime && next_synctime - start > time_per_frame - 1000)
@@ -296,7 +290,6 @@ void flush_block ()
   else
     next_synctime = next_synctime + time_per_frame * (1 + currprefs.gfx_framerate);
 
- 	SDL_LockSurface (prSDLScreen);
 	init_row_map();
 
 	if(stylusClickOverride)
@@ -400,6 +393,7 @@ static int init_colors (void)
 	green_shift = maskShift(prSDLScreen->format->Gmask);
 	blue_shift = maskShift(prSDLScreen->format->Bmask);
 	alloc_colors64k (red_bits, green_bits, blue_bits, red_shift, green_shift, blue_shift, 0);
+	notice_new_xcolors();
 	for (i = 0; i < 4096; i++)
 		xcolors[i] = xcolors[i] * 0x00010001;
 
@@ -563,21 +557,9 @@ static int save_thumb(char *path)
 uae_u16 picasso96_pixel_format = RGBFF_CHUNKY;
 
 
-void DX_Invalidate (int first, int last)
+void DX_Invalidate (int x, int y, int width, int height)
 {
-  if (first > last)
-	  return;
-
-  picasso_has_invalid_lines = 1;
-  if (first < picasso_invalid_start)
-  	picasso_invalid_start = first;
-  if (last > picasso_invalid_stop)
-	  picasso_invalid_stop = last;
-
-  while (first <= last) {
-  	picasso_invalid_lines[first] = 1;
-	  first++;
-  }
+  // We draw everything direct to the frame buffer
 }
 
 int DX_BitsPerCannon (void)
@@ -615,7 +597,7 @@ int DX_Fill (int dstx, int dsty, int width, int height, uae_u32 color, RGBFTYPE 
 	SDL_Rect rect = {dstx, dsty, width, height};
 
 	if (SDL_FillRect (prSDLScreen, &rect, color) == 0) {
-		DX_Invalidate (dsty, dsty + height);
+		DX_Invalidate (dstx, dsty, width, height);
 		result = 1;
 	}
 
@@ -659,12 +641,13 @@ int DX_FillResolutions (uae_u16 *ppixel_format)
 		    DisplayModes[count].res.width = x_size_table[i];
 		    DisplayModes[count].res.height = y_size_table[i];
 		    DisplayModes[count].depth = j == 1 ? 1 : bit_unit >> 3;
-        DisplayModes[count].refresh = 60;
+        DisplayModes[count].refresh = 50;
 
 		    count++;
 	    }
     }
   }
+  DisplayModes[count].depth = -1;
   
   return count;
 }
@@ -706,14 +689,14 @@ void gfx_set_picasso_state (int on)
 
 uae_u8 *gfx_lock_picasso (void)
 {
-  // We lock the surface directly after create and flip
+  SDL_LockSurface(prSDLScreen);
   picasso_vidinfo.rowbytes = prSDLScreen->pitch;
   return (uae_u8 *)prSDLScreen->pixels;
 }
 
 void gfx_unlock_picasso (void)
 {
-  // We lock the surface directly after create and flip, so no unlock here
+  SDL_UnlockSurface(prSDLScreen);
 }
 
 #endif // PICASSO96
