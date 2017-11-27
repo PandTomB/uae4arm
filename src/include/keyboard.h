@@ -9,6 +9,13 @@
 #ifndef UAE_KEYBOARD_H
 #define UAE_KEYBOARD_H
 
+#define KEYCODE_UNK    0
+#define KEYCODE_X11    1
+#define KEYCODE_FBCON  2
+
+extern char keyboard_type;
+extern void  init_keyboard(void);
+
 /* First, two dummies */
 #define AK_mousestuff 0x100
 #define AK_inhibit 0x101

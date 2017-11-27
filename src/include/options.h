@@ -294,6 +294,14 @@ struct uae_prefs {
 	struct apmode gfx_apmode[2];
   int gfx_resolution;
  
+#ifdef RASPBERRY
+  int gfx_correct_aspect;
+  int gfx_fullscreen_ratio;
+  int kbd_led_num;
+  int kbd_led_scr;
+  int kbd_led_cap;
+#endif 
+
   bool immediate_blits;
 	int waiting_blits;
   unsigned int chipset_mask;
@@ -390,6 +398,11 @@ struct uae_prefs {
   int pandora_tapDelay;
   int pandora_customControls;
     
+  int key_for_menu;
+  int key_for_quit;
+  int button_for_menu;
+  int button_for_quit;
+
   /* input */
 
 	struct jport jports[MAX_JPORTS];

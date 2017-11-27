@@ -26,7 +26,7 @@
 #include "custom.h"
 #include "xwin.h"
 #include "drawing.h"
-#include "memory.h"
+#include "include/memory.h"
 #include "newcpu.h"
 #include "uae.h"
 #include "picasso96.h"
@@ -4872,7 +4872,11 @@ void inputdevice_default_prefs (struct uae_prefs *p)
 	inputdevice_init ();
 
 	p->input_selected_setting = GAMEPORT_INPUT_SETTINGS;
+#ifdef PANDORA
   p->input_joymouse_multiplier = 20;
+#else
+  p->input_joymouse_multiplier = 2;
+#endif
 	p->input_joymouse_deadzone = 33;
 	p->input_joystick_deadzone = 33;
 	p->input_joymouse_speed = 10;
@@ -5492,6 +5496,12 @@ void inputdevice_copyconfig (struct uae_prefs *src, struct uae_prefs *dst)
 	dst->input_joymouse_speed = src->input_joymouse_speed;
 	dst->input_mouse_speed = src->input_mouse_speed;
   dst->input_autofire_linecnt = src->input_autofire_linecnt;
+
+  dst->key_for_menu = src->key_for_menu;
+  dst->key_for_quit = src->key_for_quit;
+  dst->button_for_menu = src->button_for_menu;
+  dst->button_for_quit = src->button_for_quit;
+
 	for (int i = 0; i < MAX_JPORTS; i++) {
 		copyjport (src, dst, i);
 	}

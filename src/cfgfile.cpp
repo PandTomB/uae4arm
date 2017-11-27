@@ -133,7 +133,7 @@ static const TCHAR *obsolete[] = {
 	_T("gfx_test_speed"), _T("gfxlib_replacement"), _T("enforcer"), _T("catweasel_io"),
   _T("kickstart_key_file"), _T("sound_adjust"), _T("sound_latency"),
 	_T("serial_hardware_dtrdsr"), _T("gfx_filter_upscale"),
-	_T("gfx_correct_aspect"), _T("gfx_autoscale"), _T("parallel_sampler"), _T("parallel_ascii_emulation"),
+	_T("gfx_autoscale"), _T("parallel_sampler"), _T("parallel_ascii_emulation"),
 	_T("avoid_vid"), _T("avoid_dga"), _T("z3chipmem_size"), _T("state_replay_buffer"), _T("state_replay"),
 	_T("z3realmapping"), _T("force_0x10000000_z3"),
 	_T("fpu_arithmetic_exceptions"),
@@ -3917,7 +3917,8 @@ int parse_cmdline_option (struct uae_prefs *p, TCHAR c, const TCHAR *arg)
   u->option = xmalloc (TCHAR, 2);
   u->option[0] = c;
   u->option[1] = 0;
-  u->value = my_strdup(arg);
+	if (arg)
+    u->value = my_strdup(arg);
   u->next = p->all_lines;
   p->all_lines = u;
 
@@ -4361,17 +4362,28 @@ void default_prefs (struct uae_prefs *p, bool reset, int type)
   p->cachesize = 0;
 
   p->gfx_framerate = 0;
+
+#ifdef RASPBERRY
+	p->gfx_size.width = 640;
+	p->gfx_size.height = 262;
+  p->gfx_resolution = RES_HIRES;
+#else
   p->gfx_size.width = 320;
   p->gfx_size.height = 240;
   p->gfx_resolution = RES_LORES;
-  
+#endif
+
   p->immediate_blits = 0;
 	p->waiting_blits = 0;
   p->chipset_refreshrate = 50;
   p->collision_level = 2;
   p->leds_on_screen = 0;
 	p->boot_rom = 0;
+#ifdef PANDORA
   p->fast_copper = 1;
+#else
+	p->fast_copper = 0;
+#endif
 	p->cart_internal = 1;
 
 	p->cs_compatible = CP_GENERIC;

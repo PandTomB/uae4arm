@@ -4991,8 +4991,7 @@ static bool framewait (void)
   			show_screen (1);
   		}
       curr_time = target_lastsynctime();
-    }
-    else {
+    } else {
       curr_time = target_lastsynctime() + vsynctimebase;
 
       if(read_processor_time () > curr_time)
@@ -5452,9 +5451,6 @@ static void hsync_handler_post (bool onvsync)
 	events_dmal_hsync ();
   
   if (currprefs.m68k_speed < 0) {
-    if(vpos > 0 && !(vpos & 0x3f))
-      partial_draw_frame();
-
 	  if (is_last_line ()) {
 		  /* really last line, just run the cpu emulation until whole vsync time has been used */
 		  vsyncmintime = vsyncmaxtime; /* emulate if still time left */

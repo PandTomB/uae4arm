@@ -1,8 +1,16 @@
-History of development of uae4arm for Pandora.
+﻿Read changelog.txt for the history of development of UAE4ARM for Pandora. 
 
 Requirements:
  - guichan 0.8.1
-
+ - libpng16
+ - libSDL 1.2
+ - libSDL_image
+ - libSDL_ttf
+ - libmpeg2
+ - libmpg123
+ - libxml2
+ - libFLAC
+ 
 Credits
  - Toni Wilen (WinUAE)
  - Chui (first version of uae4all)

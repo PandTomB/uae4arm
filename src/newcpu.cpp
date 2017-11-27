@@ -1522,7 +1522,8 @@ static void m68k_run_1 (void)
 			while (!exit) {
 		    r->opcode = r->ir;
 
-#ifdef CPU_arm
+#if defined (CPU_arm) && defined(USE_ARMNEON)
+        // Well not really since pli is ArmV7...
         /* Load ARM code for next opcode into L2 cache during execute of do_cycles() */
         __asm__ volatile ("pli [%[radr]]\n\t" \
           : : [radr] "r" (cpufunctbl[r->opcode]) : );
@@ -1660,7 +1661,8 @@ static void m68k_run_2 (void)
 		    r->instruction_pc = m68k_getpc ();
   
 	      r->opcode = x_get_iword (0);
-#ifdef CPU_arm
+#if defined (CPU_arm) && defined(USE_ARMNEON)
+        // Well not really since pli is ArmV7...
         /* Load ARM code for next opcode into L2 cache during execute of do_cycles() */
         __asm__ volatile ("pli [%[radr]]\n\t" \
            : : [radr] "r" (cpufunctbl[r->opcode]) : );

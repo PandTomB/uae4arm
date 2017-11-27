@@ -37,6 +37,12 @@
 #include "SDL.h"
 #endif
 
+#ifdef CAPSLOCK_DEBIAN_WORKAROUND
+#include <linux/kd.h>
+#include <sys/ioctl.h>
+#include "keyboard.h"
+#endif
+
 long int version = 256*65536L*UAEMAJOR + 65536L*UAEMINOR + UAESUBREV;
 
 struct uae_prefs currprefs, changed_prefs; 
@@ -458,6 +464,33 @@ static TCHAR *parsetextpath (const TCHAR *s)
 	return s3;
 }
 
+void  print_usage()
+{
+	printf("\nUsage:\n");
+	printf(" -f <file>                  Load a configuration file.\n");
+	printf(" -config=<file>             Load a configuration file.\n");
+	printf(" -statefile=<file>          Load a save state file.\n");
+	printf(" -s <config param>=<value>  Set the configuration parameter with value.\n");
+	printf("                            Edit a configuration file in order to know valid parameters and settings.\n");
+	printf("\nAdditional options:\n");
+	printf(" -0 <filename>              Set adf for drive 0.\n");
+	printf(" -1 <filename>              Set adf for drive 1.\n");
+	printf(" -2 <filename>              Set adf for drive 2.\n");
+	printf(" -3 <filename>              Set adf for drive 3.\n");
+	printf(" -r <filename>              Set kickstart rom file.\n");
+	printf(" -G                         Start directly into emulation.\n");
+	printf(" -c <value>                 Size of chip memory (in number of 512 KBytes chunks).\n");
+	printf(" -F <value>                 Size of fast memory (in number of 1024 KBytes chunks).\n");
+	printf("\nNote:\n");
+	printf("Parameters are parsed from the beginning of command line, so in case of ambiguity for parameters, last one will be used.\n");
+	printf("File names should be with absolute path.\n");
+	printf("\nExample:\n");
+	printf("uae4arm -config=conf/A500.uae -statefile=savestates/game.uss -s use_gui=no\n");
+	printf("It will load A500.uae configuration with the save state named game.\n");
+	printf("It will override use_gui to 'no' so that it enters emulation directly.\n");
+	exit(1);
+}
+
 static void parse_cmdline (int argc, TCHAR **argv)
 {
   int i;
@@ -515,11 +548,15 @@ static void parse_cmdline (int argc, TCHAR **argv)
 			xfree(txt);
 			loaded = true;
 		} else if (argv[i][0] == '-' && argv[i][1] != '\0') {
+      int ret;
 	    const TCHAR *arg = argv[i] + 2;
 	    int extra_arg = *arg == '\0';
 	    if (extra_arg)
 	      arg = i + 1 < argc ? argv[i + 1] : 0;
-	    if (parse_cmdline_option (&currprefs, argv[i][1], arg) && extra_arg)
+      ret = parse_cmdline_option (&currprefs, argv[i][1], arg);
+			if (ret == -1)
+				print_usage();
+	    if (ret && extra_arg)
 	      i++;
 		} else if (i == argc - 1) {
 			// if last config entry is an orphan and nothing else was loaded:
@@ -539,6 +576,11 @@ static void parse_cmdline (int argc, TCHAR **argv)
 					}
 				}
 				xfree(txt);
+			}
+      else
+			{
+				printf("Unknown option %s\n", argv[i]);
+				print_usage();
 			}
 	  }
   }
@@ -583,6 +625,16 @@ void do_start_program (void)
 
 void start_program (void)
 {
+#ifdef CAPSLOCK_DEBIAN_WORKAROUND
+	char kbd_flags;
+	// set capslock state based upon current "real" state
+	ioctl(0, KDGKBLED, &kbd_flags);
+	if ((kbd_flags & 07) & LED_CAP)
+	{
+	  // record capslock pressed
+		inputdevice_do_keyboard(AK_CAPSLOCK, 1);
+	}
+#endif
     do_start_program ();
 }
 
@@ -593,13 +645,22 @@ void leave_program (void)
 
 static int real_main2 (int argc, TCHAR **argv)
 {
-#ifdef PANDORA
-  SDL_Init(SDL_INIT_NOPARACHUTE | SDL_INIT_VIDEO);
-#else 
 #ifdef USE_SDL
-  SDL_Init (SDL_INIT_TIMER | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_NOPARACHUTE);
+  int ret;
+#ifdef PANDORA
+  ret = SDL_Init(SDL_INIT_NOPARACHUTE | SDL_INIT_VIDEO);
+#else 
+	ret = SDL_Init(SDL_INIT_NOPARACHUTE | SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK);
 #endif
+  if (ret < 0)
+	{
+		printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+		abort();
+	};
 #endif
+
+	keyboard_settrans();
+
   set_config_changed ();
   if (restart_config[0]) {
 	  default_prefs (&currprefs, true, 0);

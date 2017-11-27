@@ -323,7 +323,7 @@ struct direct
 
 #endif /* _WIN32 */
 
-#if defined PANDORA
+#if defined(PANDORA) || defined(RASPBERRY)
 
 #include <ctype.h>
 
@@ -339,7 +339,7 @@ struct direct
 #define REGPARAM3 
 #define REGPARAM
 
-#endif /* PANDORA */
+#endif /* defined(PANDORA) || defined(RASPBERRY) */
 
 #ifdef DONT_HAVE_POSIX
 
@@ -439,7 +439,11 @@ extern void gui_message (const TCHAR *,...);
 #define NOINLINE __attribute__ ((noinline))
 #define NORETURN
 #elif __GNUC__ - 1 > 1 && __GNUC_MINOR__ - 1 >= 0
+#ifdef RASPBERRY
+#define STATIC_INLINE static __inline__
+#else
 #define STATIC_INLINE static __inline__ __attribute__ ((always_inline))
+#endif
 #define NOINLINE __attribute__ ((noinline))
 #define NORETURN __attribute__ ((noreturn))
 #elif _MSC_VER

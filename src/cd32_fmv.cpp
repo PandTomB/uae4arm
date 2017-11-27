@@ -24,7 +24,7 @@
 
 #include "cda_play.h"
 #include "archivers/mp2/kjmp2.h"
-#ifdef PANDORA
+#ifndef WIN32
 extern "C" {
 #include "mpeg2dec/mpeg2.h"
 #include "mpeg2dec/mpeg2convert.h"

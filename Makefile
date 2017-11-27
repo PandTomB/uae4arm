@@ -1,4 +1,27 @@
-$(shell ./link_pandora_dirs.sh)
+ifeq ($(PLATFORM),)
+	PLATFORM = rpi3
+endif
+
+ifeq ($(PLATFORM),rpi3)
+  CPU_FLAGS +=  -march=armv8-a -mfpu=neon-fp-armv8 -mfloat-abi=hard -mtune=cortex-a8
+  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DCAPSLOCK_DEBIAN_WORKAROUND
+  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm
+  PROFILER_PATH = /home/pi/test/uae4arm
+else ifeq ($(PLATFORM),rpi2)
+	CPU_FLAGS += -march=armv7-a -mfpu=neon -mfloat-abi=hard -mtune=cortex-a8
+	MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DCAPSLOCK_DEBIAN_WORKAROUND
+  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm
+  PROFILER_PATH = /home/pi/test/uae4arm
+else ifeq ($(PLATFORM),rpi1)
+	CPU_FLAGS += -march=armv6zk -mfpu=vfp -mfloat-abi=hard
+  MORE_CFLAGS += -DRASPBERRY -DCAPSLOCK_DEBIAN_WORKAROUND
+  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm
+  PROFILER_PATH = /home/pi/test/uae4arm
+else ifeq ($(PLATFORM),Pandora)
+  CPU_FLAGS +=  -march=armv7-a -mfpu=neon -mfloat-abi=softfp -mtune=cortex-a8
+  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DPANDORA -msoft-float
+  PROFILER_PATH = /media/MAINSD/pandora/test
+endif
 
 NAME   = uae4arm
 RM     = rm -f
@@ -10,38 +33,36 @@ all: $(PROG)
 #DEBUG=1
 #TRACER=1
 
-PANDORA=1
 #GEN_PROFILE=1
 #USE_PROFILE=1
 
-DEFAULT_CFLAGS = $(CFLAGS) `sdl-config --cflags`
+SDL_CFLAGS = `sdl-config --cflags`
 
-MY_LDFLAGS = $(LDFLAGS)
-MY_LDFLAGS += -lSDL -lpthread -lz -lSDL_image -lpng -lrt -lxml2 -lFLAC -lmpg123 -ldl -lmpeg2convert -lmpeg2
-MY_LDFLAGS +=  -lSDL_ttf -lguichan_sdl -lguichan
+DEFS +=  `xml2-config --cflags`
+DEFS += -DCPU_arm -DARMV6_ASSEMBLY
+DEFS += -DWITH_INGAME_WARNING 
+DEFS += -DUSE_SDL
+#DEFS += -DWITH_LOGGING
 
-MORE_CFLAGS = -DPANDORA -DARMV6_ASSEMBLY -DUSE_ARMNEON -DARMV6T2
-MORE_CFLAGS += -DCPU_arm
-MORE_CFLAGS += -DWITH_INGAME_WARNING
-#MORE_CFLAGS += -DWITH_LOGGING
-
-MORE_CFLAGS += -Isrc/osdep -Isrc -Isrc/include -Isrc/archivers -Isrc/od-pandora
-MORE_CFLAGS += -Wno-write-strings -Wno-shift-overflow -Wno-narrowing -DUSE_SDL
-MORE_CFLAGS += -msoft-float -fuse-ld=gold -fdiagnostics-color=auto
+MORE_CFLAGS += -Isrc -Isrc/osdep -Isrc/include -Isrc/archivers
+MORE_CFLAGS += -Wno-write-strings -Wno-shift-overflow -Wno-narrowing 
+MORE_CFLAGS += -fuse-ld=gold -fdiagnostics-color=auto
 MORE_CFLAGS += -mstructure-size-boundary=32
 MORE_CFLAGS += -falign-functions=32
 MORE_CFLAGS += -std=gnu++14
 
+LDFLAGS += -lSDL -lpthread -lz -lSDL_image -lpng -lxml2 -lFLAC -lmpg123 -ldl -lmpeg2convert -lmpeg2
+LDFLAGS += -lSDL_ttf -lguichan_sdl -lguichan
+
 TRACE_CFLAGS = 
 
 ifndef DEBUG
-MORE_CFLAGS += -Ofast -pipe -march=armv7-a -mtune=cortex-a8 -mfpu=neon
+MORE_CFLAGS += -Ofast -pipe
 MORE_CFLAGS += -fweb -frename-registers
 MORE_CFLAGS += -funroll-loops -ftracer -funswitch-loops
 
 else
 MORE_CFLAGS += -g -rdynamic -funwind-tables -mapcs-frame -DDEBUG -Wl,--export-dynamic
-MORE_CFLAGS += -march=armv7-a -mtune=cortex-a8 -mfpu=neon
 
 ifdef TRACER
 TRACE_CFLAGS = -DTRACER -finstrument-functions -Wall -rdynamic
@@ -49,15 +70,17 @@ endif
 
 endif
 
+ASFLAGS += $(CPU_FLAGS) -falign-functions=32
+
+CXXFLAGS += $(SDL_CFLAGS) $(CPU_FLAGS) $(DEFS) $(MORE_CFLAGS)
+
 ifdef GEN_PROFILE
-MORE_CFLAGS += -fprofile-generate=/media/MAINSD/pandora/test -fprofile-arcs -fvpt
+MORE_CFLAGS += -fprofile-generate=$(PROFILER_PATH) -fprofile-arcs -fvpt
 endif
 ifdef USE_PROFILE
 MORE_CFLAGS += -fprofile-use -fbranch-probabilities -fvpt
 endif
 
-
-MY_CFLAGS  = $(MORE_CFLAGS) $(DEFAULT_CFLAGS)
 
 OBJS =	\
 	src/akiko.o \
@@ -164,56 +187,67 @@ OBJS =	\
 	src/archivers/wrp/warp.o \
 	src/archivers/zip/unzip.o \
 	src/machdep/support.o \
-	src/od-pandora/neon_helper.o \
-	src/od-pandora/bsdsocket_host.o \
-	src/od-pandora/cda_play.o \
-	src/od-pandora/charset.o \
-	src/od-pandora/fsdb_host.o \
-	src/od-pandora/hardfile_pandora.o \
-	src/od-pandora/keyboard.o \
-	src/od-pandora/mp3decoder.o \
-	src/od-pandora/picasso96.o \
-	src/od-pandora/writelog.o \
-	src/od-pandora/pandora.o \
-	src/od-pandora/pandora_filesys.o \
-	src/od-pandora/pandora_input.o \
-	src/od-pandora/pandora_gui.o \
-	src/od-pandora/pandora_rp9.o \
-	src/od-pandora/pandora_gfx.o \
-	src/od-pandora/pandora_mem.o \
-	src/od-pandora/sigsegv_handler.o \
-	src/sounddep/sound.o \
-	src/od-pandora/gui/UaeRadioButton.o \
-	src/od-pandora/gui/UaeDropDown.o \
-	src/od-pandora/gui/UaeCheckBox.o \
-	src/od-pandora/gui/UaeListBox.o \
-	src/od-pandora/gui/InGameMessage.o \
-	src/od-pandora/gui/SelectorEntry.o \
-	src/od-pandora/gui/ShowHelp.o \
-	src/od-pandora/gui/ShowMessage.o \
-	src/od-pandora/gui/SelectFolder.o \
-	src/od-pandora/gui/SelectFile.o \
-	src/od-pandora/gui/CreateFilesysHardfile.o \
-	src/od-pandora/gui/EditFilesysVirtual.o \
-	src/od-pandora/gui/EditFilesysHardfile.o \
-	src/od-pandora/gui/PanelPaths.o \
-	src/od-pandora/gui/PanelQuickstart.o \
-	src/od-pandora/gui/PanelConfig.o \
-	src/od-pandora/gui/PanelCPU.o \
-	src/od-pandora/gui/PanelChipset.o \
-	src/od-pandora/gui/PanelROM.o \
-	src/od-pandora/gui/PanelRAM.o \
-	src/od-pandora/gui/PanelFloppy.o \
-	src/od-pandora/gui/PanelHD.o \
-	src/od-pandora/gui/PanelDisplay.o \
-	src/od-pandora/gui/PanelSound.o \
-	src/od-pandora/gui/PanelInput.o \
-	src/od-pandora/gui/PanelMisc.o \
-	src/od-pandora/gui/PanelSavestate.o \
-	src/od-pandora/gui/main_window.o \
-	src/od-pandora/gui/Navigation.o
-ifdef PANDORA
-OBJS += src/od-pandora/gui/sdltruetypefont.o
+	src/osdep/bsdsocket_host.o \
+	src/osdep/cda_play.o \
+	src/osdep/charset.o \
+	src/osdep/fsdb_host.o \
+	src/osdep/hardfile_pandora.o \
+	src/osdep/keyboard.o \
+	src/osdep/mp3decoder.o \
+	src/osdep/picasso96.o \
+	src/osdep/writelog.o \
+	src/osdep/pandora.o \
+	src/osdep/pandora_filesys.o \
+	src/osdep/pandora_gui.o \
+	src/osdep/pandora_rp9.o \
+	src/osdep/pandora_mem.o \
+	src/osdep/sigsegv_handler.o \
+	src/osdep/gui/UaeRadioButton.o \
+	src/osdep/gui/UaeDropDown.o \
+	src/osdep/gui/UaeCheckBox.o \
+	src/osdep/gui/UaeListBox.o \
+	src/osdep/gui/InGameMessage.o \
+	src/osdep/gui/SelectorEntry.o \
+	src/osdep/gui/ShowHelp.o \
+	src/osdep/gui/ShowMessage.o \
+	src/osdep/gui/SelectFolder.o \
+	src/osdep/gui/SelectFile.o \
+	src/osdep/gui/CreateFilesysHardfile.o \
+	src/osdep/gui/EditFilesysVirtual.o \
+	src/osdep/gui/EditFilesysHardfile.o \
+	src/osdep/gui/PanelPaths.o \
+	src/osdep/gui/PanelQuickstart.o \
+	src/osdep/gui/PanelConfig.o \
+	src/osdep/gui/PanelCPU.o \
+	src/osdep/gui/PanelChipset.o \
+	src/osdep/gui/PanelROM.o \
+	src/osdep/gui/PanelRAM.o \
+	src/osdep/gui/PanelFloppy.o \
+	src/osdep/gui/PanelHD.o \
+	src/osdep/gui/PanelDisplay.o \
+	src/osdep/gui/PanelSound.o \
+	src/osdep/gui/PanelMisc.o \
+	src/osdep/gui/PanelSavestate.o \
+	src/osdep/gui/main_window.o \
+	src/osdep/gui/Navigation.o \
+  src/osdep/gui/sdltruetypefont.o
+
+ifeq ($(PLATFORM),Pandora)
+OBJS += src/osdep/pandora_gfx.o
+OBJS += src/osdep/pandora_input.o
+OBJS += src/sounddep/sound.o
+OBJS += src/osdep/gui/PanelInput.o
+else
+OBJS += src/osdep/rasp_gfx.o
+OBJS += src/osdep/raspi_input.o
+OBJS += src/sounddep/sound_sdl_new.o
+OBJS += src/osdep/gui/PanelInputRaspi.o
+endif
+
+ifeq ($(PLATFORM),rpi1)
+	OBJS += src/osdep/arm_helper.o
+else
+	OBJS += src/osdep/neon_helper.o
 endif
 
 OBJS += src/newcpu.o
@@ -231,24 +265,31 @@ OBJS += src/jit/compstbl.o
 OBJS += src/jit/compemu_fpp.o
 OBJS += src/jit/compemu_support.o
 
-src/od-pandora/neon_helper.o: src/od-pandora/neon_helper.s
-	$(CXX) -falign-functions=32 -mcpu=cortex-a8 -mtune=cortex-a8 -mfpu=neon -mfloat-abi=softfp -Wall -o src/od-pandora/neon_helper.o -c src/od-pandora/neon_helper.s
+src/osdep/neon_helper.o: src/osdep/neon_helper.s
+	$(CXX) $(ASFLAGS) -Wall -o src/osdep/neon_helper.o -c src/osdep/neon_helper.s
+
+src/osdep/arm_helper.o: src/osdep/arm_helper.s
+	$(CXX) $(ASFLAGS) -Wall -o src/osdep/arm_helper.o -c src/osdep/arm_helper.s
 
 src/trace.o: src/trace.c
 	$(CC) $(MORE_CFLAGS) -c src/trace.c -o src/trace.o
 
+ifdef TRACER
+OBJS += src/trace.o
+endif
+
 .cpp.o:
-	$(CXX) $(MY_CFLAGS) $(TRACE_CFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(TRACE_CFLAGS) -c $< -o $@
 
 .cpp.s:
-	$(CXX) $(MY_CFLAGS) -S -c $< -o $@
+	$(CXX) $(CXXFLAGS) -S -c $< -o $@
 
 $(PROG): $(OBJS) src/trace.o
 ifndef DEBUG
-	$(CXX) $(MY_CFLAGS) -o $(PROG) $(OBJS) $(MY_LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $(PROG) $(OBJS) $(LDFLAGS)
 	$(STRIP) $(PROG)
 else
-	$(CXX) $(MY_CFLAGS) -o $(PROG) $(OBJS) src/trace.o $(MY_LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $(PROG) $(OBJS) $(LDFLAGS)
 endif
 
 ASMS = \
@@ -280,11 +321,10 @@ ASMS = \
 	src/zfile.s \
 	src/zfile_archive.s \
 	src/machdep/support.s \
-	src/od-pandora/picasso96.s \
-	src/od-pandora/pandora.s \
-	src/od-pandora/pandora_gfx.s \
-	src/od-pandora/pandora_mem.s \
-	src/od-pandora/sigsegv_handler.s \
+	src/osdep/picasso96.s \
+	src/osdep/pandora.s \
+	src/osdep/pandora_mem.s \
+	src/osdep/sigsegv_handler.s \
 	src/sounddep/sound.s \
 	src/newcpu.s \
 	src/newcpu_common.s \
