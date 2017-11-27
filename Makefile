@@ -12,7 +12,7 @@ PANDORA=1
 DEFAULT_CFLAGS = $(CFLAGS) `sdl-config --cflags`
 
 MY_LDFLAGS = $(LDFLAGS)
-MY_LDFLAGS += -lSDL -lpthread  -lz -lSDL_image -lpng -lrt -lxml2
+MY_LDFLAGS += -lSDL -lpthread  -lz -lSDL_image -lpng -lrt -lxml2 -lFLAC -lmpg123
 MY_LDFLAGS +=  -lSDL_ttf -lguichan_sdl -lguichan
 
 MORE_CFLAGS = -DGP2X -DPANDORA -DARMV6_ASSEMBLY -DUSE_ARMNEON -DARMV6T2
@@ -20,7 +20,7 @@ MORE_CFLAGS += -DCPU_arm
 MORE_CFLAGS += -DWITH_INGAME_WARNING
 #MORE_CFLAGS += -DWITH_LOGGING
 
-MORE_CFLAGS += -Isrc -Isrc/include -fomit-frame-pointer -Wno-unused -Wno-format -Wno-write-strings -Wno-multichar -DUSE_SDL
+MORE_CFLAGS += -Isrc/osdep -Isrc -Isrc/include -fomit-frame-pointer -Wno-unused -Wno-format -Wno-write-strings -Wno-multichar -DUSE_SDL
 MORE_CFLAGS += -fexceptions
 MORE_CFLAGS += -msoft-float -ffast-math
 
@@ -122,6 +122,7 @@ OBJS =	\
 	src/osdep/fsdb_host.o \
 	src/osdep/hardfile_pandora.o \
 	src/osdep/keyboard.o \
+	src/osdep/mp3decoder.o \
 	src/osdep/picasso96.o \
 	src/osdep/writelog.o \
 	src/osdep/pandora.o \

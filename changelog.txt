@@ -1,3 +1,8 @@
+2016-07-10 - Beta version
+   - JIT: fixed code for non ARMv6T2 CPUs (not relevant for Pandora)
+   - Added CD32 buttons to custom control mapping
+   - CD32: support for FLAC and MP3 (Audio stutters at start of each audio track because of high cpu usage for decoding. Use frameskip or overclocking to avoid this.)
+
 2016-07-08 - Beta version
    - Performance improvement in JIT
    - Faster HAM decoding
