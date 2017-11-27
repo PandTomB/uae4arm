@@ -112,7 +112,6 @@ const int		follow_const_jumps	= 0;
 static uae_u32	current_cache_size	= 0;		// Cache grows upwards: how much has been consumed already
 static int		lazy_flush		= 1;	// Flag: lazy translation cache invalidation
 static int		avoid_fpu		= 1;	// Flag: compile FPU instructions ?
-static int		have_cmov		= 1;	// target has CMOV instructions ?
 const int		tune_alignment		= 1;	// Tune code alignments for running CPU ?
 const int		tune_nop_fillers	= 1;	// Tune no-op fillers for architecture
 static int		setzflg_uses_bsf	= 0;	// setzflg virtual instruction can use native BSF instruction correctly?
@@ -238,13 +237,6 @@ STATIC_INLINE void write_jmp_target(uae_u32 *jmpaddr, cpuop_func* a);
 STATIC_INLINE void emit_jmp_target(uae_u32 a);
 
 uae_u32 m68k_pc_offset;
-
-/* Some arithmetic operations can be optimized away if the operands
- * are known to be constant. But that's only a good idea when the
- * side effects they would have on the flags are not important. This
- * variable indicates whether we need the side effects or not
-*/
-uae_u32 needflags=0;
 
 /* Flag handling is complicated.
  
@@ -1757,9 +1749,9 @@ uae_u32 get_const(int r)
 void sync_m68k_pc(void)
 {
   if (m68k_pc_offset) {
-	  add_l_ri(PC_P,m68k_pc_offset);
-	  comp_pc_p+=m68k_pc_offset;
-	  m68k_pc_offset=0;
+	  add_l_ri(PC_P, m68k_pc_offset);
+	  comp_pc_p += m68k_pc_offset;
+	  m68k_pc_offset = 0;
   }
 }
 
@@ -2022,9 +2014,6 @@ void flush(int save_regs)
 	  }
 	  raw_fp_cleanup_drop();
 #endif
-  }
-  if (needflags) {
-	  D(panicbug("Warning! flush with needflags=1!\n"));
   }
 }
 
@@ -3267,14 +3256,14 @@ void compile_block(cpu_history* pc_hist, int blocklen, int totcycles)
 			  // raw_cputbl_count[] is indexed with plain opcode (in m68k order)
 		    compemu_raw_add_l_mi((uintptr)&raw_cputbl_count[cft_map(opcode)],1);
 #endif
-
+        
 		    if (i<blocklen-1) {
     			uae_s8* branchadd;
 
 			    compemu_raw_mov_l_rm(0,(uintptr)specflags);
 			    compemu_raw_test_l_rr(0,0);
 #if defined(CPU_arm)
-          data_check_end(8, 64);  // just a pessimistic guess...
+          data_check_end(8, 56);
 #endif
 			    compemu_raw_jz_b_oponly();
 			    branchadd=(uae_s8 *)get_target();
@@ -3333,24 +3322,21 @@ void compile_block(cpu_history* pc_hist, int blocklen, int totcycles)
 		    cc=branch_cc^1;
   		}
 
-  		tmp=live; /* ouch! This is big... */
-#if defined(CPU_arm)
-      data_check_end(32, 128); // just a pessimistic guess...
-#endif
+  		tmp = live; /* ouch! This is big... */
   		compemu_raw_jcc_l_oponly(cc);
-		  branchadd=(uae_u32*)get_target();
+		  branchadd = (uae_u32*)get_target();
 		  emit_long(0);
 		
 		  /* predicted outcome */
-		  tbi=get_blockinfo_addr_new((void*)t1,1);
+		  tbi = get_blockinfo_addr_new((void*)t1, 1);
 		  match_states(tbi);
-		  compemu_raw_sub_l_mi((uae_u32)&countdown,scaled_cycles(totcycles));
-		  compemu_raw_jcc_l_oponly(NATIVE_CC_PL);
-		  tba=(uae_u32*)get_target();
-      D(bug("  emit_jmp_target at 0x%08x to 0x%08x\n", get_target(), get_handler(t1)));
+		  
+#if defined(CPU_arm)
+      data_check_end(12, 60);
+#endif
+		  compemu_raw_endblock_pc_isconst(scaled_cycles(totcycles), t1);
+		  tba = (uae_u32*)get_target();
 		  emit_jmp_target(get_handler(t1));
-		  compemu_raw_mov_l_mi((uintptr)&regs.pc_p, t1);
-		  compemu_raw_jmp((uintptr)popall_do_nothing);
 		  create_jmpdep(bi, 0, tba, t1);
 
 #ifndef ALIGN_NOT_NEEDED
@@ -3359,19 +3345,18 @@ void compile_block(cpu_history* pc_hist, int blocklen, int totcycles)
 		  /* not-predicted outcome */
       write_jmp_target(branchadd, (cpuop_func*)get_target());
       D(bug("  write_jmp_target to 0x%08x: 0x%08x\n", branchadd, get_target()));
-		  live=tmp; /* Ouch again */
-		  tbi=get_blockinfo_addr_new((void*)t2,1);
+		  live = tmp; /* Ouch again */
+		  tbi = get_blockinfo_addr_new((void*)t2, 1);
 		  match_states(tbi);
 
 		  //flush(1); /* Can only get here if was_comp==1 */
-		  compemu_raw_sub_l_mi((uae_u32)&countdown,scaled_cycles(totcycles));
-		  compemu_raw_jcc_l_oponly(NATIVE_CC_PL);
-		  tba=(uae_u32*)get_target();
-      D(bug("  emit_jmp_target at 0x%08x to 0x%08x\n", get_target(), get_handler(t2)));
+#if defined(CPU_arm)
+      data_check_end(12, 60);
+#endif
+	    compemu_raw_endblock_pc_isconst(scaled_cycles(totcycles), t2);
+		  tba = (uae_u32*)get_target();
 		  emit_jmp_target(get_handler(t2));
-		  compemu_raw_mov_l_mi((uintptr)&regs.pc_p,t2);
-		  compemu_raw_jmp((uintptr)popall_do_nothing);
-		  create_jmpdep(bi,1,tba,t2);
+		  create_jmpdep(bi, 1, tba, t2);
     }
     else
     {
@@ -3381,43 +3366,35 @@ void compile_block(cpu_history* pc_hist, int blocklen, int totcycles)
 
 		  /* Let's find out where next_handler is... */
 		  if (was_comp && isinreg(PC_P)) {
-				int r2;
-		    r=live.state[PC_P].realreg;
-		    compemu_raw_and_TAGMASK(r);
-				r2 = (r==0) ? 1 : 0;
-		    compemu_raw_mov_l_ri(r2,(uintptr)popall_do_nothing);
-		    compemu_raw_sub_l_mi((uae_u32)&countdown,scaled_cycles(totcycles));
-		    compemu_raw_cmov_l_rm_indexed(r2,(uintptr)cache_tags,r,SIZEOF_VOID_P,NATIVE_CC_PL);
-		    compemu_raw_jmp_r(r2);
+#if defined(CPU_arm)
+        data_check_end(12, 56);
+#endif
+		    r = live.state[PC_P].realreg;
+		    compemu_raw_endblock_pc_inreg(r, scaled_cycles(totcycles));
   		}
   		else if (was_comp && isconst(PC_P)) {
-		    uintptr v=live.state[PC_P].val;
+		    uintptr v = live.state[PC_P].val;
 		    uae_u32* tba;
 		    blockinfo* tbi;
 
-		    tbi=get_blockinfo_addr_new((void*)v,1);
+		    tbi = get_blockinfo_addr_new((void*)v, 1);
 		    match_states(tbi);
 
-		    compemu_raw_sub_l_mi((uae_u32)&countdown,scaled_cycles(totcycles));
-		    compemu_raw_jcc_l_oponly(NATIVE_CC_PL);
-		    tba=(uae_u32*)get_target();
-        D(bug("  emit_jmp_target at 0x%08x to 0x%08x\n", get_target(), get_handler(v)));
+#if defined(CPU_arm)
+        data_check_end(12, 60);
+#endif
+		    compemu_raw_endblock_pc_isconst(scaled_cycles(totcycles), v);
+		    tba = (uae_u32*)get_target();
 		    emit_jmp_target(get_handler(v));
-		    compemu_raw_mov_l_mi((uintptr)&regs.pc_p,v);
-		    compemu_raw_jmp((uintptr)popall_do_nothing);
-		    create_jmpdep(bi,0,tba,v);
+		    create_jmpdep(bi, 0, tba, v);
   		}
   		else {
-		    int r2;
-
-		    r=REG_PC_TMP;
-		    compemu_raw_mov_l_rm(r,(uintptr)&regs.pc_p);
-		    compemu_raw_and_TAGMASK(r);
-			  r2 = (r==0) ? 1 : 0;
-		    compemu_raw_mov_l_ri(r2,(uintptr)popall_do_nothing);
-		    compemu_raw_sub_l_mi((uae_u32)&countdown,scaled_cycles(totcycles));
-		    compemu_raw_cmov_l_rm_indexed(r2,(uintptr)cache_tags,r,SIZEOF_VOID_P,NATIVE_CC_PL);
-		    compemu_raw_jmp_r(r2);
+		    r = REG_PC_TMP;
+		    compemu_raw_mov_l_rm(r, (uintptr)&regs.pc_p);
+#if defined(CPU_arm)
+        data_check_end(12, 56);
+#endif
+		    compemu_raw_endblock_pc_inreg(r, scaled_cycles(totcycles));
 		  }
 	  }
 	}

@@ -1303,4 +1303,22 @@ enum {
 #define CC_UBFX_rrii(cc,Rd,Rn,lsb,width)   _W(((cc) << 28) | (0x3f << 21) | ((width-1) << 16) | (Rd << 12) | ((lsb) << 7) | (0x5 << 4) | (Rn))
 #define UBFX_rrii(Rd,Rn,lsb,width)         CC_UBFX_rrii(NATIVE_CC_AL,Rd,Rn,lsb,width)
 
+
+// Floatingpoint
+
+#define CC_VMOV_sr(cc,Sd,Rn)        _W(((cc) << 28) | (0x70 << 21) | (0 << 20) | (Sd << 16) | (Rn << 12) | (0x0a << 8) | (0x10))
+#define VMOV_sr(Sd,Rn)              CC_VMOV_sr(NATIVE_CC_AL,Sd,Rn)
+
+#define CC_VMOV_rs(cc,Rd,Sn)        _W(((cc) << 28) | (0x70 << 21) | (1 << 20) | (Sn << 16) | (Rd << 12) | (0x0a << 8) | (0x10))
+#define VMOV_rs(Rd,Sn)              CC_VMOV_rs(NATIVE_CC_AL,Rd,Sn)
+
+#define CC_VCVT_f64_u32(cc,Dd,Sn)   _W(((cc) << 28) | (0x1d << 23) | (0x7 << 19) | (0x0 << 16) | (Dd << 12) | (0xb << 8) | (0x4 << 4) | (Sn))
+#define VCVT_f64_u32(Dd,Sn)         CC_VCVT_f64_u32(NATIVE_CC_AL,Dd,Sn)
+
+#define CC_VCVT_u32_f64(cc,Sd,Dn)   _W(((cc) << 28) | (0x1d << 23) | (0x7 << 19) | (0x4 << 16) | (Sd << 12) | (0xb << 8) | (0xc << 4) | (Dn))
+#define VCVT_u32_f64(Sd,Dn)         CC_VCVT_u32_f64(NATIVE_CC_AL,Sd,Dn)
+
+#define CC_VDIV_ddd(cc,Dd,Dn,Dm)    _W(((cc) << 28) | (0x1d << 23) | (0x0 << 20) | (Dn << 16) | (Dd << 12) | (0xb << 8) | (0x0 << 4) | (Dm))
+#define VDIV_ddd(Dd,Dn,Dm)          CC_VDIV_ddd(NATIVE_CC_AL,Dd,Dn,Dm)
+
 #endif /* ARM_RTASM_H */

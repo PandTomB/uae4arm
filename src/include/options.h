@@ -129,6 +129,7 @@ struct uae_prefs {
   int pandora_horizontal_offset;
   int pandora_vertical_offset;
   int pandora_cpu_speed;
+  int pandora_hide_idle_led;
   
   int pandora_joyConf;
   int pandora_joyPort;
