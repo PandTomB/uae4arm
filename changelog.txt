@@ -1,0 +1,23 @@
+
+2015-05-26 - Alpha version
+  Changes:
+   - Commandline options available:
+      -config=/path/file.uae to load specific config file (set option use_gui=no in config file to start without showing gui) many other options like in WinUAE
+   - JIT now save for 24-bit CPUs (68000, 68EC020)
+   - Bugfix in sigsegv handler for JIT
+   - Added ZorroIII fast memory (currently max. 32 MB, does somebody needs more?)
+   - Added Picasso96 (required version of rtg.library: 40.3993 or higher)
+   - Selection in CPU dialog fixed
+   - {L}+{r}+dPad up and down: adjust Amiga screen
+
+2015-05-03 - First alpha version.
+  Changes compared to latest version of UAE4All
+   - Use of newcpu instead of FAME/C for 680x0 emulation
+   - 680x0 with 32 bit addressing mode
+   - More compatible 68000 emulation
+   - 68040 emulation
+   - FPU (68881) emulation
+   - JIT
+   - Auto detect Amiga ROMs
+   - Up to 5 HDDs (mix of folder or hardfile possible)
+   - Lot of new audio options (filter, stereo separation)

@@ -40,6 +40,7 @@
 #include "xwin.h"
 #include "autoconf.h"
 #include "gui.h"
+#include "picasso96.h"
 #include "drawing.h"
 #include "savestate.h"
 #include "sounddep/sound.h"
@@ -150,7 +151,13 @@ static int plf1pri, plf2pri;
 static uae_u32 plf_sprite_mask;
 static int sbasecol[2] = { 16, 16 };
 
+int picasso_requested_on;
+int picasso_on;
+
+int inhibit_frame;
+
 int framecnt = 0, fs_framecnt = 0;
+static int picasso_redraw_necessary;
 
 /* Calculate idle time (time to wait for vsync) */
 int idletime_frames = 0;
@@ -221,6 +228,7 @@ STATIC_INLINE int res_shift_from_window (int x)
 
 void notice_screen_contents_lost (void)
 {
+  picasso_redraw_necessary = 1;
 }
 
 static struct decision *dp_for_drawing;
@@ -2051,21 +2059,29 @@ static void write_tdletter (int x, int y, char ch)
 
 static void draw_status_line (int line)
 {
-    int x, y, i, j, led, on;
-    int on_rgb, off_rgb, c;
-    uae_u8 *buf;
-    	
-    if (td_pos & TD_RIGHT)
-        x = gfxvidinfo.width - TD_PADX - 6 * TD_WIDTH;
-    else
-        x = TD_PADX;
+  int x, y, i, j, led, on;
+  int on_rgb, off_rgb, c;
+  uae_u8 *buf;
 
+  if(picasso_on)
+  {
+    x = prSDLScreen->w - TD_PADX - 6 * TD_WIDTH;
+    y = line - (prSDLScreen->h - TD_TOTAL_HEIGHT);
+    xlinebuffer = (uae_u8*)prSDLScreen->pixels + prSDLScreen->pitch * line;
+  }
+  else
+  {
+    x = gfxvidinfo.width - TD_PADX - 6 * TD_WIDTH;
     y = line - (gfxvidinfo.height - TD_TOTAL_HEIGHT);
     xlinebuffer = row_map[line];
+  }
 
 	x+=100 - (TD_WIDTH*(currprefs.nr_floppies-1)) - TD_WIDTH;
 
-  memset (xlinebuffer + (x - 4) * gfxvidinfo.pixbytes, 0, (gfxvidinfo.width - x + 4) * gfxvidinfo.pixbytes);
+  if(picasso_on)
+    memset (xlinebuffer + (x - 4) * 2, 0, (prSDLScreen->w - x + 4) * 2);
+  else
+    memset (xlinebuffer + (x - 4) * gfxvidinfo.pixbytes, 0, (gfxvidinfo.width - x + 4) * gfxvidinfo.pixbytes);
 
 	for (led = -2; led < (currprefs.nr_floppies+1); led++) {
 		int track;
@@ -2182,12 +2198,45 @@ static void finish_drawing_frame (void)
 	do_flush_screen ();
 }
 
+STATIC_INLINE void check_picasso (void)
+{
+#ifdef PICASSO96
+    if (picasso_on && picasso_redraw_necessary)
+	picasso_refresh (1);
+    picasso_redraw_necessary = 0;
+
+    if (picasso_requested_on == picasso_on)
+	return;
+
+    picasso_on = picasso_requested_on;
+
+    if (!picasso_on)
+    	clear_inhibit_frame (IHF_PICASSO);
+    else
+	    set_inhibit_frame (IHF_PICASSO);
+
+    gfx_set_picasso_state (picasso_on);
+    picasso_enablescreen (picasso_requested_on);
+
+    notice_screen_contents_lost ();
+    notice_new_xcolors ();
+#endif
+}
+
 void vsync_handle_redraw (int long_frame, int lof_changed)
 {
 	count_frame ();
 
 		if (framecnt == 0)
 			finish_drawing_frame ();
+    else if(picasso_on && currprefs.leds_on_screen)
+    {
+      int i;
+  		for (i = 0; i < TD_TOTAL_HEIGHT; i++) {
+  			int line = prSDLScreen->h - TD_TOTAL_HEIGHT + i;
+  			draw_status_line (line);
+  		}
+    }
 
 		/* At this point, we have finished both the hardware and the
 		 * drawing frame. Essentially, we are outside of all loops and
@@ -2204,6 +2253,7 @@ void vsync_handle_redraw (int long_frame, int lof_changed)
 
 		if (quit_program < 0) {
 			quit_program = -quit_program;
+	    set_inhibit_frame (IHF_QUIT_PROGRAM);
 			set_special (&regs, SPCFLAG_BRK);
 #ifdef FILESYS
 			filesys_prepare_reset (); 
@@ -2211,11 +2261,10 @@ void vsync_handle_redraw (int long_frame, int lof_changed)
 			return;
 		}
 
+	  check_picasso ();
+
 	  if (check_prefs_changed_gfx ()) {
 	    reset_drawing ();
-	    init_row_map ();
-	    init_aspect_maps ();
-	    notice_screen_contents_lost ();
 	    notice_new_xcolors ();
 	  }
 
@@ -2227,7 +2276,9 @@ void vsync_handle_redraw (int long_frame, int lof_changed)
 	  check_prefs_changed_cpu ();
 
 		framecnt = fs_framecnt;
-
+  	if (inhibit_frame != 0)
+      framecnt = 1;
+      
 		if (framecnt == 0)
 			init_drawing_frame ();
 
@@ -2284,9 +2335,9 @@ void reset_drawing (void)
 
     linestate_first_undecided = 0;
     
-    init_aspect_maps ();
-
     init_row_map();
+
+    init_aspect_maps ();
 
     memset(spixels, 0, sizeof spixels);
     memset(&spixstate, 0, sizeof spixstate);
@@ -2299,7 +2350,14 @@ void drawing_init (void)
 {
     gen_pfield_tables();
 
+#ifdef PICASSO96
+    InitPicasso96 ();
+    picasso_on = 0;
+    picasso_requested_on = 0;
+    gfx_set_picasso_state (0);
+#endif
     xlinebuffer = gfxvidinfo.bufmem;
+    inhibit_frame = 0;
 
     gfxbuffer_reset ();
     reset_drawing ();

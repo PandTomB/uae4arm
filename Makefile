@@ -22,7 +22,7 @@ DEFAULT_CFLAGS = `$(SDL_BASE)sdl-config --cflags`
 LDFLAGS = -lSDL -lpthread  -lz -lSDL_image -lpng -lrt
 
 MORE_CFLAGS += -DGP2X -DPANDORA -DDOUBLEBUFFER -DARMV6_ASSEMBLY -DUSE_ARMNEON
-MORE_CFLAGS += -DSUPPORT_THREADS -DUAE_FILESYS_THREADS -DNO_MAIN_IN_MAIN_C -DFILESYS -DAUTOCONFIG -DSAVESTATE
+MORE_CFLAGS += -DSUPPORT_THREADS -DUAE_FILESYS_THREADS -DNO_MAIN_IN_MAIN_C -DFILESYS -DAUTOCONFIG -DSAVESTATE -DPICASSO96
 MORE_CFLAGS += -DDONT_PARSE_CMDLINE
 #MORE_CFLAGS += -DWITH_LOGGING
 
@@ -83,6 +83,7 @@ OBJS =	\
 	src/savestate.o \
 	src/scsi-none.o \
 	src/traps.o \
+	src/uaelib.o \
 	src/unzip.o \
 	src/zfile.o \
 	src/machdep/support.o \
@@ -91,6 +92,7 @@ OBJS =	\
 	src/osdep/joystick.o \
 	src/osdep/keyboard.o \
 	src/osdep/inputmode.o \
+	src/osdep/picasso96.o \
 	src/osdep/writelog.o \
 	src/osdep/pandora.o \
 	src/osdep/pandora_filesys.o \
