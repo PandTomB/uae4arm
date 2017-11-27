@@ -7,12 +7,17 @@ PROG   = $(NAME)
 
 all: $(PROG)
 
+#DEBUG=1
+#TRACER=1
+
 PANDORA=1
+#GEN_PROFILE=1
+USE_PROFILE=1
 
 DEFAULT_CFLAGS = $(CFLAGS) `sdl-config --cflags`
 
 MY_LDFLAGS = $(LDFLAGS)
-MY_LDFLAGS += -lSDL -lpthread  -lz -lSDL_image -lpng -lrt -lxml2 -lFLAC -lmpg123
+MY_LDFLAGS += -lSDL -lpthread  -lz -lSDL_image -lpng -lrt -lxml2 -lFLAC -lmpg123 -ldl
 MY_LDFLAGS +=  -lSDL_ttf -lguichan_sdl -lguichan
 
 MORE_CFLAGS = -DGP2X -DPANDORA -DARMV6_ASSEMBLY -DUSE_ARMNEON -DARMV6T2
@@ -20,20 +25,37 @@ MORE_CFLAGS += -DCPU_arm
 MORE_CFLAGS += -DWITH_INGAME_WARNING
 #MORE_CFLAGS += -DWITH_LOGGING
 
-MORE_CFLAGS += -Isrc/osdep -Isrc -Isrc/include -fomit-frame-pointer -Wno-unused -Wno-format -Wno-write-strings -Wno-multichar -DUSE_SDL
-MORE_CFLAGS += -fexceptions
-MORE_CFLAGS += -msoft-float -ffast-math
-
-ifndef DEBUG
-MORE_CFLAGS += -Ofast -pipe -march=armv7-a -mtune=cortex-a8 -mfpu=neon -ftree-vectorize -fsingle-precision-constant -fuse-ld=gold -fdiagnostics-color=auto
+MORE_CFLAGS += -Isrc/osdep -Isrc -Isrc/include -Wno-unused -Wno-format -Wno-write-strings -Wno-multichar -DUSE_SDL
+MORE_CFLAGS += -msoft-float -fuse-ld=gold -fdiagnostics-color=auto
 MORE_CFLAGS += -mstructure-size-boundary=32
 MORE_CFLAGS += -falign-functions=32
-MORE_CFLAGS += -fno-builtin -fweb -frename-registers
-MORE_CFLAGS += -fipa-pta
-#MORE_CFLAGS += -S
+
+TRACE_CFLAGS = 
+
+ifndef DEBUG
+MORE_CFLAGS += -Ofast -pipe -march=armv7-a -mtune=cortex-a8 -mfpu=neon -ftree-vectorize -fsingle-precision-constant
+MORE_CFLAGS += -fweb -frename-registers
+MORE_CFLAGS += -fipa-pta -fgcse-las
+
+# Using -flto and -fipa-pta generates an error with gcc5.2 (??? and -lto alone generates slower code ???)
+#MORE_CFLAGS += -flto=4 -fuse-linker-plugin
+
 else
-MORE_CFLAGS += -ggdb
+MORE_CFLAGS += -g -DDEBUG -Wl,--export-dynamic
+
+ifdef TRACER
+TRACE_CFLAGS = -DTRACER -finstrument-functions -Wall -rdynamic
 endif
+
+endif
+
+ifdef GEN_PROFILE
+MORE_CFLAGS += -fprofile-generate=/media/MAINSD/pandora/test -fprofile-arcs
+endif
+ifdef USE_PROFILE
+MORE_CFLAGS += -fprofile-use -fbranch-probabilities -fvpt -funroll-loops -fpeel-loops -ftracer -ftree-loop-distribute-patterns
+endif
+
 
 MY_CFLAGS  = $(MORE_CFLAGS) $(DEFAULT_CFLAGS)
 
@@ -48,6 +70,7 @@ OBJS =	\
 	src/blkdev.o \
 	src/blkdev_cdimage.o \
 	src/bsdsocket.o \
+	src/calc.o \
 	src/cdrom.o \
 	src/cfgfile.o \
 	src/cia.o \
@@ -72,6 +95,7 @@ OBJS =	\
 	src/native2amiga.o \
 	src/rommgr.o \
 	src/savestate.o \
+	src/statusline.o \
 	src/traps.o \
 	src/uaelib.o \
 	src/uaeresource.o \
@@ -119,6 +143,7 @@ OBJS =	\
 	src/osdep/neon_helper.o \
 	src/osdep/bsdsocket_host.o \
 	src/osdep/cda_play.o \
+	src/osdep/charset.o \
 	src/osdep/fsdb_host.o \
 	src/osdep/hardfile_pandora.o \
 	src/osdep/keyboard.o \
@@ -181,14 +206,75 @@ OBJS += src/jit/compemu_support.o
 src/osdep/neon_helper.o: src/osdep/neon_helper.s
 	$(CXX) -falign-functions=32 -mcpu=cortex-a8 -mtune=cortex-a8 -mfpu=neon -mfloat-abi=softfp -Wall -o src/osdep/neon_helper.o -c src/osdep/neon_helper.s
 
-.cpp.o:
-	$(CXX) $(MY_CFLAGS) -c $< -o $@
+src/trace.o: src/trace.c
+	$(CC) $(MORE_CFLAGS) -c src/trace.c -o src/trace.o
 
-$(PROG): $(OBJS)
-	$(CXX) $(MY_CFLAGS) -o $(PROG) $(OBJS) $(MY_LDFLAGS)
+.cpp.o:
+	$(CXX) $(MY_CFLAGS) $(TRACE_CFLAGS) -c $< -o $@
+
+.cpp.s:
+	$(CXX) $(MY_CFLAGS) -S -c $< -o $@
+
+$(PROG): $(OBJS) src/trace.o
 ifndef DEBUG
+	$(CXX) $(MY_CFLAGS) -o $(PROG) $(OBJS) $(MY_LDFLAGS)
 	$(STRIP) $(PROG)
+else
+	$(CXX) $(MY_CFLAGS) -o $(PROG) $(OBJS) src/trace.o $(MY_LDFLAGS)
 endif
 
+ASMS = \
+	src/audio.s \
+	src/autoconf.s \
+	src/blitfunc.s \
+	src/blitter.s \
+	src/cia.s \
+	src/custom.s \
+	src/disk.s \
+	src/drawing.s \
+	src/events.s \
+	src/expansion.s \
+	src/filesys.s \
+	src/fpp.s \
+	src/fsdb.s \
+	src/fsdb_unix.s \
+	src/fsusage.s \
+	src/gfxutil.s \
+	src/hardfile.s \
+	src/inputdevice.s \
+	src/keybuf.s \
+	src/main.s \
+	src/memory.s \
+	src/native2amiga.s \
+	src/traps.s \
+	src/uaelib.s \
+	src/uaeresource.s \
+	src/zfile.s \
+	src/zfile_archive.s \
+	src/machdep/support.s \
+	src/osdep/picasso96.s \
+	src/osdep/pandora.s \
+	src/osdep/pandora_gfx.s \
+	src/osdep/pandora_mem.s \
+	src/osdep/sigsegv_handler.s \
+	src/sounddep/sound.s \
+	src/newcpu.s \
+	src/readcpu.s \
+	src/cpudefs.s \
+	src/cpustbl.s \
+	src/cpuemu_0.s \
+	src/cpuemu_4.s \
+	src/cpuemu_11.s \
+	src/jit/compemu.s \
+	src/jit/compemu_fpp.s \
+	src/jit/compstbl.s \
+	src/jit/compemu_support.s
+
+genasm: $(ASMS)
+
+
 clean:
-	$(RM) $(PROG) $(OBJS)
+	$(RM) $(PROG) $(OBJS) $(ASMS)
+
+delasm:
+	$(RM) $(ASMS)

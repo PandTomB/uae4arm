@@ -1,3 +1,11 @@
+2016-08-21 - Beta version
+   - Avoid audio delays in some games/demos
+   - Automatic switch of freshrate for programmed NTSC/PAL mode change
+   - Bugfix in JIT which sometimes caused seg faults when enter gui
+   - Savestates enabled for HD and CD configurations (don't know if this is stable)
+   - Optimized with profiler
+   - Added option "Wait for blits" from WinUAE
+
 2016-07-10 - Beta version
    - JIT: fixed code for non ARMv6T2 CPUs (not relevant for Pandora)
    - Added CD32 buttons to custom control mapping

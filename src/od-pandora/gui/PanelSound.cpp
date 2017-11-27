@@ -16,7 +16,6 @@
 #include "memory.h"
 #include "newcpu.h"
 #include "custom.h"
-#include "target.h"
 #include "gui_handling.h"
 #include "sounddep/sound.h"
 
