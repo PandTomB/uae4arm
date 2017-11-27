@@ -390,7 +390,7 @@ int gui_init (void)
   int ret = 0;
   
 	emulating=0;
-
+	
   if(lstAvailableROMs.size() == 0)
     RescanROMs();
 

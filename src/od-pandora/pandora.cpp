@@ -22,24 +22,12 @@
 #include "threaddep/thread.h"
 #include "gui.h"
 #include "memory.h"
-#include "newcpu.h"
-#include "custom.h"
-#include "xwin.h"
-#include "drawing.h"
-#include "autoconf.h"
 #include "inputdevice.h"
-#include "keybuf.h"
 #include "keyboard.h"
 #include "disk.h"
 #include "savestate.h"
-#include "traps.h"
-#include "bsdsocket.h"
-#include "blkdev.h"
-#include "native2amiga.h"
 #include "rtgmodes.h"
-#include "uaeresource.h"
 #include "rommgr.h"
-#include "akiko.h"
 #include "zfile.h"
 #include "gfxboard.h"
 #include <SDL.h>
@@ -81,74 +69,6 @@ int max_uae_height;
 
 
 extern "C" int main( int argc, char *argv[] );
-
-
-void reinit_amiga(void)
-{
-  write_log("reinit_amiga() called\n");
-  DISK_free ();
-#ifdef CD32
-	akiko_free ();
-#endif
-#ifdef FILESYS
-  filesys_cleanup ();
-  hardfile_reset();
-#endif
-#ifdef AUTOCONFIG
-#if defined (BSDSOCKET)
-  bsdlib_reset();
-#endif
-  expansion_cleanup ();
-#endif
-	device_func_reset ();
-  memory_cleanup ();
-  
-  /* At this point, there might run some threads from bsdsocket.*/
-//  write_log("Threads in reinit_amiga():\n");
-//  dbg_list_threads();
-
-  init_mem_banks ();
-
-  currprefs = changed_prefs;
-  /* force sound settings change */
-  currprefs.produce_sound = 0;
-
-  HandleA3000Mem(currprefs.mbresmem_low_size, currprefs.mbresmem_high_size);
-  
-  framecnt = 1;
-#ifdef AUTOCONFIG
-  rtarea_setup ();
-#endif
-#ifdef FILESYS
-  rtarea_init ();
-  uaeres_install ();
-  hardfile_install();
-#endif
-  keybuf_init();
-
-#ifdef AUTOCONFIG
-  expansion_init ();
-#endif
-#ifdef FILESYS
-  filesys_install (); 
-#endif
-  memory_init ();
-  memory_reset ();
-
-#ifdef AUTOCONFIG
-#if defined (BSDSOCKET)
-	bsdlib_install ();
-#endif
-  emulib_install ();
-  native2amiga_install ();
-#endif
-
-  custom_init (); /* Must come after memory_init */
-  DISK_init ();
-  
-  reset_frame_rate_hack ();
-  init_m68k();
-}
 
 
 void sleep_millis_main (int ms)
@@ -239,7 +159,10 @@ uae_u8 *target_load_keyfile (struct uae_prefs *p, const char *path, int *sizep, 
 
 void target_run (void)
 {
+  // Reset counter for access violations
+  init_max_signals();
 }
+
 void target_quit (void)
 {
 }
@@ -283,7 +206,8 @@ void target_fixup_options (struct uae_prefs *p)
 
   if(p->cs_cd32cd && p->cs_cd32nvram && (p->cs_compatible == CP_GENERIC || p->cs_compatible == 0)) {
     // Old config without cs_compatible, but other cd32-flags
-    p->cs_compatible == CP_CD32;
+    p->cs_compatible = CP_CD32;
+    built_in_chipset_prefs(p);
   }
 
   if(p->cs_cd32cd && p->cartfile[0]) {
@@ -357,6 +281,8 @@ void target_save_options (struct zfile *f, struct uae_prefs *p)
 
 void target_restart (void)
 {
+  emulating = 0;
+  gui_restart();
 }
 
 
@@ -455,9 +381,8 @@ int target_cfgfile_load (struct uae_prefs *p, const char *filename, int type, in
   int i;
   int result = 0;
 
-  if(emulating && changed_prefs.cdslots[0].inuse)
-    gui_force_rtarea_hdchange();
-
+  write_log(_T("target_cfgfile_load(): load file %s\n"), filename);
+  
   discard_prefs(p, type);
   default_prefs(p, true, 0);
   
@@ -496,9 +421,6 @@ int target_cfgfile_load (struct uae_prefs *p, const char *filename, int type, in
       inputdevice_updateconfig (NULL, p);
   
     SetLastActiveConfig(filename);
-
-    if(count_HDs(p) > 0) // When loading a config with HDs, always do a hardreset
-      gui_force_rtarea_hdchange();
   }
 
   return result;
