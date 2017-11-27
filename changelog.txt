@@ -1,5 +1,8 @@
 
-2016-04-24 - Beta version with JITv2
+2016-04-24 - Release version
+   - Improvments in rp9 support (most demos with 68040 CPU now working)
+   - Newest code from WinUAE for opcode emulation
+   - Minor bugfixes introduced in previous betas 
 
 2016-04-17 - Beta version
    - Bugfix in dialog for adding HDF
