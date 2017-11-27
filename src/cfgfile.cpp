@@ -73,9 +73,8 @@ static const TCHAR *idemode[] = { _T("none"), _T("a600/a1200"), _T("a4000"), 0 }
 static const TCHAR *rtctype[] = { _T("none"), _T("MSM6242B"), _T("RP5C01A"), _T("MSM6242B_A2000"), 0 };
 static const TCHAR *ciaatodmode[] = { _T("vblank"), _T("50hz"), _T("60hz"), 0 };
 static const TCHAR *cscompa[] = {
-	_T("-"), _T("Generic"), _T("CDTV"), _T("CDTV-CR"), _T("CD32"), _T("A500"), _T("A500+"), _T("A600"),
-	_T("A1000"), _T("A1200"), _T("A2000"), _T("A3000"), _T("A3000T"), _T("A4000"),
-	_T("Velvet"),
+	_T("-"), _T("Generic"), _T("CD32"), _T("A500"), _T("A500+"), _T("A600"),
+	_T("A1200"), _T("A2000"), _T("A4000"), 
 	NULL
 };
 static const TCHAR *qsmodes[] = {
@@ -100,8 +99,6 @@ static const struct hdcontrollerconfig hdcontrollers[] = {
 
 	{ _T("ide%d"), 0 },
 	{ _T("ide%d_mainboard"), ROMTYPE_MB_IDE },
-
-	{ _T("scsi%d"), 0 },
 
 	{ NULL }
 };
@@ -236,6 +233,8 @@ static TCHAR *cfgfile_escape (const TCHAR *s, const TCHAR *escstr, bool quote)
 			}
 		}
 	}
+	if (escstr == NULL && quote)
+		doquote = true;
 	TCHAR *s2 = xmalloc (TCHAR, _tcslen (s) + cnt * 4 + 1);
 	TCHAR *p = s2;
 	if (doquote)
@@ -2342,6 +2341,8 @@ static void get_filesys_controller (const TCHAR *hdc, int *type, int *typenum, i
 	}
 	if (idx >= MAX_DUPLICATE_EXPANSION_BOARDS)
 		idx = MAX_DUPLICATE_EXPANSION_BOARDS - 1;
+	if (hdunit < 0)
+		hdunit = 0;
 	*type = hdcv;
 	*typenum = idx;
 	*num = hdunit;
@@ -2707,7 +2708,7 @@ static int cfgfile_parse_filesys (struct uae_prefs *p, const TCHAR *option, TCHA
   for (i = 0; i < MAX_FILESYSTEM_UNITS; i++) {
 	  TCHAR tmp[100];
 	  _stprintf (tmp, _T("uaehf%d"), i);
-	  if (_tcscmp (option, tmp) == 0) {
+		if (!_tcscmp (option, tmp)) {
 			for (;;) {
 				int  type = -1;
 				int unit = -1;

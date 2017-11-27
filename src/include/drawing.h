@@ -186,7 +186,7 @@ union sps_union {
   uae_u32 words[MAX_SPR_PIXELS / 4];
 };
 extern union sps_union spixstate;
-extern uae_u16 spixels[MAX_SPR_PIXELS];
+extern uae_u16 spixels[MAX_SPR_PIXELS * 2];
 
 /* Way too much... */
 #define MAX_REG_CHANGE ((MAXVPOS + 1) * MAXHPOS)

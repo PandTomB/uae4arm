@@ -1443,9 +1443,9 @@ addrbank *cd32_fmv_init (struct autoconfig_info *aci)
 		return &expamem_null;
 
 	fmv_rom_bank.start = expamem_board_pointer;
-  fmv_ram_bank.start = fmv_rom_bank.start + 0x80000;
+	fmv_ram_bank.start = fmv_rom_bank.start + 0x80000;
 
-  fmv_rom_bank.mask = fmv_rom_size - 1;
+	fmv_rom_bank.mask = fmv_rom_size - 1;
 	fmv_rom_bank.reserved_size = fmv_rom_size;
 	fmv_ram_bank.mask = fmv_ram_size - 1;
 	fmv_ram_bank.reserved_size = fmv_ram_size;

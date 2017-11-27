@@ -385,11 +385,9 @@ bool check_prefs_changed_comp (bool);
 
 extern int movec_illg (int regno);
 
-#define CPU_HALT_PPC_ONLY -1
 #define CPU_HALT_BUS_ERROR_DOUBLE_FAULT 1
 #define CPU_HALT_DOUBLE_FAULT 2
 #define CPU_HALT_OPCODE_FETCH_FROM_NON_EXISTING_ADDRESS 3
-#define CPU_HALT_ACCELERATOR_CPU_FALLBACK 4
 #define CPU_HALT_ALL_CPUS_STOPPED 5
 #define CPU_HALT_FAKE_DMA 6
 #define CPU_HALT_AUTOCONFIG_CONFLICT 7

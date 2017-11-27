@@ -401,9 +401,8 @@ void uae_reset (int hardreset, int keyboardreset)
 
 void uae_quit (void)
 {
-  if (quit_program != -UAE_QUIT) {
+	if (quit_program != -UAE_QUIT)
   	quit_program = -UAE_QUIT;
-  }
   target_quit ();
 }
 

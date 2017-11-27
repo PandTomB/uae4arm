@@ -20,7 +20,7 @@
 extern int init_socket_layer (void);
 extern void deinit_socket_layer (void);
 
-/* inital size of per-process descriptor table (currently fixed) */
+/* initial size of per-process descriptor table (currently fixed) */
 #define DEFAULT_DTABLE_SIZE 64
 
 #define SCRATCHBUFSIZE 128
@@ -201,7 +201,7 @@ extern void host_getprotobynumber (TrapContext *, SB, uae_u32);
 extern uae_u32 host_vsyslog (void);
 extern uae_u32 host_Dup2Socket (void);
 extern uae_u32 host_gethostname(TrapContext *ctx, uae_u32, uae_u32);
-extern uae_u32 callfdcallback (TrapContext *context, SB, uae_u32 fd, uae_u32 action);
+extern uae_u32 callfdcallback(TrapContext *context, SB, uae_u32 fd, uae_u32 action);
 
 extern uaecptr bsdlib_startup (TrapContext*, uaecptr);
 extern void bsdlib_install (void);

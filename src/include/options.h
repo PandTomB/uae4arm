@@ -28,7 +28,7 @@ struct strlist {
   int unknown;
 };
 
-#define MAX_TOTAL_SCSI_DEVICES 8
+#define MAX_TOTAL_SCSI_DEVICES 1
 
 /* maximum number native input devices supported (single type) */
 #define MAX_INPUT_DEVICES 8
@@ -86,7 +86,6 @@ struct jport {
 
 #define TABLET_OFF 0
 #define TABLET_MOUSEHACK 1
-#define TABLET_REAL 2
 
 struct cdslot
 {
@@ -173,8 +172,8 @@ struct uaedev_config_data
 	int unitnum; // scsi unit number (if tape currently)
 };
 
-enum { CP_GENERIC = 1, CP_CDTV, CP_CDTVCR, CP_CD32, CP_A500, CP_A500P, CP_A600, CP_A1000,
-	CP_A1200, CP_A2000, CP_A3000, CP_A3000T, CP_A4000, CP_A4000T, CP_VELVET };
+enum { CP_GENERIC = 1, CP_CD32, CP_A500, CP_A500P, CP_A600,
+	CP_A1200, CP_A2000, CP_A4000 };
 
 #define IDE_A600A1200 1
 #define IDE_A4000 2

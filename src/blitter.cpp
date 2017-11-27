@@ -707,9 +707,7 @@ void reset_blit (int bltcon)
 
 static bool waitingblits (void)
 {
-	bool waited = false;
 	while (bltstate != BLT_done && dmaen (DMA_BLITTER)) {
-		waited = true;
 		x_do_cycles (8 * CYCLE_UNIT);
 	}
 	if (bltstate == BLT_done)

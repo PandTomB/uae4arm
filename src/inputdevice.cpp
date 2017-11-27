@@ -45,13 +45,7 @@
 #define strcasecmp _tcsicmp
 #endif
 
-// 01 = host events
-// 02 = joystick
-// 04 = cia buttons
-// 16 = potgo
-// 32 = vsync
-
-#define COMPA_RESERVED_FLAGS ID_FLAG_INVERT
+#define COMPA_RESERVED_FLAGS (ID_FLAG_INVERT)
 
 #define ID_FLAG_CANRELEASE 0x1000
 #define ID_FLAG_TOGGLED 0x2000
@@ -59,14 +53,11 @@
 #define ID_FLAG_CUSTOMEVENT_TOGGLED2 0x8000
 
 #define IE_INVERT 0x80
-#define IE_CDTV 0x100
 
 #define INPUTEVENT_JOY1_CD32_FIRST INPUTEVENT_JOY1_CD32_PLAY
 #define INPUTEVENT_JOY2_CD32_FIRST INPUTEVENT_JOY2_CD32_PLAY
 #define INPUTEVENT_JOY1_CD32_LAST INPUTEVENT_JOY1_CD32_BLUE
 #define INPUTEVENT_JOY2_CD32_LAST INPUTEVENT_JOY2_CD32_BLUE
-
-#define JOYMOUSE_CDTV 8
 
 #define DEFEVENT(A, B, C, D, E, F) {_T(#A), B, NULL, C, D, E, F, 0 },
 #define DEFEVENT2(A, B, B2, C, D, E, F, G) {_T(#A), B, B2, C, D, E, F, G },
@@ -270,9 +261,6 @@ static uae_s16 mouse_frame_x[MAX_JPORTS], mouse_frame_y[MAX_JPORTS];
 static int mouse_port[NORMAL_JPORTS];
 static int cd32_shifter[NORMAL_JPORTS];
 static int cd32_pad_enabled[NORMAL_JPORTS];
-#ifndef INPUTDEVICE_SIMPLE
-static int parport_joystick_enabled;
-#endif
 static int oleft[MAX_JPORTS], oright[MAX_JPORTS], otop[MAX_JPORTS], obot[MAX_JPORTS];
 static int relativecount[MAX_JPORTS][2];
 
@@ -1836,19 +1824,12 @@ static void mouseupdate (int pct, bool vsync)
 {
 	int v, i;
 	int max = 120;
-	static int mxd, myd;
-
-	if (vsync) {
-		mxd = 0;
-		myd = 0;
-	}
 
 	for (i = 0; i < 2; i++) {
 
 		if (mouse_port[i]) {
 
 			v = getvelocity (i, 0, pct);
-			mxd += v;
 			mouse_x[i] += v;
 			if (mouse_x[i] < 0) {
 				mouse_x[i] += MOUSEXY_MAX;
@@ -1860,7 +1841,6 @@ static void mouseupdate (int pct, bool vsync)
 			}
 
 			v = getvelocity (i, 1, pct);
-			myd += v;
 			mouse_y[i] += v;
 			if (mouse_y[i] < 0) {
 				mouse_y[i] += MOUSEXY_MAX;
@@ -2048,35 +2028,6 @@ static uae_u8 parconvert (uae_u8 v, int jd, int shift)
 	if (jd & DIR_RIGHT)
 		v &= ~(8 << shift);
 	return v;
-}
-
-/* io-pins floating: dir=1 -> return data, dir=0 -> always return 1 */
-uae_u8 handle_parport_joystick (int port, uae_u8 pra, uae_u8 dra)
-{
-	uae_u8 v;
-	switch (port)
-	{
-	case 0:
-		v = (pra & dra) | (dra ^ 0xff);
-		if (parport_joystick_enabled) {
-			v = parconvert (v, joydir[2], 0);
-			v = parconvert (v, joydir[3], 4);
-		}
-		return v;
-	case 1:
-		v = ((pra & dra) | (dra ^ 0xff)) & 0x7;
-		if (parport_joystick_enabled) {
-			if (getbuttonstate (2, 0))
-				v &= ~4;
-			if (getbuttonstate (3, 0))
-				v &= ~1;
-			if (getbuttonstate (2, 1) || getbuttonstate (3, 1))
-				v &= ~2; /* spare */
-		}
-		return v;
-	default:
-		return 0;
-	}
 }
 #endif
 
@@ -3345,17 +3296,6 @@ static int iscd32 (int ei)
 	return 0;
 }
 
-static int isparport (int ei)
-{
-#ifndef INPUTDEVICE_SIMPLE
-	if (ei > INPUTEVENT_PAR_JOY1_START && ei < INPUTEVENT_PAR_JOY_END) {
-		parport_joystick_enabled = 1;
-		return 1;
-	}
-#endif
-	return 0;
-}
-
 static int ismouse (int ei)
 {
 	if (ei >= INPUTEVENT_MOUSE1_FIRST && ei <= INPUTEVENT_MOUSE1_LAST) {
@@ -3420,7 +3360,6 @@ static void isqualifier (int ei)
 static void check_enable(int ei)
 {
 	iscd32(ei);
-	isparport(ei);
 	ismouse(ei);
 	isdigitalbutton(ei);
 	isqualifier(ei);
@@ -3434,9 +3373,6 @@ static void scanevents (struct uae_prefs *p)
 	int n_mouse = idev[IDTYPE_MOUSE].get_num ();
 
 	cd32_pad_enabled[0] = cd32_pad_enabled[1] = 0;
-#ifndef INPUTDEVICE_SIMPLE
-	parport_joystick_enabled = 0;
-#endif
 	mouse_port[0] = mouse_port[1] = 0;
 	qualifiers = 0;
 
@@ -3460,7 +3396,6 @@ static void scanevents (struct uae_prefs *p)
 					ei = joysticks[i].eventid[ID_BUTTON_OFFSET + j][k];
 					e = &events[ei];
 					iscd32 (ei);
-					isparport (ei);
 					ismouse (ei);
 					isdigitalbutton (ei);
 					isqualifier (ei);
@@ -3471,7 +3406,6 @@ static void scanevents (struct uae_prefs *p)
 					ei = mice[i].eventid[ID_BUTTON_OFFSET + j][k];
 					e = &events[ei];
 					iscd32 (ei);
-					isparport (ei);
 					ismouse (ei);
 					isdigitalbutton (ei);
 					isqualifier (ei);
@@ -3486,7 +3420,6 @@ static void scanevents (struct uae_prefs *p)
 				if ((joysticks[i].enabled && i < n_joy) || joysticks[i].enabled < 0) {
 					ei = joysticks[i].eventid[ID_AXIS_OFFSET + j][k];
 					iscd32 (ei);
-					isparport (ei);
 					ismouse (ei);
 					isanalog (ei);
 					isdigitalbutton (ei);
@@ -3497,7 +3430,6 @@ static void scanevents (struct uae_prefs *p)
 				if ((mice[i].enabled && i < n_mouse) || mice[i].enabled < 0) {
 					ei = mice[i].eventid[ID_AXIS_OFFSET + j][k];
 					iscd32 (ei);
-					isparport (ei);
 					ismouse (ei);
 					isanalog (ei);
 					isdigitalbutton (ei);
@@ -3518,7 +3450,6 @@ static void scanevents (struct uae_prefs *p)
 				for (k = 0; k < MAX_INPUT_SUB_EVENT; k++) {
 					ei = keyboards[i].eventid[j][k];
 					iscd32 (ei);
-					isparport (ei);
 					ismouse (ei);
 					isdigitalbutton (ei);
 					isqualifier (ei);
@@ -5988,9 +5919,9 @@ static bool fixjport (struct jport *port, int add, bool always)
 
 static void inputdevice_get_previous_joy(struct uae_prefs *p, int portnum)
 {
+	struct jport *jpx = &p->jports[portnum];
 	bool found = false;
 	int idx = 0;
-	struct jport *jpx = &p->jports[portnum];
 	for (;;) {
 		struct jport *jp = inputdevice_get_used_device(portnum, idx);
 		if (!jp)

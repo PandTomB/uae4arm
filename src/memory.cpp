@@ -684,30 +684,28 @@ static int patch_residents (uae_u8 *kickmemory, int size)
   // "scsi.device", "carddisk.device", "card.resource" };
   uaecptr base = size == ROM_SIZE_512 ? 0xf80000 : 0xfc0000;
 
-	if (is_device_rom(&currprefs, ROMTYPE_SCSI_A4000T, 0) < 0) {
-    for (i = 0; i < size - 100; i++) {
-    	if (kickmemory[i] == 0x4a && kickmemory[i + 1] == 0xfc) {
-	      uaecptr addr;
-	      addr = (kickmemory[i + 2] << 24) | (kickmemory[i + 3] << 16) | (kickmemory[i + 4] << 8) | (kickmemory[i + 5] << 0);
-	      if (addr != i + base)
-      		continue;
-	      addr = (kickmemory[i + 14] << 24) | (kickmemory[i + 15] << 16) | (kickmemory[i + 16] << 8) | (kickmemory[i + 17] << 0);
-	      if (addr >= base && addr < base + size) {
-      		j = 0;
-      		while (residents[j]) {
-    		    if (!memcmp (residents[j], kickmemory + addr - base, strlen (residents[j]) + 1)) {
-						  TCHAR *s = au (residents[j]);
-						  write_log (_T("KSPatcher: '%s' at %08X disabled\n"), s, i + base);
-						  xfree (s);
-        			kickmemory[i] = 0x4b; /* destroy RTC_MATCHWORD */
-        			patched++;
-        			break;
-    		    }
-    		    j++;
-      		}
-	      }	
-    	}
-    }
+  for (i = 0; i < size - 100; i++) {
+  	if (kickmemory[i] == 0x4a && kickmemory[i + 1] == 0xfc) {
+      uaecptr addr;
+      addr = (kickmemory[i + 2] << 24) | (kickmemory[i + 3] << 16) | (kickmemory[i + 4] << 8) | (kickmemory[i + 5] << 0);
+      if (addr != i + base)
+    		continue;
+      addr = (kickmemory[i + 14] << 24) | (kickmemory[i + 15] << 16) | (kickmemory[i + 16] << 8) | (kickmemory[i + 17] << 0);
+      if (addr >= base && addr < base + size) {
+    		j = 0;
+    		while (residents[j]) {
+  		    if (!memcmp (residents[j], kickmemory + addr - base, strlen (residents[j]) + 1)) {
+					  TCHAR *s = au (residents[j]);
+					  write_log (_T("KSPatcher: '%s' at %08X disabled\n"), s, i + base);
+					  xfree (s);
+      			kickmemory[i] = 0x4b; /* destroy RTC_MATCHWORD */
+      			patched++;
+      			break;
+  		    }
+  		    j++;
+    		}
+      }	
+  	}
   }
   return patched;
 }
@@ -1239,7 +1237,7 @@ void memory_reset (void)
 			map_banks (&gayle2_bank, 0xDD, 2, 0);
 		}
 		gayle_map_pcmcia ();
-		if (currprefs.cs_ide == IDE_A4000 || is_device_rom(&currprefs, ROMTYPE_SCSI_A4000T, 0))
+		if (currprefs.cs_ide == IDE_A4000)
 			map_banks (&gayle_bank, 0xDD, 1, 0);
 		if (currprefs.cs_ide < 0 && !currprefs.cs_pcmcia)
 			map_banks (&gayle_bank, 0xD8, 6, 0);

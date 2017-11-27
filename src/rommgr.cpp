@@ -1327,7 +1327,7 @@ void romwarning (const int *ids)
 		  _tcscat (tmp2, _T("- "));
 		  _tcscat (tmp2, tmp1);
 		  _tcscat (tmp2, _T("\n"));
-			if (rd->type & (ROMTYPE_SCSI | ROMTYPE_CPUBOARD | ROMTYPE_CD32CART))
+			if (rd->type & (ROMTYPE_SCSI | ROMTYPE_CD32CART))
 			  exp++;
 		}
 		i++;
@@ -1773,7 +1773,7 @@ int configure_rom (struct uae_prefs *p, const int *rom, int msg)
 	}
 	if (rd->type & (ROMTYPE_KICK | ROMTYPE_KICKCD32))
 		_tcscpy (p->romfile, path);
-	if (rd->type & (ROMTYPE_EXTCD32 | ROMTYPE_EXTCDTV))
+	if (rd->type & (ROMTYPE_EXTCD32))
 		_tcscpy (p->romextfile, path);
 	if (rd->type & ROMTYPE_CD32CART) {
 		_tcscpy(p->cartfile, path);
@@ -1878,7 +1878,8 @@ struct boardromconfig *get_device_rom(struct uae_prefs *p, int romtype, int devn
 {
 	const struct expansionromtype *ert = get_device_expansion_rom(romtype);
 	if (!ert) {
-		*index = 0;
+		if (index)
+		  *index = 0;
 		return NULL;
 	}
 	int parentrom = ert->parentromtype ? ert->parentromtype : romtype;

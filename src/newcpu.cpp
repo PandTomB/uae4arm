@@ -1633,18 +1633,15 @@ static void m68k_run_jit (void)
 
 void cpu_halt (int id)
 {
-	// id < 0: m68k halted, PPC active.
 	// id > 0: emulation halted.
 	if (!regs.halted) {
 		write_log (_T("CPU halted: reason = %d PC=%08x\n"), id, M68K_GETPC);
 		regs.halted = id;
 		gui_data.cpu_halted = id;
 		gui_led (LED_CPU, 0, -1);
-		if (id >= 0) {
-		  regs.intmask = 7;
-		  MakeSR ();
-		  audio_deactivate ();
-	  }
+	  regs.intmask = 7;
+	  MakeSR ();
+	  audio_deactivate ();
 		set_special(SPCFLAG_CHECK);
 	}
 }

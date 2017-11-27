@@ -67,18 +67,18 @@ struct cd_toc_head
 
 struct device_info {
 	bool open;
-  int type;
-  int media_inserted;
+    int type;
+    int media_inserted;
 	int audio_playing;
-  int removable;
-  int write_protected;
-  int cylinders;
-  int trackspercylinder;
-  int sectorspertrack;
-  int bytespersector;
-  int bus, target, lun;
-  int unitnum;
-  TCHAR label[MAX_DPATH];
+    int removable;
+    int write_protected;
+    int cylinders;
+    int trackspercylinder;
+    int sectorspertrack;
+    int bytespersector;
+    int bus, target, lun;
+    int unitnum;
+    TCHAR label[MAX_DPATH];
 	TCHAR mediapath[MAX_DPATH];
 	TCHAR vendorid[10];
 	TCHAR productid[18];
@@ -91,17 +91,17 @@ struct device_info {
 
 struct amigascsi
 {
-  uae_u8 *data;
-  uae_s32 len;
-  uae_u8 cmd[16];
-  uae_s32 cmd_len;
-  uae_u8 flags;
-  uae_u8 sensedata[256];
-  uae_u16 sense_len;
-  uae_u16 cmdactual;
-  uae_u8 status;
-  uae_u16 actual;
-  uae_u16 sactual;
+    uae_u8 *data;
+    uae_s32 len;
+    uae_u8 cmd[16];
+    uae_s32 cmd_len;
+    uae_u8 flags;
+    uae_u8 sensedata[256];
+    uae_u16 sense_len;
+    uae_u16 cmdactual;
+    uae_u8 status;
+    uae_u16 actual;
+    uae_u16 sactual;
 };
 
 typedef int (*check_bus_func)(int flags);

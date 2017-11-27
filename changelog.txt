@@ -1,3 +1,9 @@
+2017-11-17 - Alpha vesion
+   - Use sprite drawing code from WinUAE 3.5.0
+   - Cleanup code
+   - Bufix for render thread
+   - Minor bug fixes
+   
 2017-11-08 - First version for Raspi with render thread
    - My first version for RaspberryPi using code from Chips and Midwan
    - I introduced new render thread for better performance on hosts with multi core cpus

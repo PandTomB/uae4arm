@@ -49,7 +49,6 @@ MORE_CFLAGS += -Wno-write-strings -Wno-shift-overflow -Wno-narrowing
 MORE_CFLAGS += -fuse-ld=gold -fdiagnostics-color=auto
 MORE_CFLAGS += -mstructure-size-boundary=32
 MORE_CFLAGS += -falign-functions=32
-MORE_CFLAGS += -std=gnu++14
 
 LDFLAGS += -lSDL -lpthread -lz -lSDL_image -lpng -lxml2 -lFLAC -lmpg123 -ldl -lmpeg2convert -lmpeg2
 LDFLAGS += -lSDL_ttf -lguichan_sdl -lguichan
@@ -271,10 +270,10 @@ src/osdep/neon_helper.o: src/osdep/neon_helper.s
 src/osdep/arm_helper.o: src/osdep/arm_helper.s
 	$(CXX) $(ASFLAGS) -Wall -o src/osdep/arm_helper.o -c src/osdep/arm_helper.s
 
+ifdef TRACER
 src/trace.o: src/trace.c
 	$(CC) $(MORE_CFLAGS) -c src/trace.c -o src/trace.o
 
-ifdef TRACER
 OBJS += src/trace.o
 endif
 
