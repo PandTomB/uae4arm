@@ -9,6 +9,9 @@
 #include "config.h"
 #include "options.h"
 #include "uae.h"
+#include "custom.h"
+#include "xwin.h"
+#include "drawing.h"
 #include "gui.h"
 #include "gui_handling.h"
 
@@ -44,6 +47,8 @@ void InGameMessage(const char *msg)
   int msgWidth = 260;
   int msgHeight = 100;
   
+  halt_draw_frame();
+
   msg_graphics = new gcn::SDLGraphics();
   msg_graphics->setTarget(prSDLScreen);
   msg_input = new gcn::SDLInput();

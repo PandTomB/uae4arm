@@ -26,6 +26,7 @@ static gcn::Label* lblPandoraSpeed;
 static gcn::Label* lblPandoraSpeedInfo;
 static gcn::Slider* sldPandoraSpeed;
 static gcn::UaeCheckBox* chkBSDSocket;
+static gcn::UaeCheckBox* chkMasterWP;
 
 
 class MiscActionListener : public gcn::ActionListener
@@ -45,6 +46,12 @@ class MiscActionListener : public gcn::ActionListener
       else if (actionEvent.getSource() == chkBSDSocket)
         changed_prefs.socket_emu = chkBSDSocket->isSelected();
         
+      else if (actionEvent.getSource() == chkMasterWP) {
+        changed_prefs.floppy_read_only = chkMasterWP->isSelected();
+        RefreshPanelQuickstart();
+        RefreshPanelFloppy();
+      }
+
       else if (actionEvent.getSource() == sldPandoraSpeed)
       {
         int newspeed = (int) sldPandoraSpeed->getValue();
@@ -91,6 +98,10 @@ void InitPanelMisc(const struct _ConfigCategory& category)
 	chkBSDSocket = new gcn::UaeCheckBox("bsdsocket.library");
   chkBSDSocket->setId("BSDSocket");
   chkBSDSocket->addActionListener(miscActionListener);
+
+	chkMasterWP = new gcn::UaeCheckBox("Master floppy write protection");
+  chkMasterWP->setId("MasterWP");
+  chkMasterWP->addActionListener(miscActionListener);
   
 	int posY = DISTANCE_BORDER;
   category.panel->add(chkStatusLine, DISTANCE_BORDER, posY);
@@ -105,6 +116,8 @@ void InitPanelMisc(const struct _ConfigCategory& category)
   posY += sldPandoraSpeed->getHeight() + DISTANCE_NEXT_Y;
   category.panel->add(chkBSDSocket, DISTANCE_BORDER, posY);
   posY += chkBSDSocket->getHeight() + DISTANCE_NEXT_Y;
+  category.panel->add(chkMasterWP, DISTANCE_BORDER, posY);
+  posY += chkMasterWP->getHeight() + DISTANCE_NEXT_Y;
   
   RefreshPanelMisc();
 }
@@ -119,6 +132,7 @@ void ExitPanelMisc(void)
   delete sldPandoraSpeed;
   delete lblPandoraSpeedInfo;
   delete chkBSDSocket;
+  delete chkMasterWP;
   delete miscActionListener;
 }
 
@@ -136,4 +150,5 @@ void RefreshPanelMisc(void)
   lblPandoraSpeedInfo->setCaption(tmp);
   
   chkBSDSocket->setSelected(changed_prefs.socket_emu);
+  chkMasterWP->setSelected(changed_prefs.floppy_read_only);
 }

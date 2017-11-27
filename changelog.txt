@@ -1,3 +1,17 @@
+2017-08-06 - Beta version
+   - Merged lot of changes from WinUAE 3.3.0
+   - Added panel "Quickstart"
+   - Fixed bug when first click in popup window was ignored
+   - Support for more compression formats: xz, fdi
+   - Support for disk write protect
+   - Support for HD write protect
+   - Support for Action Replay
+   - Support for A600/A1200/A4000 IDE controller
+   - Support for Superhires
+   - Support for A4000 motherboard/processorboard RAM
+   - Support for CD32 fmv module
+   - Better handling of cpu fastest possible (less frameskips and less audio hickups)
+
 2016-09-24 - Release version
    - Merged lot of changes from WinUAE 2.8.1
    - Fixed graphic glitches caused by borderblank
