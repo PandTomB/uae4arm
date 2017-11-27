@@ -17,7 +17,7 @@ PANDORA=1
 DEFAULT_CFLAGS = $(CFLAGS) `sdl-config --cflags`
 
 MY_LDFLAGS = $(LDFLAGS)
-MY_LDFLAGS += -lSDL -lpthread  -lz -lSDL_image -lpng -lrt -lxml2 -lFLAC -lmpg123 -ldl -lmpeg2convert -lmpeg2
+MY_LDFLAGS += -lSDL -lpthread -lz -lSDL_image -lpng -lrt -lxml2 -lFLAC -lmpg123 -ldl -lmpeg2convert -lmpeg2
 MY_LDFLAGS +=  -lSDL_ttf -lguichan_sdl -lguichan
 
 MORE_CFLAGS = -DPANDORA -DARMV6_ASSEMBLY -DUSE_ARMNEON -DARMV6T2
@@ -35,12 +35,13 @@ MORE_CFLAGS += -std=gnu++14
 TRACE_CFLAGS = 
 
 ifndef DEBUG
-MORE_CFLAGS += -Ofast -pipe -march=armv7-a -mtune=cortex-a8 -mfpu=neon -fsingle-precision-constant
+MORE_CFLAGS += -Ofast -pipe -march=armv7-a -mtune=cortex-a8 -mfpu=neon
 MORE_CFLAGS += -fweb -frename-registers
-MORE_CFLAGS += -fipa-pta -fgcse-las -funroll-loops -ftracer -funswitch-loops
+MORE_CFLAGS += -funroll-loops -ftracer -funswitch-loops
 
 else
-MORE_CFLAGS += -g -DDEBUG -Wl,--export-dynamic
+MORE_CFLAGS += -g -rdynamic -funwind-tables -mapcs-frame -DDEBUG -Wl,--export-dynamic
+MORE_CFLAGS += -march=armv7-a -mtune=cortex-a8 -mfpu=neon
 
 ifdef TRACER
 TRACE_CFLAGS = -DTRACER -finstrument-functions -Wall -rdynamic
@@ -89,6 +90,11 @@ OBJS =	\
 	src/filesys.o \
 	src/flashrom.o \
 	src/fpp.o \
+	src/fpp_native.o \
+	src/fpp_softfloat.o \
+	src/softfloat/softfloat.o \
+	src/softfloat/softfloat_decimal.o \
+	src/softfloat/softfloat_fpsp.o \
 	src/fsdb.o \
 	src/fsdb_unix.o \
 	src/fsusage.o \
@@ -104,6 +110,7 @@ OBJS =	\
 	src/memory.o \
 	src/native2amiga.o \
 	src/rommgr.o \
+	src/rtc.o \
 	src/savestate.o \
 	src/scsi.o \
 	src/statusline.o \

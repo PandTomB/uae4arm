@@ -42,6 +42,7 @@ int quickstart_model = 0;
 int quickstart_conf = 0;
 
 extern void signal_segv(int signum, siginfo_t* info, void*ptr);
+extern void signal_buserror(int signum, siginfo_t* info, void*ptr);
 extern void gui_force_rtarea_hdchange(void);
 
 static int delayed_mousebutton = 0;
@@ -70,11 +71,6 @@ int max_uae_height;
 
 extern "C" int main( int argc, char *argv[] );
 
-
-void sleep_millis_main (int ms)
-{
-  usleep(ms * 1000);
-}
 
 void sleep_millis (int ms)
 {
@@ -250,7 +246,6 @@ void target_default_options (struct uae_prefs *p, int type)
 	p->cr[0].vert = -1;
 	p->cr[0].lace = -1;
 	p->cr[0].vsync = 1;
-	p->cr[0].framelength = -1;
 	p->cr[0].rate = 50.0;
 	p->cr[0].ntsc = 0;
 	p->cr[0].locked = true;
@@ -286,9 +281,14 @@ void target_restart (void)
 }
 
 
-TCHAR *target_expand_environment (const TCHAR *path)
+TCHAR *target_expand_environment (const TCHAR *path, TCHAR *out, int maxlen)
 {
-  return strdup(path);
+  if(out == NULL) {
+    return strdup(path);
+  } else {
+    _tcscpy(out, path);
+    return out;
+  }
 }
 
 int target_parse_option (struct uae_prefs *p, const char *option, const char *value)
@@ -386,7 +386,7 @@ int target_cfgfile_load (struct uae_prefs *p, const char *filename, int type, in
   discard_prefs(p, type);
   default_prefs(p, true, 0);
   
-	char *ptr = strstr(filename, ".rp9");
+	char *ptr = strstr((char *)filename, ".rp9");
   if(ptr > 0)
   {
     // Load rp9 config
@@ -396,7 +396,7 @@ int target_cfgfile_load (struct uae_prefs *p, const char *filename, int type, in
   }
   else 
 	{
-  	ptr = strstr(filename, ".uae");
+  	ptr = strstr((char *)filename, ".uae");
     if(ptr > 0)
     {
       int type = CONFIG_TYPE_HARDWARE | CONFIG_TYPE_HOST;
@@ -806,6 +806,15 @@ int main (int argc, char *argv[])
   if(sigaction(SIGILL, &action, NULL) < 0)
   {
     printf("Failed to set signal handler (SIGILL).\n");
+    abort();
+  }
+
+  memset(&action, 0, sizeof(action));
+  action.sa_sigaction = signal_buserror;
+  action.sa_flags = SA_SIGINFO;
+  if(sigaction(SIGBUS, &action, NULL) < 0)
+  {
+    printf("Failed to set signal handler (SIGBUS).\n");
     abort();
   }
 

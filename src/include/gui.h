@@ -21,14 +21,9 @@ STATIC_INLINE void gui_led (int led, int on, int brightness) { }
 #endif
 extern void gui_filename (int, const TCHAR *);
 extern void gui_flicker_led (int, int, int);
-extern unsigned int gui_ledstate;
 extern void gui_display (int shortcut);
 
 extern bool no_gui;
-
-#define HDLED_OFF		0
-#define HDLED_READ		1
-#define HDLED_WRITE		2
 
 #define LED_CD_ACTIVE 1
 #define LED_CD_ACTIVE2 2
@@ -45,7 +40,8 @@ extern bool no_gui;
 #define LED_CPU 8
 #define LED_SND 9
 #define LED_MD 10
-#define LED_MAX 11
+#define LED_NET 11
+#define LED_MAX 12
 
 struct gui_info
 {
@@ -69,6 +65,7 @@ struct gui_info
 extern struct gui_info gui_data;
 
 void notify_user (int msg);
+void notify_user_parms (int msg, const TCHAR *parms, ...);
 int translate_message (int msg, TCHAR *out);
 
 typedef enum {
@@ -88,13 +85,12 @@ typedef enum {
 	NUMSG_EXPROMNEED,
 	NUMSG_NOZLIB,
 	NUMSG_STATEHD, // 15
-	NUMSG_NOCAPS,
-	NUMSG_OLDCAPS,
 	NUMSG_KICKREP,
 	NUMSG_KICKREPNO,
 	NUMSG_KS68030PLUS, // 20
 	NUMSG_NO_PPC,
 	NUMSG_UAEBOOTROM_PPC,
+	NUMSG_NOMEMORY,
 	NUMSG_LAST
 } notify_user_msg;
 
