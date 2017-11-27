@@ -26,7 +26,7 @@ MORE_CFLAGS += -DWITH_INGAME_WARNING
 #MORE_CFLAGS += -DWITH_LOGGING
 
 MORE_CFLAGS += -Isrc/osdep -Isrc -Isrc/include -Isrc/archivers -Isrc/od-pandora
-MORE_CFLAGS += -Wno-unused -Wno-format -Wno-write-strings -Wno-multichar -Wno-shift-overflow -Wno-narrowing -DUSE_SDL
+MORE_CFLAGS += -Wno-write-strings -Wno-shift-overflow -Wno-narrowing -DUSE_SDL
 MORE_CFLAGS += -msoft-float -fuse-ld=gold -fdiagnostics-color=auto
 MORE_CFLAGS += -mstructure-size-boundary=32
 MORE_CFLAGS += -falign-functions=32
@@ -189,6 +189,7 @@ OBJS =	\
 	src/od-pandora/gui/UaeListBox.o \
 	src/od-pandora/gui/InGameMessage.o \
 	src/od-pandora/gui/SelectorEntry.o \
+	src/od-pandora/gui/ShowHelp.o \
 	src/od-pandora/gui/ShowMessage.o \
 	src/od-pandora/gui/SelectFolder.o \
 	src/od-pandora/gui/SelectFile.o \

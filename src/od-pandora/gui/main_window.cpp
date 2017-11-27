@@ -31,20 +31,20 @@ void target_startup_msg(TCHAR *title, TCHAR *msg)
 
 
 ConfigCategory categories[] = {
-  { "Paths",            "data/paths.ico",     NULL, NULL, InitPanelPaths,     ExitPanelPaths,   RefreshPanelPaths },
-  { "Quickstart",       "data/quickstart.ico",  NULL, NULL, InitPanelQuickstart,  ExitPanelQuickstart,  RefreshPanelQuickstart },
-  { "Configurations",   "data/file.ico",      NULL, NULL, InitPanelConfig,    ExitPanelConfig,  RefreshPanelConfig },
-  { "CPU and FPU",      "data/cpu.ico",       NULL, NULL, InitPanelCPU,       ExitPanelCPU,     RefreshPanelCPU },
-  { "Chipset",          "data/cpu.ico",       NULL, NULL, InitPanelChipset,   ExitPanelChipset, RefreshPanelChipset },
-  { "ROM",              "data/chip.ico",      NULL, NULL, InitPanelROM,       ExitPanelROM,     RefreshPanelROM },
-  { "RAM",              "data/chip.ico",      NULL, NULL, InitPanelRAM,       ExitPanelRAM,     RefreshPanelRAM },
-  { "Floppy drives",    "data/35floppy.ico",  NULL, NULL, InitPanelFloppy,    ExitPanelFloppy,  RefreshPanelFloppy },
-  { "Hard drives / CD", "data/drive.ico",     NULL, NULL, InitPanelHD,        ExitPanelHD,      RefreshPanelHD },
-  { "Display",          "data/screen.ico",    NULL, NULL, InitPanelDisplay,   ExitPanelDisplay, RefreshPanelDisplay },
-  { "Sound",            "data/sound.ico",     NULL, NULL, InitPanelSound,     ExitPanelSound,   RefreshPanelSound },
-  { "Input",            "data/joystick.ico",  NULL, NULL, InitPanelInput,     ExitPanelInput,   RefreshPanelInput },
-  { "Miscellaneous",    "data/misc.ico",      NULL, NULL, InitPanelMisc,      ExitPanelMisc,    RefreshPanelMisc },
-  { "Savestates",       "data/savestate.png", NULL, NULL, InitPanelSavestate, ExitPanelSavestate, RefreshPanelSavestate },
+  { "Paths",            "data/paths.ico",     NULL, NULL, InitPanelPaths,     ExitPanelPaths,     RefreshPanelPaths,      HelpPanelPaths },
+  { "Quickstart",       "data/quickstart.ico",  NULL, NULL, InitPanelQuickstart,  ExitPanelQuickstart,  RefreshPanelQuickstart, HelpPanelQuickstart },
+  { "Configurations",   "data/file.ico",      NULL, NULL, InitPanelConfig,    ExitPanelConfig,    RefreshPanelConfig,     HelpPanelConfig },
+  { "CPU and FPU",      "data/cpu.ico",       NULL, NULL, InitPanelCPU,       ExitPanelCPU,       RefreshPanelCPU,        HelpPanelCPU },
+  { "Chipset",          "data/cpu.ico",       NULL, NULL, InitPanelChipset,   ExitPanelChipset,   RefreshPanelChipset,    HelpPanelChipset },
+  { "ROM",              "data/chip.ico",      NULL, NULL, InitPanelROM,       ExitPanelROM,       RefreshPanelROM,        HelpPanelROM },
+  { "RAM",              "data/chip.ico",      NULL, NULL, InitPanelRAM,       ExitPanelRAM,       RefreshPanelRAM,        HelpPanelRAM },
+  { "Floppy drives",    "data/35floppy.ico",  NULL, NULL, InitPanelFloppy,    ExitPanelFloppy,    RefreshPanelFloppy,     HelpPanelFloppy },
+  { "Hard drives / CD", "data/drive.ico",     NULL, NULL, InitPanelHD,        ExitPanelHD,        RefreshPanelHD,         HelpPanelHD },
+  { "Display",          "data/screen.ico",    NULL, NULL, InitPanelDisplay,   ExitPanelDisplay,   RefreshPanelDisplay,    HelpPanelDisplay },
+  { "Sound",            "data/sound.ico",     NULL, NULL, InitPanelSound,     ExitPanelSound,     RefreshPanelSound,      HelpPanelSound },
+  { "Input",            "data/joystick.ico",  NULL, NULL, InitPanelInput,     ExitPanelInput,     RefreshPanelInput,      HelpPanelInput },
+  { "Miscellaneous",    "data/misc.ico",      NULL, NULL, InitPanelMisc,      ExitPanelMisc,      RefreshPanelMisc,       HelpPanelMisc },
+  { "Savestates",       "data/savestate.png", NULL, NULL, InitPanelSavestate, ExitPanelSavestate, RefreshPanelSavestate,  HelpPanelSavestate },
   { NULL, NULL, NULL, NULL, NULL, NULL, NULL }
 };
 enum { PANEL_PATHS, PANEL_QUICKSTART, PANEL_CONFIGURATIONS, PANEL_CPU, PANEL_CHIPSET, PANEL_ROM, PANEL_RAM,
@@ -72,6 +72,7 @@ namespace widgets
   gcn::Button* cmdReset;
   gcn::Button* cmdRestart;
   gcn::Button* cmdStart;
+  gcn::Button* cmdHelp;
 }
 
 
@@ -139,6 +140,21 @@ void FocusBugWorkaround(gcn::Window *wnd)
   gui_input->pushInput(event);
   event.type = SDL_MOUSEBUTTONUP;
   gui_input->pushInput(event);
+}
+
+
+static void ShowHelpRequested()
+{
+  std::vector<std::string> helptext;
+  if(categories[last_active_panel].HelpFunc != NULL && categories[last_active_panel].HelpFunc(helptext))
+  {
+    //------------------------------------------------
+    // Show help for current panel
+    //------------------------------------------------
+    char title[128];
+    snprintf(title, 128, "Help for %s", categories[last_active_panel].category);
+    ShowHelp(title, helptext);
+  }
 }
 
 
@@ -286,6 +302,11 @@ namespace sdl
               if(HandleNavigation(DIRECTION_RIGHT))
                 continue; // Don't change value when enter Slider -> don't send event to control
               break;
+          
+            case SDLK_F1:
+              ShowHelpRequested();
+              widgets::cmdHelp->requestFocus();
+              break;
           }
         }
 
@@ -349,7 +370,7 @@ namespace widgets
           char tmp[MAX_PATH];
           fetch_configurationpath (tmp, sizeof (tmp));
           if(strlen(last_loaded_config) > 0)
-            strncat (tmp, last_loaded_config, MAX_PATH);
+            strncat (tmp, last_loaded_config, MAX_PATH - 1);
           else
           {
             strncat (tmp, OPTIONSFILENAME, MAX_PATH);
@@ -376,6 +397,11 @@ namespace widgets
       			gui_running = false;
           }
         }
+        else if(actionEvent.getSource() == cmdHelp)
+        {
+          ShowHelpRequested();
+          cmdHelp->requestFocus();
+        }
       }
   };
   MainButtonActionListener* mainButtonActionListener;
@@ -394,6 +420,7 @@ namespace widgets
             categories[i].selector->setActive(true);
             categories[i].panel->setVisible(true);
             last_active_panel = i;
+            cmdHelp->setVisible(categories[last_active_panel].HelpFunc != NULL);
           }
           else
           {
@@ -474,6 +501,12 @@ namespace widgets
   	cmdStart->setId("Start");
     cmdStart->addActionListener(mainButtonActionListener);
 
+  	cmdHelp = new gcn::Button("Help");
+  	cmdHelp->setSize(BUTTON_WIDTH, BUTTON_HEIGHT);
+    cmdHelp->setBaseColor(gui_baseCol);
+  	cmdHelp->setId("Help");
+    cmdHelp->addActionListener(mainButtonActionListener);
+    
   	//--------------------------------------------------
     // Create selector entries
   	//--------------------------------------------------
@@ -516,6 +549,7 @@ namespace widgets
     gui_top->add(cmdReset, DISTANCE_BORDER, GUI_HEIGHT - DISTANCE_BORDER - BUTTON_HEIGHT);
     gui_top->add(cmdQuit, DISTANCE_BORDER + BUTTON_WIDTH + DISTANCE_NEXT_X, GUI_HEIGHT - DISTANCE_BORDER - BUTTON_HEIGHT);
     //gui_top->add(cmdRestart, DISTANCE_BORDER + 2 * BUTTON_WIDTH + 2 * DISTANCE_NEXT_X, GUI_HEIGHT - DISTANCE_BORDER - BUTTON_HEIGHT);
+    gui_top->add(cmdHelp, DISTANCE_BORDER + 2 * BUTTON_WIDTH + 2 * DISTANCE_NEXT_X, GUI_HEIGHT - DISTANCE_BORDER - BUTTON_HEIGHT);
     gui_top->add(cmdStart, GUI_WIDTH - DISTANCE_BORDER - BUTTON_WIDTH, GUI_HEIGHT - DISTANCE_BORDER - BUTTON_HEIGHT);
 
     gui_top->add(selectors, DISTANCE_BORDER + 1, DISTANCE_BORDER + 1);
@@ -531,6 +565,7 @@ namespace widgets
   	if(!emulating && quickstart_start)
   	  last_active_panel = 1;
   	categories[last_active_panel].selector->requestFocus();
+  	cmdHelp->setVisible(categories[last_active_panel].HelpFunc != NULL);
   }
 
 
@@ -553,7 +588,8 @@ namespace widgets
     delete cmdReset;
     delete cmdRestart;
     delete cmdStart;
-   
+    delete cmdHelp;
+    
     delete mainButtonActionListener;
     
     delete gui_font;
@@ -603,6 +639,7 @@ void run_gui(void)
       ShowMessage(startup_title, startup_message, _T(""), _T("Ok"), _T(""));
       _tcscpy(startup_title, _T(""));
       _tcscpy(startup_message, _T(""));
+      widgets::cmdStart->requestFocus();
     }
     sdl::gui_run();
     widgets::gui_halt();
@@ -640,10 +677,6 @@ void run_gui(void)
 		
 		if(gui_rtarea_flags_onenter != gui_create_rtarea_flag(&changed_prefs))
 	    quit_program = -UAE_RESET_HARD; // Hardreset required...
-	    
-	  bool a3000changed = (currprefs.mbresmem_low_size != changed_prefs.mbresmem_low_size) || (currprefs.mbresmem_high_size != changed_prefs.mbresmem_high_size);
-	  if(a3000changed)
-	    HandleA3000Mem(changed_prefs.mbresmem_low_size, changed_prefs.mbresmem_high_size);
   }
 
   // Reset counter for access violations

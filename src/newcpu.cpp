@@ -1711,6 +1711,7 @@ void m68k_go (int may_quit)
 
 	cpu_prefs_changed_flag = 0;
   in_m68k_go++;
+  
   for (;;) {
   	void (*run_func)(void);
 
@@ -1811,6 +1812,12 @@ void m68k_go (int may_quit)
 	  run_func ();
   }
 	protect_roms (false);
+
+  // Prepare for a restart: reset pc
+  regs.pc = 0;
+  regs.pc_p = NULL;
+  regs.pc_oldp = NULL;
+
   in_m68k_go--;
 }
 

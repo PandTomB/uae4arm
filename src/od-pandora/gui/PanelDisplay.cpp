@@ -192,3 +192,19 @@ void RefreshPanelDisplay(void)
   
   chkFrameskip->setSelected(changed_prefs.gfx_framerate);
 }
+
+
+bool HelpPanelDisplay(std::vector<std::string> &helptext)
+{
+  helptext.clear();
+  helptext.push_back("Select the required width and height of the Amiga screen. If you select \"NTSC\" in chipset, a value greater than");
+  helptext.push_back("240 for \"Height\" makes no sense. When the game, demo or workbench uses Hires mode and you selected a");
+  helptext.push_back("value for \"Width\" lower than 640, you will only see half of the pixels.");
+  helptext.push_back("");
+  helptext.push_back("With \"Vert. offset\" you can adjust the position of the first drawn line of the Amiga screen. You can also change");
+  helptext.push_back("this during emulation with left and right shoulder button and dpad up/down.");
+  helptext.push_back("");
+  helptext.push_back("When you activate \"Frameskip\", only every second frame is drawn. This will improve performance and some");
+  helptext.push_back("more games are playable.");
+  return true;
+}

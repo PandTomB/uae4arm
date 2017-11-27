@@ -567,3 +567,23 @@ void RefreshPanelInput(void)
   cboLeft->setSelected(GetAmigaKeyIndex(customControlMap[SDLK_LEFT]));
   cboRight->setSelected(GetAmigaKeyIndex(customControlMap[SDLK_RIGHT]));
 }
+
+
+bool HelpPanelInput(std::vector<std::string> &helptext)
+{
+  helptext.clear();
+  helptext.push_back("You can select the control type for both ports and the rate for autofire.");
+  helptext.push_back("");
+  helptext.push_back("Set the emulated mouse speed to .25x, .5x, 1x, 2x and 4x to slow down or speed up the mouse.");
+  helptext.push_back("");
+  helptext.push_back("When \"Enable mousehack\" is activated, you can use the stylus to set the mouse pointer to the exact position.");
+  helptext.push_back("This works very well on Workbench, but many games using there own mouse handling and will not profit from");
+  helptext.push_back("this code.");
+  helptext.push_back("");
+  helptext.push_back("\"Tap Delay\" specifies the time between taping the screen and an emulated mouse button click.");
+  helptext.push_back("");
+  helptext.push_back("When you activate \"Custom Control\", you can define which Amiga key should be emulated by pressing one of the");
+  helptext.push_back("ABXY- or D-pad buttons. Useful to setup controls for pinball games. During emulation, you can switch between");
+  helptext.push_back("regular buttons and custom settings by pressing left shoulder button and 'c'.");
+  return true;
+}
