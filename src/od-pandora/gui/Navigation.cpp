@@ -39,9 +39,9 @@ static NavigationMap navMap[] =
   { "Miscellaneous",    "StatusLine",     "StatusLine",     "Input",            "Savestates" },
   { "Savestates",       "State0",         "State0",         "Miscellaneous",    "Reset" },
   { "Reset",            "Start",          "Quit",           "Savestates",       "Paths" },
-  { "Quit",             "Reset",          "Restart",        "Savestates",       "Paths" },
-  { "Restart",          "Quit",           "Start",          "Savestates",       "Paths" },
-  { "Start",            "Restart",        "Reset",          "Savestates",       "Paths" },
+  { "Quit",             "Reset",          "Start",          "Savestates",       "Paths" },
+//  { "Restart",          "Quit",           "Start",          "Savestates",       "Paths" },
+  { "Start",            "Quit",           "Reset",          "Savestates",       "Paths" },
 
 // PanelPaths
   { "SystemROMs",     "Paths",          "Paths",          "RescanROMs",     "ConfigPath" },

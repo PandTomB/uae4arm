@@ -20,12 +20,12 @@ MY_LDFLAGS = $(LDFLAGS)
 MY_LDFLAGS += -lSDL -lpthread  -lz -lSDL_image -lpng -lrt -lxml2 -lFLAC -lmpg123 -ldl
 MY_LDFLAGS +=  -lSDL_ttf -lguichan_sdl -lguichan
 
-MORE_CFLAGS = -DGP2X -DPANDORA -DARMV6_ASSEMBLY -DUSE_ARMNEON -DARMV6T2
+MORE_CFLAGS = -DPANDORA -DARMV6_ASSEMBLY -DUSE_ARMNEON -DARMV6T2
 MORE_CFLAGS += -DCPU_arm
 MORE_CFLAGS += -DWITH_INGAME_WARNING
 #MORE_CFLAGS += -DWITH_LOGGING
 
-MORE_CFLAGS += -Isrc/osdep -Isrc -Isrc/include -Wno-unused -Wno-format -Wno-write-strings -Wno-multichar -DUSE_SDL
+MORE_CFLAGS += -Isrc/osdep -Isrc -Isrc/include -Wno-unused -Wno-format -Wno-write-strings -Wno-multichar -Wno-shift-overflow -Wno-narrowing -DUSE_SDL
 MORE_CFLAGS += -msoft-float -fuse-ld=gold -fdiagnostics-color=auto
 MORE_CFLAGS += -mstructure-size-boundary=32
 MORE_CFLAGS += -falign-functions=32
@@ -33,12 +33,9 @@ MORE_CFLAGS += -falign-functions=32
 TRACE_CFLAGS = 
 
 ifndef DEBUG
-MORE_CFLAGS += -Ofast -pipe -march=armv7-a -mtune=cortex-a8 -mfpu=neon -ftree-vectorize -fsingle-precision-constant
+MORE_CFLAGS += -Ofast -pipe -march=armv7-a -mtune=cortex-a8 -mfpu=neon -fsingle-precision-constant
 MORE_CFLAGS += -fweb -frename-registers
-MORE_CFLAGS += -fipa-pta -fgcse-las
-
-# Using -flto and -fipa-pta generates an error with gcc5.2 (??? and -lto alone generates slower code ???)
-#MORE_CFLAGS += -flto=4 -fuse-linker-plugin
+MORE_CFLAGS += -fipa-pta -fgcse-las -funroll-loops -ftracer -funswitch-loops
 
 else
 MORE_CFLAGS += -g -DDEBUG -Wl,--export-dynamic
@@ -50,10 +47,10 @@ endif
 endif
 
 ifdef GEN_PROFILE
-MORE_CFLAGS += -fprofile-generate=/media/MAINSD/pandora/test -fprofile-arcs
+MORE_CFLAGS += -fprofile-generate=/media/MAINSD/pandora/test -fprofile-arcs -fvpt
 endif
 ifdef USE_PROFILE
-MORE_CFLAGS += -fprofile-use -fbranch-probabilities -fvpt -funroll-loops -fpeel-loops -ftracer -ftree-loop-distribute-patterns
+MORE_CFLAGS += -fprofile-use -fbranch-probabilities -fvpt
 endif
 
 
@@ -86,6 +83,7 @@ OBJS =	\
 	src/fsdb.o \
 	src/fsdb_unix.o \
 	src/fsusage.o \
+	src/gfxboard.o \
 	src/gfxutil.o \
 	src/hardfile.o \
 	src/inputdevice.o \
@@ -192,6 +190,7 @@ OBJS += src/osdep/gui/sdltruetypefont.o
 endif
 
 OBJS += src/newcpu.o
+OBJS += src/newcpu_common.o
 OBJS += src/readcpu.o
 OBJS += src/cpudefs.o
 OBJS += src/cpustbl.o
@@ -259,6 +258,7 @@ ASMS = \
 	src/osdep/sigsegv_handler.s \
 	src/sounddep/sound.s \
 	src/newcpu.s \
+	src/newcpu_common.s \
 	src/readcpu.s \
 	src/cpudefs.s \
 	src/cpustbl.s \

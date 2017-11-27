@@ -1,3 +1,10 @@
+2016-09-24 - Release version
+   - Merged lot of changes from WinUAE 2.8.1
+   - Fixed graphic glitches caused by borderblank
+   - Fixed bug in navigation through quit button
+   - Keys V and W were switched
+   - Compiled with gcc 6.2
+
 2016-08-22 - Release version
    - Border sprites (tested with Speris Legacy)
    - CPU fastest: automatic timing adjust to reduce stutter 
