@@ -1,4 +1,12 @@
 
+2016-04-17 - Beta version
+   - Bugfix in dialog for adding HDF
+   - Improved support for rp9 (only 5 out of 99 games from "Amiga Forever 2016" not working)
+     Usage: Copy rp9 files and the three "workbench-xyz.hdf" files to folder "appdata/uae4arm/rp9".
+            All files of a rp9 archive added to the last used disk list, so you can easily select them with
+            the dropdown control in the floppy panel.
+   - Support for RDB hardfiles
+
 2016-04-03 - Beta version
    - Disk images in zip files
    - Support for rp9

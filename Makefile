@@ -12,22 +12,24 @@ PANDORA=1
 DEFAULT_CFLAGS = $(CFLAGS) `sdl-config --cflags`
 
 MY_LDFLAGS = $(LDFLAGS)
-MY_LDFLAGS += -lSDL -lpthread  -lz -lSDL_image -lpng -lrt
+MY_LDFLAGS += -lSDL -lpthread  -lz -lSDL_image -lpng -lrt -lxml2
 MY_LDFLAGS +=  -lSDL_ttf -lguichan_sdl -lguichan
 
 MORE_CFLAGS = -DGP2X -DPANDORA -DARMV6_ASSEMBLY -DUSE_ARMNEON
 MORE_CFLAGS += -DCPU_arm
+MORE_CFLAGS += -DWITH_INGAME_WARNING
 #MORE_CFLAGS += -DWITH_LOGGING
 
-MORE_CFLAGS += -Isrc -Isrc/include -Wno-unused -Wno-format -Wno-write-strings -Wno-multichar -DUSE_SDL
+MORE_CFLAGS += -Isrc -Isrc/include -fomit-frame-pointer -Wno-unused -Wno-format -Wno-write-strings -Wno-multichar -DUSE_SDL
 MORE_CFLAGS += -fexceptions
-MORE_CFLAGS += -msoft-float
+MORE_CFLAGS += -msoft-float -ffast-math
 
 ifndef DEBUG
+MORE_CFLAGS += -Ofast -pipe -march=armv7-a -mtune=cortex-a8 -mfpu=neon -ftree-vectorize -fsingle-precision-constant -fuse-ld=gold -fdiagnostics-color=auto
 MORE_CFLAGS += -mstructure-size-boundary=32
-MORE_CFLAGS += -falign-functions=32 
+MORE_CFLAGS += -falign-functions=32
 MORE_CFLAGS += -fno-builtin -fweb -frename-registers
-MORE_CFLAGS += -fipa-pta 
+MORE_CFLAGS += -fipa-pta
 #MORE_CFLAGS += -S
 else
 MORE_CFLAGS += -ggdb
@@ -113,6 +115,7 @@ OBJS =	\
 	src/osdep/neon_helper.o \
 	src/osdep/bsdsocket_host.o \
 	src/osdep/fsdb_host.o \
+	src/osdep/hardfile_pandora.o \
 	src/osdep/joystick.o \
 	src/osdep/keyboard.o \
 	src/osdep/inputmode.o \
@@ -121,6 +124,7 @@ OBJS =	\
 	src/osdep/pandora.o \
 	src/osdep/pandora_filesys.o \
 	src/osdep/pandora_gui.o \
+	src/osdep/pandora_rp9.o \
 	src/osdep/pandora_gfx.o \
 	src/osdep/pandora_mem.o \
 	src/osdep/sigsegv_handler.o \
