@@ -1,4 +1,6 @@
 
+2016-04-24 - Beta version with JITv2
+
 2016-04-17 - Beta version
    - Bugfix in dialog for adding HDF
    - Improved support for rp9 (only 5 out of 99 games from "Amiga Forever 2016" not working)

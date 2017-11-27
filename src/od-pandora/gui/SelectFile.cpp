@@ -24,6 +24,8 @@ static bool dialogFinished = false;
 static bool createNew = false;
 static char workingDir[MAX_PATH];
 static const char **filefilter;
+static bool dialogCreated = false;
+static int selectedOnStart = -1;
 
 static gcn::Window *wndSelectFile;
 static gcn::Button* cmdOK;
@@ -142,6 +144,7 @@ static void checkfilename(char *current)
     if(!fileList->isDir(i) && !strcasecmp(fileList->getElementAt(i).c_str(), actfile))
     {
       lstFiles->setSelected(i);
+      selectedOnStart = i;
       break;
     }
   }
@@ -344,6 +347,13 @@ static void SelectFileLoop(void)
     uae_gui->draw();
     // Finally we update the screen.
     SDL_Flip(gui_screen);
+    
+    if(!dialogCreated)
+    {
+      dialogCreated = true;
+      if(selectedOnStart >= 0)
+        scrAreaFiles->setVerticalScrollAmount(selectedOnStart * 19);
+    }
   }  
 }
 
@@ -354,6 +364,8 @@ bool SelectFile(const char *title, char *value, const char *filter[], bool creat
   dialogFinished = false;
   createNew = create;
   filefilter = filter;
+  dialogCreated = false;
+  selectedOnStart = -1;
   
   InitSelectFile(title);
   extractPath(value, workingDir);
