@@ -267,15 +267,15 @@ static void blitter_dofast(void)
 	blit_masktable[blt_info.hblitsize - 1] &= blt_info.bltalwm;
 
   if (bltcon0 & 0x800) {
-	  bltadatptr = (uaecptr)get_real_address(bltapt);
+	  bltadatptr = (uaecptr)&chipmem_bank.baseaddr[bltapt & chipmem_full_mask];
 	  bltapt += (blt_info.hblitsize * 2 + blt_info.bltamod) * blt_info.vblitsize;
   }
   if (bltcon0 & 0x400) {
-	  bltbdatptr = (uaecptr)get_real_address(bltbpt);
+	  bltbdatptr = (uaecptr)&chipmem_bank.baseaddr[bltbpt & chipmem_full_mask];
 	  bltbpt += (blt_info.hblitsize * 2 + blt_info.bltbmod) * blt_info.vblitsize;
   }
   if (bltcon0 & 0x200) {
-	  bltcdatptr = (uaecptr)get_real_address(bltcpt);
+	  bltcdatptr = (uaecptr)&chipmem_bank.baseaddr[bltcpt & chipmem_full_mask];
 	  bltcpt += (blt_info.hblitsize * 2 + blt_info.bltcmod) * blt_info.vblitsize;
   }
   if (bltcon0 & 0x100) {
@@ -361,15 +361,15 @@ static void blitter_dofast_desc(void)
 	blit_masktable[blt_info.hblitsize - 1] &= blt_info.bltalwm;
 
   if (bltcon0 & 0x800) {
-	  bltadatptr = (uaecptr)get_real_address(bltapt);
+	  bltadatptr = (uaecptr)&chipmem_bank.baseaddr[bltapt & chipmem_full_mask];
 	  bltapt -= (blt_info.hblitsize * 2 + blt_info.bltamod) * blt_info.vblitsize;
   }
   if (bltcon0 & 0x400) {
-	  bltbdatptr = (uaecptr)get_real_address(bltbpt);
+	  bltbdatptr = (uaecptr)&chipmem_bank.baseaddr[bltbpt & chipmem_full_mask];
 	  bltbpt -= (blt_info.hblitsize * 2 + blt_info.bltbmod) * blt_info.vblitsize;
   }
   if (bltcon0 & 0x200) {
-	  bltcdatptr = (uaecptr)get_real_address(bltcpt);
+	  bltcdatptr = (uaecptr)&chipmem_bank.baseaddr[bltcpt & chipmem_full_mask];
 	  bltcpt -= (blt_info.hblitsize * 2 + blt_info.bltcmod) * blt_info.vblitsize;
   }
   if (bltcon0 & 0x100) {

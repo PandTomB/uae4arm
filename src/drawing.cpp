@@ -186,6 +186,7 @@ static int plf1pri, plf2pri, bplxor, bpland;
 static uae_u32 plf_sprite_mask;
 static uae_u32 plf_sprite_mask_n16;
 static int sbasecol[2] = { 16, 16 };
+static int hposblank;
 
 bool picasso_requested_on, picasso_requested_forced_on, picasso_on;
 
@@ -250,6 +251,7 @@ static struct draw_info *dip_for_drawing;
 static int playfield_start, playfield_end;
 static int real_playfield_start, real_playfield_end;
 static int sprite_playfield_start;
+static bool may_require_hard_way;
 static int native_ddf_left, native_ddf_right;
 
 static int pixels_offset;
@@ -259,7 +261,7 @@ static int unpainted;
 
 STATIC_INLINE xcolnr getbgc (bool blank)
 {
-  return (blank || ce_is_borderblank(colors_for_drawing.extra)) ? 0 : colors_for_drawing.acolors[0];
+	return (blank || hposblank || ce_is_borderblank(colors_for_drawing.extra)) ? 0 : colors_for_drawing.acolors[0];
 }
 
 static void set_res_shift(int shift)
@@ -354,6 +356,7 @@ static void pfield_init_linetoscr (bool border)
 			expanded = true;
 		}
 	}
+	may_require_hard_way = false;
 	if (dp_for_drawing->bordersprite_seen && !ce_is_borderblank(colors_for_drawing.extra) && dip_for_drawing->nr_sprites) {
 		int min = visible_right_border, max = visible_left_border, i;
 		for (i = 0; i < dip_for_drawing->nr_sprites; i++) {
@@ -378,6 +381,7 @@ static void pfield_init_linetoscr (bool border)
 		if (playfield_end > visible_right_border)
 			playfield_end = visible_right_border;
 		sprite_playfield_start = 0;
+		may_require_hard_way = true;
 	}
 
 	unpainted = visible_left_border < playfield_start ? 0 : visible_left_border - playfield_start;
@@ -491,13 +495,71 @@ STATIC_INLINE void fill_line_16 (uae_u8 *buf, int start, int stop, bool blank)
 
 static void pfield_do_fill_line (int start, int stop, bool blank)
 {
+	if (stop <= start)
+		return;
 	fill_line_16 (xlinebuffer, start, stop, blank);
+}
+
+static void fill_line2 (int startpos, int len)
+{
+	int shift;
+	int nints, nrem;
+	int *start;
+	xcolnr val;
+
+		shift = 1;
+
+	nints = len >> (2 - shift);
+	nrem = nints & 7;
+	nints &= ~7;
+	start = (int *)(((uae_u8*)xlinebuffer) + (startpos << shift));
+	val = getbgc (false);
+	for (; nints > 0; nints -= 8, start += 8) {
+		*start = val;
+		*(start+1) = val;
+		*(start+2) = val;
+		*(start+3) = val;
+		*(start+4) = val;
+		*(start+5) = val;
+		*(start+6) = val;
+		*(start+7) = val;
+	}
+
+	switch (nrem) {
+	case 7:
+		*start++ = val;
+	case 6:
+		*start++ = val;
+	case 5:
+		*start++ = val;
+	case 4:
+		*start++ = val;
+	case 3:
+		*start++ = val;
+	case 2:
+		*start++ = val;
+	case 1:
+		*start = val;
+	}
 }
 
 STATIC_INLINE void fill_line_border (int lineno)
 {
 	int lastpos = visible_left_border;
 	int endpos = visible_left_border + gfxvidinfo.drawbuffer.outwidth;
+
+	// full hblank
+	if (hposblank) {
+		hposblank = 3;
+		fill_line2(lastpos, gfxvidinfo.drawbuffer.outwidth);
+		return;
+	}
+
+	// hblank not visible
+	if (0 <= lastpos && MAX_STOP >= endpos) {
+		fill_line2(lastpos, gfxvidinfo.drawbuffer.outwidth);
+		return;
+	}
 
 	if (lastpos < endpos) {
 		pfield_do_fill_line(lastpos, endpos, true);
@@ -1104,6 +1166,32 @@ static void clear_bitplane_border_aga (void)
 	}
 }
 
+static void weird_bitplane_fix (int start, int end)
+{
+	int sh = lores_shift;
+	uae_u8 *p = pixdata.apixels + pixels_offset;
+
+	start >>= sh;
+	end >>= sh;
+	if (bplplanecnt == 5 && !bpldualpf) {
+		/* emulate OCS/ECS only undocumented "SWIV" hardware feature */
+		for (int i = start; i < end; i++) {
+			if (p[i] & 16)
+				p[i] = 16;
+		}
+	} else if (bpldualpf && bpldualpfpri) {
+		/* in dualplayfield mode this feature is even more strange.. */
+		for (int i = start; i < end; i++) {
+			if (p[i] & (2 | 8 | 32))
+				p[i] |= 0x40;
+		}
+	} else if (bpldualpf && !bpldualpfpri) {
+		for (int i = start; i < end; i++) {
+			p[i] &= ~(2 | 8 | 32);
+		}
+	}
+}
+
 /* We use the compiler's inlining ability to ensure that PLANES is in effect a compile time
 constant.  That will cause some unnecessary code to be optimized away.
 Don't touch this if you don't know what you are doing.  */
@@ -1485,6 +1573,10 @@ static bool isham (uae_u16 bplcon0)
 
 static void pfield_expand_dp_bplconx (int regno, int v)
 {
+	if (regno == 0xffff) {
+		hposblank = 1;
+		return;
+	}
   regno -= 0x1000;
   switch (regno)
   {
@@ -1532,6 +1624,24 @@ static void adjust_drawing_colors (int ctable, int need_full)
   }
 }
 
+static void playfield_hard_way(line_draw_func worker_pfield, int first, int last)
+{
+	if (first < real_playfield_start)  {
+		int next = last < real_playfield_start ? last : real_playfield_start;
+		int diff = next - first;
+		pfield_do_linetoscr_bordersprite_aga(first, next, false);
+		if (res_shift >= 0)
+			diff >>= res_shift;
+		else
+			diff <<= res_shift;
+		src_pixel += diff;
+		first = next;
+	}
+	(*worker_pfield)(first, last < real_playfield_end ? last : real_playfield_end, false);
+	if (last > real_playfield_end)
+		pfield_do_linetoscr_bordersprite_aga(real_playfield_end, last, false);
+}
+
 STATIC_INLINE void do_color_changes (line_draw_func worker_border, line_draw_func worker_pfield)
 {
   int i;
@@ -1539,6 +1649,8 @@ STATIC_INLINE void do_color_changes (line_draw_func worker_border, line_draw_fun
   int endpos = visible_right_border;
 
   for (i = dip_for_drawing->first_color_change; i <= dip_for_drawing->last_color_change; i++) {
+		int regno = curr_color_changes[i].regno;
+		unsigned int value = curr_color_changes[i].value;
 	  int nextpos, nextpos_in_range;
 
 	  if (i == dip_for_drawing->last_color_change)
@@ -1560,6 +1672,11 @@ STATIC_INLINE void do_color_changes (line_draw_func worker_border, line_draw_fun
 		// playfield
 	  if (nextpos_in_range > lastpos && lastpos >= playfield_start && lastpos < playfield_end) {
 		  int t = nextpos_in_range <= playfield_end ? nextpos_in_range : playfield_end;
+			if (plf2pri > 5 && !(currprefs.chipset_mask & CSMASK_AGA))
+				weird_bitplane_fix (lastpos, t);
+			if (bplxor && may_require_hard_way && worker_pfield != pfield_do_linetoscr_bordersprite_aga)
+				playfield_hard_way(worker_pfield, lastpos, t);
+			else
 		  (*worker_pfield) (lastpos, t, false);
 		  lastpos = t;
 	  }
@@ -1570,21 +1687,17 @@ STATIC_INLINE void do_color_changes (line_draw_func worker_border, line_draw_fun
 		  lastpos = nextpos_in_range;
 	  }
 
-	  if (i != dip_for_drawing->last_color_change) {
-  	  int regno = curr_color_changes[i].regno;
-  	  unsigned int value = curr_color_changes[i].value;
-      if (regno >= 0x1000) {
-	      pfield_expand_dp_bplconx (regno, value);
-		  } else if (regno >= 0) {
-			  if (regno == 0 && (value & COLOR_CHANGE_BRDBLANK)) {
+    if (regno >= 0x1000) {
+      pfield_expand_dp_bplconx (regno, value);
+		} else if (regno >= 0 && !(value & COLOR_CHANGE_MASK)) {
+      color_reg_set (&colors_for_drawing, regno, value);
+      colors_for_drawing.acolors[regno] = getxcolor (value);
+		} else if (regno == 0 && (value & COLOR_CHANGE_MASK)) {
+			if (value & COLOR_CHANGE_BRDBLANK) {
 				colors_for_drawing.extra &= ~(1 << CE_BORDERBLANK);
 				colors_for_drawing.extra &= ~(1 << CE_BORDERSPRITE);
 				colors_for_drawing.extra |= (value & 1) != 0 ? (1 << CE_BORDERBLANK) : 0;
 				colors_for_drawing.extra |= (value & 3) == 2 ? (1 << CE_BORDERSPRITE) : 0;
-        } else {
-		      color_reg_set (&colors_for_drawing, regno, value);
-		      colors_for_drawing.acolors[regno] = getxcolor (value);
-		    }
       }
 	  }
 	  if (lastpos >= endpos)
@@ -1594,8 +1707,9 @@ STATIC_INLINE void do_color_changes (line_draw_func worker_border, line_draw_fun
 
 STATIC_INLINE bool is_color_changes(struct draw_info *di)
 {
+	int regno = curr_color_changes[di->first_color_change].regno;
 	int changes = di->nr_color_changes;
-	return changes > 0;
+	return changes > 1 || (changes == 1 && regno != 0xffff && regno != -1);
 }
 
 static void pfield_draw_line (int lineno, int gfx_ypos)
@@ -1624,6 +1738,7 @@ static void pfield_draw_line (int lineno, int gfx_ypos)
    
     /* The problem is that we must call decode_ham() BEFORE we do the sprites. */
     if (dp_for_drawing->ham_seen) {
+			int ohposblank = hposblank;
 			uae_u8 b0 = dp_for_drawing->bplcon0;
 			uae_u8 b2 = dp_for_drawing->bplcon2;
 			uae_u8 b3 = dp_for_drawing->bplcon3;
@@ -1639,6 +1754,7 @@ static void pfield_draw_line (int lineno, int gfx_ypos)
 				dp_for_drawing->bplcon4 = b4;
 				pfield_expand_dp_bplcon ();
       }
+			hposblank = ohposblank;
 			ham_decode_pixel = src_pixel;
       bplham = dp_for_drawing->ham_at_start;
     }
@@ -1678,8 +1794,16 @@ static void pfield_draw_line (int lineno, int gfx_ypos)
 		}
 
 		if (!dosprites && !have_color_changes)	{
-			// normal border line
-			fill_line_border(lineno);
+			if (dp_for_drawing->plfleft < -1) {
+				// blanked border line
+				int tmp = hposblank;
+				hposblank = 1;
+				fill_line_border(lineno);
+				hposblank = tmp;
+			} else {
+			  // normal border line
+			  fill_line_border(lineno);
+      }
 			return;
 		}
 
@@ -1752,6 +1876,7 @@ static void partial_draw_frame(void)
   		int line = next_line_to_render + thisframe_y_adjust_real;
       if(line >= linestate_first_undecided)
   			break;
+		  hposblank = 0;
   		pfield_draw_line (line, next_line_to_render);
   	}
   }
@@ -1780,6 +1905,8 @@ static void finish_drawing_frame (void)
 		int line = i + thisframe_y_adjust_real;
     if(line >= linestate_first_undecided)
 			break;
+
+    hposblank = 0;
 		pfield_draw_line (line, i);
 	}
   

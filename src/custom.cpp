@@ -116,6 +116,7 @@ int maxhpos = MAXHPOS_PAL;
 int maxvpos = MAXVPOS_PAL;
 int maxvpos_nom = MAXVPOS_PAL; // nominal value (same as maxvpos but "faked" maxvpos in fake 60hz modes)
 int maxvpos_display = MAXVPOS_PAL; // value used for display size
+int hsyncendpos, hsyncstartpos;
 static int maxvpos_total = 511;
 int minfirstline = VBLANK_ENDLINE_PAL;
 static int equ_vblank_endline = EQU_ENDLINE_PAL;
@@ -2373,12 +2374,26 @@ static void record_color_change (int hpos, int regno, unsigned long value)
   	struct draw_info *pdip = curr_drawinfo + prev_lineno;
   	int idx = pdip->last_color_change;
 		int extrahpos = regno == 0x1000 + 0x10c ? 1 : 0;
+		bool lastsync = false;
+		/* Move color changes in horizontal cycles 0 to HBLANK_OFFSET to end of previous line.
+		* Cycles 0 to HBLANK_OFFSET are visible in right border on real Amigas. (because of late hsync)
+		*/
+		if (curr_color_changes[idx - 1].regno == 0xffff) {
+			idx--;
+			lastsync = true;
+		}
     pdip->last_color_change++;
     pdip->nr_color_changes++;
 		curr_color_changes[idx].linepos = ((hpos + maxhpos) * 2 + extrahpos) * 4;
     curr_color_changes[idx].regno = regno;
     curr_color_changes[idx].value = value;
-	  curr_color_changes[idx + 1].regno = -1;
+		if (lastsync) {
+			curr_color_changes[idx + 1].linepos = (hsyncstartpos * 2) * 4;
+			curr_color_changes[idx + 1].regno = 0xffff;
+			curr_color_changes[idx + 2].regno = -1;
+		} else {
+	    curr_color_changes[idx + 1].regno = -1;
+		}
   }
   record_color_change2 (hpos, regno, value);
 }
@@ -2880,6 +2895,7 @@ STATIC_INLINE void finish_decisions (void)
 	decide_fetch_safe (hpos);
 	finish_final_fetch ();
 	
+	record_color_change2 (hsyncstartpos, 0xffff, 0);
   if (thisline_decision.plfleft >= 0 && thisline_decision.plflinelen < 0) {
 	  thisline_decision.plfright = thisline_decision.plfleft;
 	  thisline_decision.plflinelen = 0;
@@ -3259,6 +3275,10 @@ static void init_hz (bool checkvposw)
   if (vblank_hz > 300)
 	  vblank_hz = 300;
 	set_delay_lastcycle ();
+
+		hsyncstartpos = maxhpos + 13;
+		hsyncendpos = 24;
+
   eventtab[ev_hsync].oldcycles = get_cycles ();
   eventtab[ev_hsync].evtime = get_cycles() + HSYNCTIME;
   events_schedule ();
@@ -6352,6 +6372,7 @@ STATIC_INLINE uae_u32 REGPARAM2 custom_wget_1 (uaecptr addr, int noput)
 {
   uae_u16 v;
 	int missing;
+	addr &= 0xfff;
   switch (addr & 0x1fe) {
     case 0x000: v = 0xffff; break; /* BPLDDAT */
     case 0x002: v = DMACONR (current_hpos ()); break;
@@ -6416,7 +6437,7 @@ writeonly:
 			    l = currprefs.cpu_compatible && currprefs.cpu_model == 68000 ? regs.irc : 0xffff;
         }
         decide_line (hpos);
-			  decide_fetch (hpos);
+			  decide_fetch_safe (hpos);
         custom_wput_1 (hpos, addr, l, 1);
 
 			  // CPU gets back (OCS/ECS only):

@@ -6757,6 +6757,7 @@ static int rdb_mount (TrapContext *ctx, UnitInfo *uip, int unit_no, int partnum,
 	int oldversion, oldrevision;
 	int newversion, newrevision;
 	TCHAR *s;
+	int cnt = 0;
 
 	write_log (_T("%s:\n"), uip->rootdir);
 	if (hfd->drive_empty) {
@@ -6933,7 +6934,6 @@ static int rdb_mount (TrapContext *ctx, UnitInfo *uip, int unit_no, int partnum,
 	/* we found required FSHD block */
 	fsmem = xmalloc (uae_u8, 262144);
 	lsegblock = rl (buf + 72);
-	int cnt = 0;
 	for (;;) {
 		int pb = lsegblock;
 		if (!legalrdbblock (uip, lsegblock))
