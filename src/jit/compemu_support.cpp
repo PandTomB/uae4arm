@@ -52,6 +52,7 @@
 #if DEBUG
 #define PROFILE_COMPILE_TIME		1
 #define PROFILE_UNTRANSLATED_INSNS	1
+#define bug printf
 #endif
 
 #ifdef JIT_DEBUG
@@ -73,7 +74,7 @@ static clock_t emul_end_time	= 0;
 #endif
 
 #ifdef PROFILE_UNTRANSLATED_INSNS
-static const int untranslated_top_ten = 20;
+static int untranslated_top_ten = 30;
 static uae_u32 raw_cputbl_count[65536] = { 0, };
 static uae_u16 opcode_nums[65536];
 
@@ -751,8 +752,8 @@ STATIC_INLINE uae_u8* get_target(void)
  ********************************************************************/
 #if defined(CPU_arm)
 
-#define DATA_BUFFER_SIZE 1024 + 128    // Enlarge POPALLSPACE_SIZE if this value is greater than 768
-#define DATA_BUFFER_MAXOFFSET 4096 - 32 // max range between emit of data and use of data
+#define DATA_BUFFER_SIZE 768             // Enlarge POPALLSPACE_SIZE if this value is greater than 768
+#define DATA_BUFFER_MAXOFFSET 4096 - 32  // max range between emit of data and use of data
 static uae_u8* data_writepos = 0;
 static uae_u8* data_endpos = 0;
 #ifdef DEBUG_DATA_BUFFER
@@ -838,6 +839,7 @@ STATIC_INLINE void reset_data_buffer(void)
 /********************************************************************
  * Getting the information about the target CPU                     *
  ********************************************************************/
+STATIC_INLINE void clobber_flags(void);
 
 #if defined(CPU_arm) 
 #include "codegen_arm.cpp"
@@ -1795,7 +1797,6 @@ void compiler_init(void)
 	
 	// Initialize target CPU (check for features, e.g. CMOV, rat stalls)
 	raw_init_cpu();
-//	setzflg_uses_bsf = target_check_bsf();
 
 	// Translation cache flush mechanism
 	lazy_flush = 1; //(bx_options.jit.jitlazyflush == 0) ? 0 : 1;
@@ -1812,7 +1813,7 @@ void compiler_init(void)
 	initialized = 1;
 
 #ifdef PROFILE_UNTRANSLATED_INSNS
-	bug("<JIT compiler> : gather statistics on untranslated insns count");
+	bug("<JIT compiler> : gather statistics on untranslated insns count\n");
 #endif
 
 #ifdef PROFILE_COMPILE_TIME
@@ -1859,10 +1860,10 @@ void compiler_exit(void)
 		opcode_nums[i] = i;
 		untranslated_count += raw_cputbl_count[i];
 	}
-	bug("Sorting out untranslated instructions count...");
+	bug("Sorting out untranslated instructions count...\n");
 	qsort(opcode_nums, 65536, sizeof(uae_u16), untranslated_compfn);
-	bug("Rank  Opc      Count Name");
-	for (int i = 0; i < untranslated_top_ten; i++) {
+	bug("Rank  Opc      Count Name\n");
+	for (int i = 0; i < untranslated_top_ten && i < 65536; i++) {
 		uae_u32 count = raw_cputbl_count[opcode_nums[i]];
 		struct instr *dp;
 		struct mnemolookup *lookup;
@@ -1871,7 +1872,15 @@ void compiler_exit(void)
 		dp = table68k + opcode_nums[i];
 		for (lookup = lookuptab; lookup->mnemo != (instrmnem)dp->mnemo; lookup++)
 			;
-		bug("%03d: %04x %10u %s", i, opcode_nums[i], count, lookup->name);
+		if(strcmp(lookup->name, "FPP") == 0
+		|| strcmp(lookup->name, "FBcc") == 0
+		|| strcmp(lookup->name, "DIVS") == 0
+		|| strcmp(lookup->name, "DIVU") == 0
+		|| strcmp(lookup->name, "DIVL") == 0) {
+		  untranslated_top_ten++; // Ignore this
+		}
+		else
+  		bug("%03d: %04x %10u %s\n", i, opcode_nums[i], count, lookup->name);
 	}
 #endif
 }
@@ -1913,7 +1922,7 @@ void init_comp(void)
 
   live.state[FLAGX].mem=(uae_u32*)&(regs.ccrflags.x);
   set_status(FLAGX,INMEM);
-
+  
 #if defined(CPU_arm)
   live.state[FLAGTMP].mem=(uae_u32*)&(regs.ccrflags.nzcv);
 #else
@@ -2677,6 +2686,7 @@ STATIC_INLINE void create_popalls(void)
   pushall_call_handler=get_target();
   raw_push_regs_to_preserve();
   raw_dec_sp(stack_space);
+  compemu_raw_init_r_regstruct((uintptr)&regs);
   r=REG_PC_TMP;
   compemu_raw_mov_l_rm(r,(uintptr)&regs.pc_p);
   compemu_raw_and_TAGMASK(r);
@@ -3205,7 +3215,7 @@ void compile_block(cpu_history* pc_hist, int blocklen, int totcycles)
 		  cpuop_func **cputbl;
 		  compop_func **comptbl;
 		  uae_u32 opcode=DO_GET_OPCODE(pc_hist[i].location);
-		  needed_flags=(liveflags[i+1] & prop[opcode].set_flags);
+		  needed_flags = (liveflags[i+1] & prop[opcode].set_flags);
 		  special_mem=pc_hist[i].specmem;
       D(bug("  0x%08x: %04x (special_mem=%d, needed_flags=%d)\n", pc_hist[i].location, opcode, special_mem, needed_flags));
   		if (!needed_flags) {

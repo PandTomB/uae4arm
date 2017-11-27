@@ -1300,4 +1300,7 @@ enum {
 #define CC_BFC_rii(cc,Rd,lsb,msb)       _W(((cc) << 28) | (0x3e << 21) | ((msb) << 16) | (Rd << 12) | ((lsb) << 7) | (0x1 << 4) | 15)
 #define BFC_rii(Rd,lsb,msb)             CC_BFC_rii(NATIVE_CC_AL,Rd,lsb,msb)
 
+#define CC_UBFX_rrii(cc,Rd,Rn,lsb,width)   _W(((cc) << 28) | (0x3f << 21) | ((width-1) << 16) | (Rd << 12) | ((lsb) << 7) | (0x5 << 4) | (Rn))
+#define UBFX_rrii(Rd,Rn,lsb,width)         CC_UBFX_rrii(NATIVE_CC_AL,Rd,Rn,lsb,width)
+
 #endif /* ARM_RTASM_H */

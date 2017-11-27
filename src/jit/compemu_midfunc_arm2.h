@@ -34,11 +34,10 @@
 // Arm optimized midfunc
 extern const uae_u32 ARM_CCR_MAP[];
 
-DECLARE_MIDFUNC(restore_inverted_carry(void));
-
 // ADD
 DECLARE_MIDFUNC(jnf_ADD(W4 d, RR4 s, RR4 v));
 DECLARE_MIDFUNC(jnf_ADD_imm(W4 d, RR4 s, IMM v));
+DECLARE_MIDFUNC(jnf_ADD_im8(W4 d, RR4 s, IMM v));
 DECLARE_MIDFUNC(jff_ADD_b(W4 d, RR1 s, RR1 v));
 DECLARE_MIDFUNC(jff_ADD_w(W4 d, RR2 s, RR2 v));
 DECLARE_MIDFUNC(jff_ADD_l(W4 d, RR4 s, RR4 v));
@@ -152,7 +151,6 @@ DECLARE_MIDFUNC(jff_CMP_w(RR2 d, RR2 s));
 DECLARE_MIDFUNC(jff_CMP_l(RR4 d, RR4 s));
 
 // CMPA
-DECLARE_MIDFUNC(jff_CMPA_b(RR1 d, RR1 s));
 DECLARE_MIDFUNC(jff_CMPA_w(RR2 d, RR2 s));
 DECLARE_MIDFUNC(jff_CMPA_l(RR4 d, RR4 s));
 
@@ -214,6 +212,14 @@ DECLARE_MIDFUNC(jff_MOVE_b(W4 d, RR1 s));
 DECLARE_MIDFUNC(jff_MOVE_w(W4 d, RR2 s));
 DECLARE_MIDFUNC(jff_MOVE_l(W4 d, RR4 s));
 
+// MVMEL
+DECLARE_MIDFUNC(jnf_MVMEL_w(W4 d, RR4 s, IMM offset));
+DECLARE_MIDFUNC(jnf_MVMEL_l(W4 d, RR4 s, IMM offset));
+
+// MVMLE
+DECLARE_MIDFUNC(jnf_MVMLE_w(RR4 d, RR4 s, IMM offset));
+DECLARE_MIDFUNC(jnf_MVMLE_l(RR4 d, RR4 s, IMM offset));
+
 // MOVE16
 DECLARE_MIDFUNC(jnf_MOVE16(RR4 d, RR4 s));
 
@@ -238,13 +244,17 @@ DECLARE_MIDFUNC (jnf_MULU64(RW4 d, RW4 s));
 DECLARE_MIDFUNC (jff_MULU64(RW4 d, RW4 s));
 
 // NEG
-DECLARE_MIDFUNC(jnf_NEG(W4 d, RR4 s));
+DECLARE_MIDFUNC(jnf_NEG_b(W4 d, RR4 s));
+DECLARE_MIDFUNC(jnf_NEG_w(W4 d, RR4 s));
+DECLARE_MIDFUNC(jnf_NEG_l(W4 d, RR4 s));
 DECLARE_MIDFUNC(jff_NEG_b(W4 d, RR1 s));
 DECLARE_MIDFUNC(jff_NEG_w(W4 d, RR2 s));
 DECLARE_MIDFUNC(jff_NEG_l(W4 d, RR4 s));
 
 // NEGX
-DECLARE_MIDFUNC(jnf_NEGX(W4 d, RR4 s));
+DECLARE_MIDFUNC(jnf_NEGX_b(W4 d, RR4 s));
+DECLARE_MIDFUNC(jnf_NEGX_w(W4 d, RR4 s));
+DECLARE_MIDFUNC(jnf_NEGX_l(W4 d, RR4 s));
 DECLARE_MIDFUNC(jff_NEGX_b(W4 d, RR1 s));
 DECLARE_MIDFUNC(jff_NEGX_w(W4 d, RR2 s));
 DECLARE_MIDFUNC(jff_NEGX_l(W4 d, RR4 s));
@@ -327,7 +337,6 @@ DECLARE_MIDFUNC(jff_SUB_w_imm(W4 d, RR2 s, IMM v));
 DECLARE_MIDFUNC(jff_SUB_l_imm(W4 d, RR4 s, IMM v));
 
 // SUBA
-DECLARE_MIDFUNC(jnf_SUBA_b(W4 d, RR1 s));
 DECLARE_MIDFUNC(jnf_SUBA_w(W4 d, RR2 s));
 DECLARE_MIDFUNC(jnf_SUBA_l(W4 d, RR4 s));
 

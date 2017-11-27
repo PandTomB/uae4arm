@@ -90,7 +90,8 @@ extern void __clear_cache (char*, char*);
 #define STACK_ALIGN		4
 #define STACK_OFFSET	sizeof(void *)
 
-uae_s8 always_used[]={2,3,-1};
+#define R_REGSTRUCT 11
+uae_s8 always_used[]={2,3,R_REGSTRUCT,12,-1}; // r12 is scratch register in C functions calls, I don't think it's save to use it here...
 
 uae_u8 call_saved[]={0,0,0,0, 1,1,1,1, 1,1,1,1, 0,1,1,1};
 
@@ -106,11 +107,6 @@ static const uae_u32 PRESERVE_MASK = ((1<<R4_INDEX)|(1<<R5_INDEX)|(1<<R6_INDEX)|
 		|(1<<R10_INDEX)|(1<<R11_INDEX)|(1<<R12_INDEX));
 
 /* Whether classes of instructions do or don't clobber the native flags */
-#define CLOBBER_MOV
-#define CLOBBER_LEA
-#define CLOBBER_CMOV
-#define CLOBBER_POP
-#define CLOBBER_PUSH
 #define CLOBBER_SUB  clobber_flags()
 #define CLOBBER_SBB  clobber_flags()
 #define CLOBBER_CMP  clobber_flags()
@@ -122,24 +118,8 @@ static const uae_u32 PRESERVE_MASK = ((1<<R4_INDEX)|(1<<R5_INDEX)|(1<<R6_INDEX)|
 
 #define CLOBBER_ROL  clobber_flags()
 #define CLOBBER_ROR  clobber_flags()
-#define CLOBBER_SHLL clobber_flags()
 #define CLOBBER_SHRL clobber_flags()
 #define CLOBBER_SHRA clobber_flags()
-#define CLOBBER_TEST clobber_flags()
-#define CLOBBER_CL16
-#define CLOBBER_CL8
-#define CLOBBER_SE32
-#define CLOBBER_SE16
-#define CLOBBER_SE8
-#define CLOBBER_ZE32
-#define CLOBBER_ZE16
-#define CLOBBER_ZE8
-#define CLOBBER_SW16
-#define CLOBBER_SW32
-#define CLOBBER_SETCC
-#define CLOBBER_MUL  clobber_flags()
-#define CLOBBER_BT   clobber_flags()
-#define CLOBBER_BSF  clobber_flags()
 
 #include "codegen_arm.h"
 
@@ -245,49 +225,17 @@ static void jit_fail(const char *msg, const char *file, int line, const char *fu
 
 LOWFUNC(WRITE,NONE,2,raw_add_l,(RW4 d, RR4 s))
 {
-	ADDS_rrr(d, d, s); 									  // adds  	%[d], %[d], %[s]
+	ADD_rrr(d, d, s);
 }
 LENDFUNC(WRITE,NONE,2,raw_add_l,(RW4 d, RR4 s))
 
 LOWFUNC(WRITE,NONE,2,raw_add_l_ri,(RW4 d, IMM i))
 {
   uae_s32 offs = data_long_offs(i);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs);	  // ldr     r2, [pc, #offs]
-	ADDS_rrr(d, d, REG_WORK1); 							// adds    %[d], %[d], r2
+	LDR_rRI(REG_WORK1, RPC_INDEX, offs);
+	ADD_rrr(d, d, REG_WORK1);
 }
 LENDFUNC(WRITE,NONE,2,raw_add_l_ri,(RW4 d, IMM i))
-
-LOWFUNC(WRITE,NONE,2,raw_and_l_ri,(RW4 d, IMM i))
-{
-  uae_s32 offs = data_long_offs(i);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	        // ldr     r2, [pc, #offs]
-
-	ANDS_rrr(d, d, REG_WORK1); 							      // ands    %[d], %[d], r2
-
-	MRS_CPSR(REG_WORK1);                    		  // mrs     r2, CPSR
-	BIC_rri(REG_WORK1, REG_WORK1, ARM_CV_FLAGS);	// bic     r2, r2, #0x30000000
-	MSR_CPSR_r(REG_WORK1);                    		// msr     CPSR_fc, r2
-}
-LENDFUNC(WRITE,NONE,2,raw_and_l_ri,(RW4 d, IMM i))
-
-LOWFUNC(WRITE,NONE,1,raw_bswap_16,(RW2 r))
-{
-#if defined(ARMV6_ASSEMBLY)
-  REV_rr(REG_WORK1, r);                       // rev r2, %r
-  PKHTB_rrrASRi(r, r, REG_WORK1, 16);         // pkhtb %r, %r, r2, asr #16
-#else
-	MOV_rr(REG_WORK1, r); 						          // mov	r2, r6
-	BIC_rri(REG_WORK1, REG_WORK1, 0xff0000); 	  // bic	r2, r2, #0xff0000
-	BIC_rri(REG_WORK1, REG_WORK1, 0xff000000); 	// bic	r2, r2, #0xff000000
-
-	EOR_rrr(r, r, REG_WORK1); 					        // eor	r6, r6, r2
-
-	ORR_rrrLSRi(r, r, REG_WORK1, 8); 			      // orr	r6, r6, r2, lsr #8
-	BIC_rri(REG_WORK1, REG_WORK1, 0xff00); 		  // bic	r2, r2, #0xff00
-	ORR_rrrLSLi(r,r,REG_WORK1, 8); 				      // orr	r6, r6, r2, lsl #8
-#endif
-}
-LENDFUNC(WRITE,NONE,1,raw_bswap_16,(RW2 r))
 
 LOWFUNC(READ,NONE,3,raw_cmov_l_rr,(RW4 d, RR4 s, IMM cc))
 {
@@ -364,24 +312,6 @@ LOWFUNC(NONE,NONE,4,raw_lea_l_rr_indexed,(W4 d, RR4 s, RR4 index, IMM factor))
 }
 LENDFUNC(NONE,NONE,4,raw_lea_l_rr_indexed,(W4 d, RR4 s, RR4 index, IMM factor))
 
-LOWFUNC(NONE,WRITE,2,raw_mov_b_mi,(MEMW d, IMM s))
-{
-  uae_s32 offs = data_long_offs(d);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs);  // ldr	r2, [pc, #offs]	; <d>
-
-	MOV_ri(REG_WORK2, s & 0xFF);		      // mov	r3, #0x34
-	STRB_rR(REG_WORK2, REG_WORK1);    	  // strb	r3, [r2]
-}
-LENDFUNC(NONE,WRITE,2,raw_mov_b_mi,(MEMW d, IMM s))
-
-LOWFUNC(NONE,WRITE,2,raw_mov_b_mr,(IMM d, RR1 s))
-{
-  uae_s32 offs = data_long_offs(d);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr	r2, [pc, #offs]
-	STRB_rR(s, REG_WORK1);	           	// strb	r6, [r2]
-}
-LENDFUNC(NONE,WRITE,2,raw_mov_b_mr,(IMM d, RR1 s))
-
 LOWFUNC(NONE,NONE,2,raw_mov_b_ri,(W1 d, IMM s))
 {
 	BIC_rri(d, d, 0xff);      	// bic	%[d], %[d], #0xff
@@ -403,27 +333,24 @@ LENDFUNC(NONE,NONE,2,raw_mov_b_rr,(W1 d, RR1 s))
 
 LOWFUNC(NONE,WRITE,2,raw_mov_l_mi,(MEMW d, IMM s))
 {
-	// TODO: optimize imm
-
-  data_check_end(8, 12);
-  uae_s32 offs = data_long_offs(d);
-
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr    r2, [pc, #offs]    ; d
-
-	offs = data_long_offs(s);
-	LDR_rRI(REG_WORK2, RPC_INDEX, offs); 	// ldr    r3, [pc, #offs]    ; s
-
-	STR_rR(REG_WORK2, REG_WORK1);      	  // str    r3, [r2]
+  if(d >= (uae_u32) &regs && d < ((uae_u32) &regs) + sizeof(struct regstruct)) {
+    uae_s32 offs = data_long_offs(s);
+    LDR_rRI(REG_WORK2, RPC_INDEX, offs);
+    uae_s32 idx = d - (uae_u32) & regs;
+    STR_rRI(REG_WORK2, R_REGSTRUCT, idx);
+  } else {
+    data_check_end(8, 12);
+    uae_s32 offs = data_long_offs(d);
+  
+  	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr    r2, [pc, #offs]    ; d
+  
+  	offs = data_long_offs(s);
+  	LDR_rRI(REG_WORK2, RPC_INDEX, offs); 	// ldr    r3, [pc, #offs]    ; s
+  
+  	STR_rR(REG_WORK2, REG_WORK1);      	  // str    r3, [r2]
+  }
 }
 LENDFUNC(NONE,WRITE,2,raw_mov_l_mi,(MEMW d, IMM s))
-
-LOWFUNC(NONE,WRITE,2,raw_mov_w_mr,(IMM d, RR2 s))
-{
-  uae_s32 offs = data_long_offs(d);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs);  // ldr     r2, [pc,#offs]
-	STRH_rR(s, REG_WORK1);             	  // strh    r3, [r2]
-}
-LENDFUNC(NONE,WRITE,2,raw_mov_w_mr,(IMM d, RR2 s))
 
 LOWFUNC(NONE,NONE,2,raw_mov_w_ri,(W2 d, IMM s))
 {
@@ -440,58 +367,18 @@ LOWFUNC(NONE,NONE,2,raw_mov_w_ri,(W2 d, IMM s))
 }
 LENDFUNC(NONE,NONE,2,raw_mov_w_ri,(W2 d, IMM s))
 
-LOWFUNC(NONE,WRITE,2,raw_mov_w_mi,(MEMW d, IMM s))
-{
-	// TODO: optimize imm
-
-  data_check_end(8, 12);
-  uae_s32 offs = data_long_offs(d);
-
-	LDR_rRI(REG_WORK2, RPC_INDEX, offs);  // ldr	r3, [pc, #offs]	; <mem>
-
-	offs = data_word_offs(s);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr	r2, [pc, #offs]	; <imm>
-
-	STRH_rR(REG_WORK1, REG_WORK2);      // strh	r2, [r3]
-}
-LENDFUNC(NONE,WRITE,2,raw_mov_w_mi,(MEMW d, IMM s))
-
 LOWFUNC(NONE,WRITE,2,raw_mov_l_mr,(IMM d, RR4 s))
 {
-  uae_s32 offs = data_long_offs(d);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr     r2, [pc, #offs]
-	STR_rR(s, REG_WORK1);             	  // str     r3, [r2]
+  if(d >= (uae_u32) &regs && d < ((uae_u32) &regs) + sizeof(struct regstruct)) {
+    uae_s32 idx = d - (uae_u32) &regs;
+    STR_rRI(s, R_REGSTRUCT, idx);
+  } else {
+    uae_s32 offs = data_long_offs(d);
+  	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr     r2, [pc, #offs]
+  	STR_rR(s, REG_WORK1);             	  // str     r3, [r2]
+  }
 }
 LENDFUNC(NONE,WRITE,2,raw_mov_l_mr,(IMM d, RR4 s))
-
-LOWFUNC(NONE,WRITE,3,raw_mov_w_Ri,(RR4 d, IMM i, IMM offset))
-{
-	Dif(!isbyte(offset)) abort();
-
-  uae_s32 offs = data_word_offs(i);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr	r2, [pc, #offs]
-
-	if (offset >= 0)
-		STRH_rRI(REG_WORK1, d, offset); // strh	r2, [r7, #0x54]
-	else
-		STRH_rRi(REG_WORK1, d, -offset);// strh	r2, [r7, #-0x54]
-}
-LENDFUNC(NONE,WRITE,3,raw_mov_w_Ri,(RR4 d, IMM i, IMM offset))
-
-LOWFUNC(NONE,READ,2,raw_mov_w_rm,(W2 d, IMM s))
-{
-  uae_s32 offs = data_long_offs(s);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr	r2, [pc, #offs]
-
-	LDRH_rR(REG_WORK1, REG_WORK1);     	  // ldrh	r2, [r2]
-#if defined(ARMV6_ASSEMBLY)
-  PKHBT_rrr(d, REG_WORK1, d);           // pkhbt   %[d], r2, %[d]
-#else
-	LSR_rri(d, d, 16);              	    // lsr	r7, r7, #16
-	ORR_rrrLSLi(d, REG_WORK1, d, 16);  	  // orr	r7, r2, r7, lsl #16
-#endif
-}
-LENDFUNC(NONE,READ,2,raw_mov_w_rm,(W2 d, IMM s))
 
 LOWFUNC(NONE,NONE,2,raw_mov_w_rr,(W2 d, RR2 s))
 {
@@ -504,86 +391,6 @@ LOWFUNC(NONE,NONE,2,raw_mov_w_rr,(W2 d, RR2 s))
 #endif
 }
 LENDFUNC(NONE,NONE,2,raw_mov_w_rr,(W2 d, RR2 s))
-
-LOWFUNC(NONE,READ,3,raw_mov_w_rR,(W2 d, RR4 s, IMM offset))
-{
-	Dif(!isbyte(offset)) abort();
-
-	if (offset >= 0)
-		LDRH_rRI(REG_WORK1, s, offset);		// ldrh	r2, [r6, #12]
-	else
-		LDRH_rRi(REG_WORK1, s, -offset);	// ldrh	r2, [r6, #-12]
-
-#if defined(ARMV6_ASSEMBLY)
-  PKHBT_rrr(d, REG_WORK1, d);         // pkhbt   %[d], r2, %[d]
-#else
-	BIC_rri(d, d, 0xff);         			  // bic	r7, r7, #0xff
-	BIC_rri(d, d, 0xff00);         			// bic	r7, r7, #0xff00
-	ORR_rrr(d, d, REG_WORK1);     			// orr	r7, r7, r2
-#endif
-}
-LENDFUNC(NONE,READ,3,raw_mov_w_rR,(W2 d, RR4 s, IMM offset))
-
-LOWFUNC(NONE,WRITE,3,raw_mov_w_Rr,(RR4 d, RR2 s, IMM offset))
-{
-	Dif(!isbyte(offset)) abort();
-
-	if (offset >= 0)
-		STRH_rRI(s, d, offset); // strh	r6, [r7, #0x7f]
-	else
-		STRH_rRi(s, d, -offset);// strh	r6, [r7, #-0x7f]
-}
-LENDFUNC(NONE,WRITE,3,raw_mov_w_Rr,(RR4 d, RR2 s, IMM offset))
-
-LOWFUNC(NONE,READ,2,raw_mov_l_rm,(W4 d, MEMR s))
-{
-  uae_s32 offs = data_long_offs(s);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	  // ldr     r2, [r10, #offs]
-	LDR_rR(d, REG_WORK1);              			// ldr     r7, [r2]
-}
-LENDFUNC(NONE,READ,2,raw_mov_l_rm,(W4 d, MEMR s))
-
-LOWFUNC(NONE,WRITE,3,raw_mov_l_Ri,(RR4 d, IMM i, IMM offset8))
-{
-	Dif(!isbyte(offset8)) abort();
-
-  uae_s32 offs = data_long_offs(i);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr	r2, [pc, #offs]
-
-	if (offset8 >= 0)
-		STR_rRI(REG_WORK1, d, offset8);  // str	r2, [r7, #0x54]
-	else
-		STR_rRi(REG_WORK1, d, -offset8); // str	r2, [r7, #-0x54]
-}
-LENDFUNC(NONE,WRITE,3,raw_mov_l_Ri,(RR4 d, IMM i, IMM offset))
-
-LOWFUNC(NONE,READ,3,raw_mov_l_rR,(W4 d, RR4 s, IMM offset))
-{
-	Dif(!isbyte(offset)) abort();
-
-	if (offset >= 0) {
-		LDR_rRI(d, s, offset); // ldr r2, [r1, #-12]
-	} else
-		LDR_rRi(d, s, -offset); // ldr r2, [r1, #12]
-}
-LENDFUNC(NONE,READ,3,raw_mov_l_rR,(W4 d, RR4 s, IMM offset))
-
-LOWFUNC(NONE,NONE,2,raw_mov_l_rr,(W4 d, RR4 s))
-{
-	MOV_rr(d, s); 					// mov     %[d], %[s]
-}
-LENDFUNC(NONE,NONE,2,raw_mov_l_rr,(W4 d, RR4 s))
-
-LOWFUNC(NONE,WRITE,3,raw_mov_l_Rr,(RR4 d, RR4 s, IMM offset))
-{
-	Dif(!isbyte(offset)) abort();
-
-	if (offset >= 0)
-		STR_rRI(s, d, offset); // str	r6, [r7, #12]
-	else
-		STR_rRi(s, d, -offset); // str	r6, [r7, #-12]
-}
-LENDFUNC(NONE,WRITE,3,raw_mov_l_Rr,(RR4 d, RR4 s, IMM offset))
 
 LOWFUNC(READ,NONE,2,raw_setcc,(W1 d, IMM cc))
 {
@@ -610,60 +417,40 @@ LENDFUNC(READ,NONE,2,raw_setcc,(W1 d, IMM cc))
 
 LOWFUNC(WRITE,NONE,2,raw_shll_l_ri,(RW4 r, IMM i))
 {
-	LSLS_rri(r,r, i & 0x1f); 					// lsls r7,r7,#12
+	LSL_rri(r,r, i & 0x1f); 					// lsls r7,r7,#12
 }
 LENDFUNC(WRITE,NONE,2,raw_shll_l_ri,(RW4 r, IMM i))
 
-LOWFUNC(WRITE,NONE,2,raw_shrl_l_ri,(RW4 r, IMM i))
-{
-	LSRS_rri(r, r, i & 0x1f);					// LSRS r7,r7,#12
-}
-LENDFUNC(WRITE,NONE,2,raw_shrl_l_ri,(RW4 r, IMM i))
-
 LOWFUNC(WRITE,NONE,2,raw_sub_b_ri,(RW1 d, IMM i))
 {
-	LSL_rri(REG_WORK2, d, 24);  				// lsl     r3, r7, #24
+	LSL_rri(REG_WORK2, d, 24);
+	SUB_rri(REG_WORK2, REG_WORK2, i << 24);
 
-	SUBS_rri(REG_WORK2, REG_WORK2, i << 24); 	// subs    r3, r3, #0x12000000
-	BIC_rri(d, d, 0xFF);						// bic	   r7, r7, #0xFF
-	ORR_rrrLSRi(d, d, REG_WORK2, 24);			// orr     r7, r7, r3, lsr #24
-
-	MRS_CPSR(REG_WORK1);                       	// mrs     r2, CPSR
-	EOR_rri(REG_WORK1, REG_WORK1, ARM_C_FLAG);	// eor     r2, r2, #0x20000000
-	MSR_CPSR_r(REG_WORK1); 		     	     	// msr     CPSR_fc, r2
+	BIC_rri(d, d, 0xFF);
+	ORR_rrrLSRi(d, d, REG_WORK2, 24);
 }
 LENDFUNC(WRITE,NONE,2,raw_sub_b_ri,(RW1 d, IMM i))
 
 LOWFUNC(WRITE,NONE,2,raw_sub_l_ri,(RW4 d, IMM i))
 {
-  uae_s32 offs = data_long_offs(i);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr     r2, [pc, #offs]
+  if(i >= 0 && i<256) {
+    SUB_rri(d, d, i);
+  } else {
+    uae_s32 offs = data_long_offs(i);
+	  LDR_rRI(REG_WORK1, RPC_INDEX, offs);
 
-	SUBS_rrr(d, d, REG_WORK1); 					// subs    r7, r7, r2
-
-	MRS_CPSR(REG_WORK1);                       	// mrs     r2, CPSR
-	EOR_rri(REG_WORK1, REG_WORK1, ARM_C_FLAG);	// eor     r2, r2, #0x20000000
-	MSR_CPSR_r(REG_WORK1); 		     	     	// msr     CPSR_fc, r2
+	  SUB_rrr(d, d, REG_WORK1);
+  }
 }
 LENDFUNC(WRITE,NONE,2,raw_sub_l_ri,(RW4 d, IMM i))
 
 LOWFUNC(WRITE,NONE,2,raw_sub_w_ri,(RW2 d, IMM i))
 {
-	// TODO: optimize_imm
+  // This function is only called with i = 1
+	LSL_rri(REG_WORK2, d, 16);
 
-  uae_s32 offs = data_word_offs(i);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs);   	  // ldr	r2, [pc, #offs]	; <value>
-
-	LSL_rri(REG_WORK2, d, 16);              	// lsl	r3, r6, #16
-
-	SUBS_rrrLSLi(REG_WORK2, REG_WORK2, REG_WORK1, 16); 	// subs	r3, r3, r2, LSL #16
-#if defined(ARMV6_ASSEMBLY)
-  PKHTB_rrrASRi(d, d, REG_WORK2, 16);     // pkhtb  %[d], %[d], r3, asr #16
-#else
-	BIC_rri(d, d, 0xff);
-	BIC_rri(d, d, 0xff00);
-	ORR_rrrLSRi(d, d, REG_WORK2, 16);          	// orr	r6, r3, r6, lsr #16
-#endif
+	SUBS_rri(REG_WORK2, REG_WORK2, (i & 0xff) << 16);
+  PKHTB_rrrASRi(d, d, REG_WORK2, 16);
 
 	MRS_CPSR(REG_WORK1);                       	// mrs	r2, CPSR
 	EOR_rri(REG_WORK1, REG_WORK1, ARM_C_FLAG);	// eor	r2, r2, #0x20000000
@@ -683,152 +470,6 @@ LOWFUNC(WRITE,NONE,2,raw_test_w_rr,(RR2 d, RR2 s))
 	MSR_CPSR_r(REG_WORK1);                    		// msr     CPSR_fc, r2
 }
 LENDFUNC(WRITE,NONE,2,raw_test_w_rr,(RR2 d, RR2 s))
-
-
-/* New functions by TB to improve arm JIT */
-
-LOWFUNC(READ,WRITE,1,raw_duplicate_carry,(MEMW d))
-{
-  uae_s32 offs = data_long_offs(d);
-	LDR_rRI(REG_WORK2, RPC_INDEX, offs); 					// LDR	R3,[PC, #offs]
-
-	CC_MOV_ri(NATIVE_CC_CS, REG_WORK1, 1);		    // MOVcs	R2,#1
-	CC_MOV_ri(NATIVE_CC_CC, REG_WORK1, 0); 			  // MOVcc	R2,#0
-  STRH_rR(REG_WORK1, REG_WORK2);							  // STRB	R2, [R3]
-}
-LENDFUNC(READ,WRITE,1,raw_duplicate_carry,(MEMW d))
-
-LOWFUNC(WRITE,NONE,1,raw_restore_carry,(RR4 r))
-{
-	MRS_CPSR(REG_WORK1);               	// mrs  r2, CPSR
-#if defined(ARMV6_ASSEMBLY)
-  BFI_rrii(REG_WORK1, r, 29, 29);     // bfi  r2, r0, 29, 29
-#else
-  TST_ri(r, 1);                       // tst  r0, #1
-	CC_BIC_rri(NATIVE_CC_EQ, REG_WORK1, REG_WORK1, ARM_C_FLAG); 	// bic        r2, r2, #0x20000000
-	CC_ORR_rri(NATIVE_CC_NE, REG_WORK1, REG_WORK1, ARM_C_FLAG); 	// orr        r2, r2, #0x20000000
-#endif
-	MSR_CPSR_r(REG_WORK1);             	// msr  CPSR_fc, r2
-}
-LENDFUNC(WRITE,NONE,1,raw_restore_carry,(RR4 ri))
-
-
-LOWFUNC(RMW,NONE,2,raw_BCHG_l,(RW4 d, RW4 s))
-{
-	MOV_ri(REG_WORK2, 1);
-	AND_rri(s, s, 31);
-  LSL_rrr(s, REG_WORK2, s);
-  
-	MRS_CPSR(REG_WORK1);
-  ANDS_rrr(REG_WORK2, d, s);
-	CC_BIC_rri(NATIVE_CC_NE, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	CC_ORR_rri(NATIVE_CC_EQ, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	MSR_CPSR_r(REG_WORK1);
-  EOR_rrr(d, d, s);
-}
-LENDFUNC(RMW,NONE,2,raw_BCHG_l,(RW4 d, RW4 s))
-
-LOWFUNC(RMW,NONE,2,raw_BCHG_b,(RW4 d, RW4 s))
-{
-	MOV_ri(REG_WORK2, 1);
-	AND_rri(s, s, 7);
-  LSL_rrr(s, REG_WORK2, s);
-  
-	MRS_CPSR(REG_WORK1);
-  ANDS_rrr(REG_WORK2, d, s);
-	CC_BIC_rri(NATIVE_CC_NE, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	CC_ORR_rri(NATIVE_CC_EQ, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	MSR_CPSR_r(REG_WORK1);
-  EOR_rrr(d, d, s);
-}
-LENDFUNC(RMW,NONE,2,raw_BCHG_l,(RW4 d, RW4 s))
-
-LOWFUNC(RMW,NONE,2,raw_BCLR_l,(RW4 d, RW4 s))
-{
-	MOV_ri(REG_WORK2, 1);
-	AND_rri(s, s, 31);
-  LSL_rrr(s, REG_WORK2, s);
-  
-	MRS_CPSR(REG_WORK1);
-  ANDS_rrr(REG_WORK2, d, s);
-	CC_BIC_rri(NATIVE_CC_NE, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	CC_ORR_rri(NATIVE_CC_EQ, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	MSR_CPSR_r(REG_WORK1);
-  BIC_rrr(d, d, s);
-}
-LENDFUNC(RMW,NONE,2,raw_BCLR_l,(RW4 d, RW4 s))
-
-LOWFUNC(RMW,NONE,2,raw_BCLR_b,(RW4 d, RW4 s))
-{
-	MOV_ri(REG_WORK2, 1);
-	AND_rri(s, s, 7);
-  LSL_rrr(s, REG_WORK2, s);
-  
-	MRS_CPSR(REG_WORK1);
-  ANDS_rrr(REG_WORK2, d, s);
-	CC_BIC_rri(NATIVE_CC_NE, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	CC_ORR_rri(NATIVE_CC_EQ, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	MSR_CPSR_r(REG_WORK1);
-  BIC_rrr(d, d, s);
-}
-LENDFUNC(RMW,NONE,2,raw_BCLR_l,(RW4 d, RW4 s))
-
-LOWFUNC(RMW,NONE,2,raw_BSET_l,(RW4 d, RW4 s))
-{
-	MOV_ri(REG_WORK2, 1);
-	AND_rri(s, s, 31);
-  LSL_rrr(s, REG_WORK2, s);
-  
-	MRS_CPSR(REG_WORK1);
-  ANDS_rrr(REG_WORK2, d, s);
-	CC_BIC_rri(NATIVE_CC_NE, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	CC_ORR_rri(NATIVE_CC_EQ, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	MSR_CPSR_r(REG_WORK1);
-  ORR_rrr(d, d, s);
-}
-LENDFUNC(RMW,NONE,2,raw_BSET_l,(RW4 d, RW4 s))
-
-LOWFUNC(RMW,NONE,2,raw_BSET_b,(RW4 d, RW4 s))
-{
-	MOV_ri(REG_WORK2, 1);
-	AND_rri(s, s, 7);
-  LSL_rrr(s, REG_WORK2, s);
-  
-	MRS_CPSR(REG_WORK1);
-  ANDS_rrr(REG_WORK2, d, s);
-	CC_BIC_rri(NATIVE_CC_NE, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	CC_ORR_rri(NATIVE_CC_EQ, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	MSR_CPSR_r(REG_WORK1);
-  ORR_rrr(d, d, s);
-}
-LENDFUNC(RMW,NONE,2,raw_BSET_l,(RW4 d, RW4 s))
-
-LOWFUNC(RMW,NONE,2,raw_BTST_l,(RW4 d, RW4 s))
-{
-	MOV_ri(REG_WORK2, 1);
-	AND_rri(s, s, 31);
-	MRS_CPSR(REG_WORK1);
-  ANDS_rrrLSLr(REG_WORK2, d, REG_WORK2, s);
-	CC_BIC_rri(NATIVE_CC_NE, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	CC_ORR_rri(NATIVE_CC_EQ, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	MSR_CPSR_r(REG_WORK1);
-}
-LENDFUNC(RMW,NONE,2,raw_BTST_l,(RW4 d, RW4 s))
-
-LOWFUNC(RMW,NONE,2,raw_BTST_b,(RW4 d, RW4 s))
-{
-	MOV_ri(REG_WORK2, 1);
-	AND_rri(s, s, 7);
-	MRS_CPSR(REG_WORK1);
-  ANDS_rrrLSLr(REG_WORK2, d, REG_WORK2, s);
-	CC_BIC_rri(NATIVE_CC_NE, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	CC_ORR_rri(NATIVE_CC_EQ, REG_WORK1, REG_WORK1, ARM_Z_FLAG);
-	MSR_CPSR_r(REG_WORK1);
-}
-LENDFUNC(RMW,NONE,2,raw_BTST_l,(RR4 d, RR4 s))
-
-/* End new functions by TB to improve arm JIT */
-
 
 
 LOWFUNC(NONE,NONE,2,raw_sign_extend_16_rr,(W4 d, RR2 s))
@@ -894,16 +535,13 @@ static inline void raw_pop_preserved_regs(void) {
 	POP_REGS(PRESERVE_MASK);
 }
 
-// Verify!!!
-/* FLAGX is byte sized, and we *do* write it at that size */
 static inline void raw_load_flagx(uae_u32 t, uae_u32 r)
 {
-    raw_mov_l_rm(t,(uintptr)live.state[r].mem);
+  LDR_rRI(t, R_REGSTRUCT, 17 * 4); // X flag are next to 8 Dregs, 8 Aregs and CPSR in struct regstruct
 }
 
 static inline void raw_flags_evicted(int r)
 {
- //live.state[FLAGTMP].status=CLEAN;
   live.state[FLAGTMP].status=INMEM;
   live.state[FLAGTMP].realreg=-1;
   /* We just "evicted" FLAGTMP. */
@@ -920,20 +558,18 @@ static inline void raw_flags_init(void) {
 static inline void raw_flags_to_reg(int r)
 {
 	MRS_CPSR(r);
-	raw_mov_l_mr((uintptr)live.state[FLAGTMP].mem,r);
+	STR_rRI(r, R_REGSTRUCT, 16 * 4);
 	raw_flags_evicted(r);
 }
 
 static inline void raw_reg_to_flags(int r)
 {
-	MSR_CPSR_r(r); 		// msr CPSR_fc, %r
+	MSR_CPSR_r(r);
 }
 
-/* Apparently, there are enough instructions between flag store and
-   flag reload to avoid the partial memory stall */
 static inline void raw_load_flagreg(uae_u32 t, uae_u32 r)
 {
-	raw_mov_l_rm(t,(uintptr)live.state[r].mem);
+	LDR_rRI(t, R_REGSTRUCT, 16 * 4); // Flags are next to 8 Dregs and 8 Aregs in struct regstruct
 }
 
 /* %eax register is clobbered if target processor doesn't support fucomi */
@@ -1014,14 +650,6 @@ static inline void raw_emit_nop(void)
   NOP();
 }
 
-//
-// ARM doesn't have bsf, but clz is a good alternative instruction for it
-//
-static bool target_check_bsf(void)
-{
-	return false;
-}
-
 static void raw_init_cpu(void)
 {
 	/* Have CMOV support, because ARM support conditions for all instructions */
@@ -1054,110 +682,12 @@ LOWFUNC(WRITE,NONE,2,raw_SUB_l_rri,(RW4 d, RR4 s, IMM i))
 }
 LENDFUNC(WRITE,NONE,2,raw_SUB_l_rri,(RW4 d, RR4 s, IMM i))
 
-LOWFUNC(WRITE,NONE,2,raw_AND_b_rr,(RW1 d, RR1 s))
-{
-	MVN_rrLSLi(REG_WORK1, s, 24);						// mvn 	r2, %[s], lsl #24
-	MVN_rrLSRi(REG_WORK1, REG_WORK1, 24);				// mvn 	r2, %[s], lsr #24
-	AND_rrr(d, d, REG_WORK1);							// and  %[d], %[d], r2
-}
-LENDFUNC(WRITE,NONE,2,raw_AND_b_rr,(RW1 d, RR1 s))
-
-LOWFUNC(WRITE,NONE,2,raw_AND_l_rr,(RW4 d, RR4 s))
-{
-	AND_rrr(d, d, s);
-}
-LENDFUNC(WRITE,NONE,2,raw_AND_l_rr,(RW4 d, RR4 s))
-
-LOWFUNC(WRITE,NONE,2,raw_AND_l_ri,(RW4 d, IMM i))
-{
-	AND_rri(d, d, i);
-}
-LENDFUNC(WRITE,NONE,2,raw_AND_l_ri,(RW4 d, IMM i))
-
-LOWFUNC(WRITE,NONE,2,raw_AND_w_rr,(RW2 d, RR2 s))
-{
-	MVN_rrLSLi(REG_WORK1, s, 16);						// mvn 		r2, %[s], lsl #16
-	MVN_rrLSRi(REG_WORK1, REG_WORK1, 16);				// mvn 		r2, %[s], lsr #16
-	AND_rrr(d, d, REG_WORK1); 							// and    	%[d], %[d], r2
-}
-LENDFUNC(WRITE,NONE,2,raw_AND_w_rr,(RW2 d, RR2 s))
-
-LOWFUNC(WRITE,NONE,2,raw_EOR_b_rr,(RW1 d, RR1 s))
-{
-#if defined(ARMV6_ASSEMBLY)
-	UXTB_rr(REG_WORK1, s);							// UXTH r2, %[s]
-#else
-    AND_rri(REG_WORK1, s, 0xFF);					// and r2, %[s], 0xFF
-#endif
-    EOR_rrr(d, d, REG_WORK1);						// eor %[d], %[d], r2
-}
-LENDFUNC(WRITE,NONE,2,raw_EOR_b_rr,(RW1 d, RR1 s))
-
-LOWFUNC(WRITE,NONE,2,raw_EOR_l_rr,(RW4 d, RR4 s))
-{
-	EOR_rrr(d, d, s);  							// eors	   r7, r7, r6
-}
-LENDFUNC(WRITE,NONE,2,raw_EOR_l_rr,(RW4 d, RR4 s))
-
-LOWFUNC(WRITE,NONE,2,raw_EOR_w_rr,(RW2 d, RR2 s))
-{
-#if defined(ARMV6_ASSEMBLY)
-	UXTH_rr(REG_WORK1, s);							// UXTH r2, %[s]
-	EOR_rrr(d, d, REG_WORK1);						// eor %[d], %[d], r2
-#else
-	LSL_rri(REG_WORK1, s, 16); 				// bic	r2, %[s], #0xff000000
-	EOR_rrrLSRi(d, d, REG_WORK1, 16);						// orr %[d], %[d], r2
-#endif
-}
-LENDFUNC(WRITE,NONE,2,raw_EOR_w_rr,(RW2 d, RR2 s))
-
 LOWFUNC(WRITE,NONE,2,raw_LDR_l_ri,(RW4 d, IMM i))
 {
   uae_s32 offs = data_long_offs(i);
 	LDR_rRI(d, RPC_INDEX, offs);			// ldr     r2, [pc, #offs]
 }
-LENDFUNC(WRITE,NONE,2,raw_LDR_l_rr,(RW4 d, IMM i))
-
-LOWFUNC(WRITE,NONE,2,raw_MOV_l_ri8,(RW4 d, IMM i))
-{
-	MOV_ri(d, i);
-}
-LENDFUNC(WRITE,NONE,2,raw_MOV_l_ri8,(RW4 d, IMM i))
-
-LOWFUNC(WRITE,NONE,2,raw_ORR_b_rr,(RW1 d, RR1 s))
-{
-#if defined(ARMV6_ASSEMBLY)
-	UXTB_rr(REG_WORK1, s);							// UXTH r2, %[s]
-#else
-    AND_rri(REG_WORK1, s, 0xFF);					// and r2, %[s], 0xFF
-#endif
-    ORR_rrr(d, d, REG_WORK1);						// orr %[d], %[d], r2
-}
-LENDFUNC(WRITE,NONE,2,raw_ORR_b_rr,(RW1 d, RR1 s))
-
-LOWFUNC(WRITE,NONE,2,raw_ORR_l_rr,(RW4 d, RR4 s))
-{
-	ORR_rrr(d, d, s);
-}
-LENDFUNC(WRITE,NONE,2,raw_ORR_l_rr,(RW4 d, RR4 s))
-
-LOWFUNC(WRITE,NONE,2,raw_ORR_w_rr,(RW2 d, RR2 s))
-{
-#if defined(ARMV6_ASSEMBLY)
-	UXTH_rr(REG_WORK1, s);							// UXTH r2, %[s]
-	ORR_rrr(d, d, REG_WORK1);						// orr %[d], %[d], r2
-#else
-	LSL_rri(REG_WORK1, s, 16); 				// bic	r2, %[s], #0xff000000
-	ORR_rrrLSRi(d, d, REG_WORK1, 16);						// orr %[d], %[d], r2
-#endif
-}
-LENDFUNC(WRITE,NONE,2,raw_ORR_w_rr,(RW2 d, RR2 s))
-
-LOWFUNC(WRITE,NONE,2,raw_ROR_l_ri,(RW4 r, IMM i))
-{
-	ROR_rri(r, r, i);
-}
-LENDFUNC(WRITE,NONE,2,raw_ROR_l_ri,(RW4 r, IMM i))
+LENDFUNC(WRITE,NONE,2,raw_LDR_l_ri,(RW4 d, IMM i))
 
 //
 // compuemu_support used raw calls
@@ -1236,15 +766,23 @@ LENDFUNC(NONE,READ,5,compemu_raw_cmov_l_rm_indexed,(W4 d, IMM base, RR4 index, I
 
 LOWFUNC(WRITE,READ,2,compemu_raw_cmp_l_mi,(MEMR d, IMM s))
 {
-  data_check_end(8, 16);
-  uae_s32 offs = data_long_offs(d);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs);    	// ldr     r2, [pc, #offs]    ; d
-	LDR_rR(REG_WORK1, REG_WORK1);          		// ldr     r2, [r2]
+  clobber_flags();
+  
+  if(d >= (uae_u32) &regs && d < ((uae_u32) &regs) + sizeof(struct regstruct)) {
+    uae_s32 offs = data_long_offs(s);
+    LDR_rRI(REG_WORK2, RPC_INDEX, offs);
+    uae_s32 idx = d - (uae_u32) & regs;
+    LDR_rRI(REG_WORK1, R_REGSTRUCT, idx);
+  } else {
+    data_check_end(8, 16);
+    uae_s32 offs = data_long_offs(d);
+	  LDR_rRI(REG_WORK1, RPC_INDEX, offs);
+	  LDR_rR(REG_WORK1, REG_WORK1);
 
-	offs = data_long_offs(s);
-	LDR_rRI(REG_WORK2, RPC_INDEX, offs);     	// ldr     r3, [pc, #offs]    ; s
-
-	CMP_rr(REG_WORK1, REG_WORK2);          		// cmp     r2, r3
+	  offs = data_long_offs(s);
+	  LDR_rRI(REG_WORK2, RPC_INDEX, offs);
+  }
+	CMP_rr(REG_WORK1, REG_WORK2);
 }
 LENDFUNC(WRITE,READ,2,compemu_raw_cmp_l_mi,(MEMR d, IMM s))
 
@@ -1273,30 +811,45 @@ LENDFUNC(NONE,NONE,4,compemu_raw_lea_l_rr_indexed,(W4 d, RR4 s, RR4 index, IMM f
 
 LOWFUNC(NONE,WRITE,2,compemu_raw_mov_b_mr,(IMM d, RR1 s))
 {
-  uae_s32 offs = data_long_offs(d);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr	r2, [pc, #offs]	; <value>
-	STRB_rR(s, REG_WORK1);	           	  // strb	r6, [r2]
+  if(d >= (uae_u32) &regs && d < ((uae_u32) &regs) + sizeof(struct regstruct)) {
+    uae_s32 idx = d - (uae_u32) & regs;
+    STRB_rRI(s, R_REGSTRUCT, idx);
+  } else {
+    uae_s32 offs = data_long_offs(d);
+	  LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr	r2, [pc, #offs]	; <value>
+	  STRB_rR(s, REG_WORK1);	           	  // strb	r6, [r2]
+  }
 }
 LENDFUNC(NONE,WRITE,2,compemu_raw_mov_b_mr,(IMM d, RR1 s))
 
 LOWFUNC(NONE,WRITE,2,compemu_raw_mov_l_mi,(MEMW d, IMM s))
 {
-	// TODO: optimize imm
-
-  data_check_end(8, 12);
-  uae_s32 offs = data_long_offs(d);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr    r2, [pc, #offs]    ; d
-	offs = data_long_offs(s);
-	LDR_rRI(REG_WORK2, RPC_INDEX, offs); 	// ldr    r3, [pc, #offs]    ; s
-	STR_rR(REG_WORK2, REG_WORK1);      	  // str    r3, [r2]
+  if(d >= (uae_u32) &regs && d < ((uae_u32) &regs) + sizeof(struct regstruct)) {
+    uae_s32 offs = data_long_offs(s);
+    LDR_rRI(REG_WORK2, RPC_INDEX, offs);
+    uae_s32 idx = d - (uae_u32) & regs;
+    STR_rRI(REG_WORK2, R_REGSTRUCT, idx);
+  } else {
+    data_check_end(8, 12);
+    uae_s32 offs = data_long_offs(d);
+	  LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr    r2, [pc, #offs]    ; d
+	  offs = data_long_offs(s);
+	  LDR_rRI(REG_WORK2, RPC_INDEX, offs); 	// ldr    r3, [pc, #offs]    ; s
+	  STR_rR(REG_WORK2, REG_WORK1);      	  // str    r3, [r2]
+  }
 }
 LENDFUNC(NONE,WRITE,2,compemu_raw_mov_l_mi,(MEMW d, IMM s))
 
 LOWFUNC(NONE,WRITE,2,compemu_raw_mov_l_mr,(IMM d, RR4 s))
 {
-  uae_s32 offs = data_long_offs(d);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr     r2, [pc, #offs]    ; <value>
-	STR_rR(s, REG_WORK1);             	  // str     r3, [r2]
+  if(d >= (uae_u32) &regs && d < ((uae_u32) &regs) + sizeof(struct regstruct)) {
+    uae_s32 idx = d - (uae_u32) & regs;
+    STR_rRI(s, R_REGSTRUCT, idx);
+  } else {
+    uae_s32 offs = data_long_offs(d);
+	  LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr     r2, [pc, #offs]    ; <value>
+	  STR_rR(s, REG_WORK1);             	  // str     r3, [r2]
+  }
 }
 LENDFUNC(NONE,WRITE,2,compemu_raw_mov_l_mr,(IMM d, RR4 s))
 
@@ -1309,48 +862,69 @@ LENDFUNC(NONE,NONE,2,compemu_raw_mov_l_ri,(W4 d, IMM s))
 
 LOWFUNC(NONE,READ,2,compemu_raw_mov_l_rm,(W4 d, MEMR s))
 {
-  uae_s32 offs = data_long_offs(s);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr     r2, [pc, #offs]    ; <value>
-	LDR_rR(d, REG_WORK1);              	  // ldr     r7, [r2]
+  if(s >= (uae_u32) &regs && s < ((uae_u32) &regs) + sizeof(struct regstruct)) {
+    uae_s32 idx = s - (uae_u32) & regs;
+    LDR_rRI(d, R_REGSTRUCT, idx);
+  } else {
+    uae_s32 offs = data_long_offs(s);
+	  LDR_rRI(REG_WORK1, RPC_INDEX, offs); 	// ldr     r2, [pc, #offs]    ; <value>
+	  LDR_rR(d, REG_WORK1);              	  // ldr     r7, [r2]
+  }
 }
 LENDFUNC(NONE,READ,2,compemu_raw_mov_l_rm,(W4 d, MEMR s))
 
 LOWFUNC(NONE,NONE,2,compemu_raw_mov_l_rr,(W4 d, RR4 s))
 {
-	MOV_rr(d, s); 					// mov     %[d], %[s]
+	MOV_rr(d, s);
 }
 LENDFUNC(NONE,NONE,2,compemu_raw_mov_l_rr,(W4 d, RR4 s))
 
 LOWFUNC(NONE,WRITE,2,compemu_raw_mov_w_mr,(IMM d, RR2 s))
 {
-  uae_s32 offs = data_long_offs(d);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs);  // ldr     r2, [pc, #offs]    ; <value>
-	STRH_rR(s, REG_WORK1);             	  // strh    r3, [r2]
+  if(d >= (uae_u32) &regs && d < ((uae_u32) &regs) + sizeof(struct regstruct)) {
+    uae_s32 idx = d - (uae_u32) & regs;
+    STRH_rRI(s, R_REGSTRUCT, idx);
+  } else {
+    uae_s32 offs = data_long_offs(d);
+	  LDR_rRI(REG_WORK1, RPC_INDEX, offs);  // ldr     r2, [pc, #offs]    ; <value>
+	  STRH_rR(s, REG_WORK1);             	  // strh    r3, [r2]
+  }
 }
 LENDFUNC(NONE,WRITE,2,compemu_raw_mov_w_mr,(IMM d, RR2 s))
 
 LOWFUNC(WRITE,RMW,2,compemu_raw_sub_l_mi,(MEMRW d, IMM s))
 {
-  data_check_end(8, 24);
-  uae_s32 target = data_long(d, 24);
-  uae_s32 offs = get_data_offset(target);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs);        // ldr	r2, [pc, #offs]	; d
-	LDR_rR(REG_WORK2, REG_WORK1);               // ldr	r3, [r2]
+  clobber_flags();
 
-	offs = data_long_offs(s);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs);        // ldr	r2, [pc, #offs]	; s
+  if(s >= 0 && s < 254) {
+  	uae_s32 offs = data_long_offs(d);
+  	LDR_rRI(REG_WORK1, RPC_INDEX, offs);
+    LDR_rR(REG_WORK2, REG_WORK1);
+    SUBS_rri(REG_WORK2, REG_WORK2, s);
+    STR_rR(REG_WORK2, REG_WORK1);
+  } else {
+    data_check_end(8, 24);
+    uae_s32 target = data_long(d, 24);
+    uae_s32 offs = get_data_offset(target);
+	  LDR_rRI(REG_WORK1, RPC_INDEX, offs);        // ldr	r2, [pc, #offs]	; d
+	  LDR_rR(REG_WORK2, REG_WORK1);               // ldr	r3, [r2]
 
-	SUBS_rrr(REG_WORK2, REG_WORK2, REG_WORK1); 	// subs	r3, r3, r2
+	  offs = data_long_offs(s);
+	  LDR_rRI(REG_WORK1, RPC_INDEX, offs);        // ldr	r2, [pc, #offs]	; s
 
-	offs = get_data_offset(target);
-	LDR_rRI(REG_WORK1, RPC_INDEX, offs);       	// ldr	r2, [pc, #offs]	; d
-	STR_rR(REG_WORK2, REG_WORK1); 	         		// str	r3, [r2]
+	  SUBS_rrr(REG_WORK2, REG_WORK2, REG_WORK1); 	// subs	r3, r3, r2
+
+	  offs = get_data_offset(target);
+	  LDR_rRI(REG_WORK1, RPC_INDEX, offs);       	// ldr	r2, [pc, #offs]	; d
+	  STR_rR(REG_WORK2, REG_WORK1); 	         		// str	r3, [r2]
+  }
 }
 LENDFUNC(WRITE,RMW,2,compemu_raw_sub_l_mi,(MEMRW d, IMM s))
 
 LOWFUNC(WRITE,NONE,2,compemu_raw_test_l_rr,(RR4 d, RR4 s))
 {
-	TST_rr(d, s);                          			// tst     r7, r6
+  clobber_flags();
+	TST_rr(d, s);
 }
 LENDFUNC(WRITE,NONE,2,compemu_raw_test_l_rr,(RR4 d, RR4 s))
 
@@ -1468,3 +1042,13 @@ static inline void compemu_raw_branch(IMM d)
 {
 	B_i((d >> 2) - 1);
 }
+
+
+// Optimize access to struct regstruct with r11
+
+LOWFUNC(NONE,NONE,1,compemu_raw_init_r_regstruct,(IMM s))
+{
+  uae_s32 offs = data_long_offs(s);
+	LDR_rRI(R_REGSTRUCT, RPC_INDEX, offs);
+}
+LENDFUNC(NONE,NONE,1,compemu_raw_init_r_regstruct,(IMM s))
