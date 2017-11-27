@@ -15,7 +15,7 @@ MY_LDFLAGS = $(LDFLAGS)
 MY_LDFLAGS += -lSDL -lpthread  -lz -lSDL_image -lpng -lrt -lxml2
 MY_LDFLAGS +=  -lSDL_ttf -lguichan_sdl -lguichan
 
-MORE_CFLAGS = -DGP2X -DPANDORA -DARMV6_ASSEMBLY -DUSE_ARMNEON
+MORE_CFLAGS = -DGP2X -DPANDORA -DARMV6_ASSEMBLY -DUSE_ARMNEON -DARMV6T2
 MORE_CFLAGS += -DCPU_arm
 MORE_CFLAGS += -DWITH_INGAME_WARNING
 #MORE_CFLAGS += -DWITH_LOGGING
@@ -38,13 +38,17 @@ endif
 MY_CFLAGS  = $(MORE_CFLAGS) $(DEFAULT_CFLAGS)
 
 OBJS =	\
+	src/akiko.o \
 	src/aros.rom.o \
 	src/audio.o \
 	src/autoconf.o \
 	src/blitfunc.o \
 	src/blittable.o \
 	src/blitter.o \
+	src/blkdev.o \
+	src/blkdev_cdimage.o \
 	src/bsdsocket.o \
+	src/cdrom.o \
 	src/cfgfile.o \
 	src/cia.o \
 	src/crc32.o \
@@ -114,15 +118,15 @@ OBJS =	\
 	src/machdep/support.o \
 	src/osdep/neon_helper.o \
 	src/osdep/bsdsocket_host.o \
+	src/osdep/cda_play.o \
 	src/osdep/fsdb_host.o \
 	src/osdep/hardfile_pandora.o \
-	src/osdep/joystick.o \
 	src/osdep/keyboard.o \
-	src/osdep/inputmode.o \
 	src/osdep/picasso96.o \
 	src/osdep/writelog.o \
 	src/osdep/pandora.o \
 	src/osdep/pandora_filesys.o \
+	src/osdep/pandora_input.o \
 	src/osdep/pandora_gui.o \
 	src/osdep/pandora_rp9.o \
 	src/osdep/pandora_gfx.o \
