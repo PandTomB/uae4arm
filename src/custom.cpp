@@ -4116,7 +4116,7 @@ static void vsync_handler_post (void)
   else
 #endif
   {
-    vsyncmintime = last_synctime + vsynctimebase * (maxvpos - LAST_SPEEDUP_LINE) / maxvpos;
+    vsyncmintime = last_synctime + vsynctimebase * (maxvpos_nom - LAST_SPEEDUP_LINE) / maxvpos_nom;
     pissoff_value = SPEEDUP_CYCLES_NONJIT * CYCLE_UNIT;
     speedup_timelimit = SPEEDUP_TIMELIMIT_NONJIT;
   }
@@ -4327,13 +4327,13 @@ static void hsync_handler_post (bool onvsync)
 #ifdef JIT
     if (currprefs.cachesize) {
 	    frh_count++;
-	    if (trigger_frh(frh_count) && vpos < maxvpos - LAST_SPEEDUP_LINE) {
+	    if (trigger_frh(frh_count) && vpos < maxvpos_nom - LAST_SPEEDUP_LINE) {
 		    frh_handler();
 	    }
-	    is_syncline = trigger_frh(frh_count+1) && vpos < maxvpos - LAST_SPEEDUP_LINE + 1 && ! rpt_did_reset;
+	    is_syncline = trigger_frh(frh_count+1) && vpos < maxvpos_nom - LAST_SPEEDUP_LINE + 1 && ! rpt_did_reset;
     } else {
 #endif
-	    is_syncline = vpos + 1 == maxvpos + lof_store - LAST_SPEEDUP_LINE;
+	    is_syncline = vpos + 1 == maxvpos_nom + lof_store - LAST_SPEEDUP_LINE;
 #ifdef JIT
     }
 #endif

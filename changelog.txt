@@ -1,3 +1,4 @@
+2016-05-05 - Beta version with new JITv2
 
 2016-04-24 - Release version
    - Improvments in rp9 support (most demos with 68040 CPU now working)

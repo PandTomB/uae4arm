@@ -130,6 +130,7 @@ static bool slow_mouse = false;
 
 static bool cpuSpeedChanged = false;
 static int lastCpuSpeed = 600;
+int defaultCpuSpeed = 600;
 
 
 extern "C" int main( int argc, char *argv[] );
@@ -305,7 +306,7 @@ void target_default_options (struct uae_prefs *p, int type)
 {
   p->pandora_horizontal_offset = 0;
   p->pandora_vertical_offset = 0;
-  p->pandora_cpu_speed = 600;
+  p->pandora_cpu_speed = defaultCpuSpeed;
 
   p->pandora_joyConf = 0;
   p->pandora_joyPort = 2;
@@ -736,32 +737,40 @@ void setCpuSpeed()
 }
 
 
+int getDefaultCpuSpeed(void)
+{
+  int speed = 600;
+  FILE* f = fopen ("/etc/pandora/conf/cpu.conf", "rt");
+  if(f)
+  {
+    char line[128];
+    for(int i=0; i<6; ++i)
+    {
+      fscanf(f, "%s\n", &line);
+      if(strncmp(line, "default:", 8) == 0)
+      {
+        int value = 0;
+        sscanf(line, "default:%d", &value);
+        if(value > 500 && value < 1200)
+        {
+          speed = value;
+        }
+      }
+    }
+    fclose(f);
+  }
+  return speed;
+}
+
+
 void resetCpuSpeed(void)
 {
   if(cpuSpeedChanged)
   {
-    FILE* f = fopen ("/etc/pandora/conf/cpu.conf", "rt");
-    if(f)
-    {
-      char line[128];
-      for(int i=0; i<6; ++i)
-      {
-        fscanf(f, "%s\n", &line);
-        if(strncmp(line, "default:", 8) == 0)
-        {
-          int value = 0;
-          sscanf(line, "default:%d", &value);
-          if(value > 500 && value < 1200)
-          {
-            lastCpuSpeed = value - 10;
-            currprefs.pandora_cpu_speed = changed_prefs.pandora_cpu_speed = value;
-            setCpuSpeed();
-            printf("CPU speed reset to %d\n", value);
-          }
-        }
-      }
-      fclose(f);
-    }
+    lastCpuSpeed = defaultCpuSpeed - 10;
+    currprefs.pandora_cpu_speed = changed_prefs.pandora_cpu_speed = defaultCpuSpeed;
+    setCpuSpeed();
+    printf("CPU speed reset to %d\n", defaultCpuSpeed);
   }
 }
 
@@ -791,6 +800,8 @@ int main (int argc, char *argv[])
 {
   struct sigaction action;
 
+  defaultCpuSpeed = getDefaultCpuSpeed();
+  
   // Get startup path
 	getcwd(start_path_data, MAX_DPATH);
 	loadAdfDir();
@@ -826,7 +837,7 @@ int main (int argc, char *argv[])
   rp9_cleanup();
   
   logging_cleanup();
-  
+
 //  printf("Threads at exit:\n");
 //  dbg_list_threads();
   
