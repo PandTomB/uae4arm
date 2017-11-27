@@ -35,12 +35,6 @@
 #define cfgfile_warning write_log
 #define cfgfile_warning_obsolete write_log
 
-#if SIZEOF_TCHAR != 1
-/* FIXME: replace strcasecmp with _tcsicmp in source code instead */
-#undef strcasecmp
-#define strcasecmp _tcsicmp
-#endif
-
 static int config_newfilesystem;
 static struct strlist *temp_lines;
 static struct strlist *error_lines;
@@ -175,7 +169,7 @@ static TCHAR *cfgfile_option_find_it(const TCHAR *s, const TCHAR *option, bool c
 			if (tmpp2)
 				*tmpp2++ = 0;
 		}
-		if (!strcasecmp(p, option)) {
+		if (!_tcsicmp(p, option)) {
 			if (checkequals && tmpp2)
 				return tmpp2;
 			return p;
@@ -206,7 +200,7 @@ static int match_string (const TCHAR *table[], const TCHAR *str)
 {
   int i;
   for (i = 0; table[i] != 0; i++)
-  	if (strcasecmp (table[i], str) == 0)
+  	if (_tcsicmp (table[i], str) == 0)
 	    return i;
   return -1;
 }
@@ -1366,13 +1360,13 @@ static int cfgfile_yesno (const TCHAR *option, const TCHAR *value, const TCHAR *
 {
   if (name != NULL && _tcscmp (option, name) != 0)
   	return 0;
-	if (strcasecmp (value, _T("yes")) == 0 || strcasecmp (value, _T("y")) == 0
-		|| strcasecmp (value, _T("true")) == 0 || strcasecmp (value, _T("t")) == 0
-		|| (numbercheck && strcasecmp (value, _T("1")) == 0))
+	if (_tcsicmp (value, _T("yes")) == 0 || _tcsicmp (value, _T("y")) == 0
+		|| _tcsicmp (value, _T("true")) == 0 || _tcsicmp (value, _T("t")) == 0
+		|| (numbercheck && _tcsicmp (value, _T("1")) == 0))
   	*location = 1;
-	else if (strcasecmp (value, _T("no")) == 0 || strcasecmp (value, _T("n")) == 0
-		|| strcasecmp (value, _T("false")) == 0 || strcasecmp (value, _T("f")) == 0
-		|| (numbercheck && strcasecmp (value, _T("0")) == 0))
+	else if (_tcsicmp (value, _T("no")) == 0 || _tcsicmp (value, _T("n")) == 0
+		|| _tcsicmp (value, _T("false")) == 0 || _tcsicmp (value, _T("f")) == 0
+		|| (numbercheck && _tcsicmp (value, _T("0")) == 0))
 	  *location = 0;
   else {
 		cfgfile_warning(_T("Option '%s' requires a value of either 'true' or 'false' (was '%s').\n"), option, value);
@@ -1460,11 +1454,11 @@ static int cfgfile_intval (const TCHAR *option, const TCHAR *value, const TCHAR 
   *location = _tcstol (value, &endptr, base) * scale;
 
   if (*endptr != '\0' || *value == '\0') {
-		if (strcasecmp (value, _T("false")) == 0 || strcasecmp (value, _T("no")) == 0) {
+		if (_tcsicmp (value, _T("false")) == 0 || _tcsicmp (value, _T("no")) == 0) {
 			*location = 0;
 			return 1;
 		}
-		if (strcasecmp (value, _T("true")) == 0 || strcasecmp (value, _T("yes")) == 0) {
+		if (_tcsicmp (value, _T("true")) == 0 || _tcsicmp (value, _T("yes")) == 0) {
 			*location = 1;
 			return 1;
   	}
@@ -1515,9 +1509,9 @@ static int cfgfile_strval (const TCHAR *option, const TCHAR *value, const TCHAR 
   if (val == -1) {
   	if (more)
 	    return 0;
-		if (!strcasecmp (value, _T("yes")) || !strcasecmp (value, _T("true"))) {
+		if (!_tcsicmp (value, _T("yes")) || !_tcsicmp (value, _T("true"))) {
 			val = 1;
-		} else if  (!strcasecmp (value, _T("no")) || !strcasecmp (value, _T("false"))) {
+		} else if  (!_tcsicmp (value, _T("no")) || !_tcsicmp (value, _T("false"))) {
 			val = 0;
 		} else {
 			cfgfile_warning(_T("Unknown value ('%s') for option '%s'.\n"), value, nameext ? tmp : option);
@@ -1693,10 +1687,10 @@ static int cfgfile_option_select(TCHAR *s, const TCHAR *option, const TCHAR *sel
 		if (!tmpp2)
 			return -1;
 		*tmpp2++ = 0;
-		if (!strcasecmp(p, option)) {
+		if (!_tcsicmp(p, option)) {
 			int idx = 0;
 			while (select[0]) {
-				if (!strcasecmp(select, tmpp2))
+				if (!_tcsicmp(select, tmpp2))
 					return idx;
 				idx++;
 				select += _tcslen(select) + 1;
@@ -1722,15 +1716,15 @@ static int cfgfile_option_bool(TCHAR *s, const TCHAR *option)
 		TCHAR *tmpp2 = _tcschr(p, '=');
 		if (tmpp2)
 			*tmpp2++ = 0;
-		if (!strcasecmp(p, option)) {
+		if (!_tcsicmp(p, option)) {
 			if (!tmpp2)
 				return 0;
 			TCHAR *tmpp3 = _tcschr (tmpp2, ',');
 			if (tmpp3)
 				*tmpp3 = 0;
-			if (tmpp2 && !strcasecmp(tmpp2, _T("true")))
+			if (tmpp2 && !_tcsicmp(tmpp2, _T("true")))
 				return 1;
-			if (tmpp2 && !strcasecmp(tmpp2, _T("false")))
+			if (tmpp2 && !_tcsicmp(tmpp2, _T("false")))
 				return 0;
 			return 1;
 		}
@@ -2027,13 +2021,13 @@ static int cfgfile_parse_host (struct uae_prefs *p, TCHAR *option, TCHAR *value)
 
 	if (_tcscmp (option, _T("kbd_lang")) == 0) {
 		KbdLang l;
-		if ((l = KBD_LANG_DE, strcasecmp (value, _T("de")) == 0)
-			|| (l = KBD_LANG_DK, strcasecmp (value, _T("dk")) == 0)
-			|| (l = KBD_LANG_SE, strcasecmp (value, _T("se")) == 0)
-			|| (l = KBD_LANG_US, strcasecmp (value, _T("us")) == 0)
-			|| (l = KBD_LANG_FR, strcasecmp (value, _T("fr")) == 0)
-			|| (l = KBD_LANG_IT, strcasecmp (value, _T("it")) == 0)
-			|| (l = KBD_LANG_ES, strcasecmp (value, _T("es")) == 0))
+		if ((l = KBD_LANG_DE, _tcsicmp (value, _T("de")) == 0)
+			|| (l = KBD_LANG_DK, _tcsicmp (value, _T("dk")) == 0)
+			|| (l = KBD_LANG_SE, _tcsicmp (value, _T("se")) == 0)
+			|| (l = KBD_LANG_US, _tcsicmp (value, _T("us")) == 0)
+			|| (l = KBD_LANG_FR, _tcsicmp (value, _T("fr")) == 0)
+			|| (l = KBD_LANG_IT, _tcsicmp (value, _T("it")) == 0)
+			|| (l = KBD_LANG_ES, _tcsicmp (value, _T("es")) == 0))
 			p->keyboard_lang = l;
 		else
 			cfgfile_warning(_T("Unknown keyboard language\n"));
@@ -2538,9 +2532,9 @@ static int cfgfile_parse_newfilesys (struct uae_prefs *p, int nr, int type, TCHA
     goto invalid_fs;
 
   *tmpp++ = '\0';
-  if (strcasecmp (value, _T("ro")) == 0)
+  if (_tcsicmp (value, _T("ro")) == 0)
 		uci.readonly = true;
-  else if (strcasecmp (value, _T("rw")) == 0)
+  else if (_tcsicmp (value, _T("rw")) == 0)
 		uci.readonly = false;
 	else
     goto invalid_fs;
@@ -2776,13 +2770,13 @@ static int cfgfile_parse_filesys (struct uae_prefs *p, const TCHAR *option, TCHA
 	    goto invalid_fs;
 
 	  *tmpp++ = '\0';
-	  if (_tcscmp (value, _T("1")) == 0 || strcasecmp (value, _T("ro")) == 0
-    || strcasecmp (value, _T("readonly")) == 0
-    || strcasecmp (value, _T("read-only")) == 0)
+	  if (_tcscmp (value, _T("1")) == 0 || _tcsicmp (value, _T("ro")) == 0
+    || _tcsicmp (value, _T("readonly")) == 0
+    || _tcsicmp (value, _T("read-only")) == 0)
 			uci.readonly = true;
-  	else if (_tcscmp (value, _T("0")) == 0 || strcasecmp (value, _T("rw")) == 0
-		|| strcasecmp (value, _T("readwrite")) == 0
-		|| strcasecmp (value, _T("read-write")) == 0)
+  	else if (_tcscmp (value, _T("0")) == 0 || _tcsicmp (value, _T("rw")) == 0
+		|| _tcsicmp (value, _T("readwrite")) == 0
+		|| _tcsicmp (value, _T("read-write")) == 0)
 			uci.readonly = false;
 	  else
 	    goto invalid_fs;
@@ -2846,10 +2840,10 @@ invalid_fs:
 				TCHAR *tmpp2 = _tcschr(s, '=');
 				if (tmpp2) {
 					*tmpp2++ = 0;
-					if (!strcasecmp(tmpp2, _T("false")))
+					if (!_tcsicmp(tmpp2, _T("false")))
 						b = false;
 				}
-				if (!strcasecmp(s, _T("inject_icons"))) {
+				if (!_tcsicmp(s, _T("inject_icons"))) {
 					ci->inject_icons = b;
 				}
 			}
@@ -3194,12 +3188,12 @@ static int cfgfile_parse_hardware (struct uae_prefs *p, const TCHAR *option, TCH
 	    int factor = OFFICIAL_CYCLE_UNIT / CYCLE_UNIT;
 	    p->m68k_speed = (p->m68k_speed + factor - 1) / factor;
   	}
-    if (strcasecmp (value, _T("max")) == 0)
+    if (_tcsicmp (value, _T("max")) == 0)
       p->m68k_speed = -1;
   	return 1;
   }
 
-	if (strcasecmp (option, _T("quickstart")) == 0) {
+	if (_tcsicmp (option, _T("quickstart")) == 0) {
 		int model = 0;
 		TCHAR *tmpp = _tcschr (value, ',');
 		if (tmpp) {
@@ -3467,7 +3461,7 @@ static int isobsolete (TCHAR *s)
 {
   int i = 0;
   while (obsolete[i]) {
-  	if (!strcasecmp (s, obsolete[i])) {
+  	if (!_tcsicmp (s, obsolete[i])) {
 			cfgfile_warning_obsolete(_T("obsolete config entry '%s'\n"), s);
 	    return 1;
   	}
@@ -3497,7 +3491,7 @@ static void cfgfile_parse_separated_line (struct uae_prefs *p, TCHAR *line1b, TC
   ret = cfgfile_parse_option (p, line1b, line2b, type);
   if (!isobsolete (line3b)) {
   	for (sl = p->all_lines; sl; sl = sl->next) {
-	    if (sl->option && !strcasecmp (line1b, sl->option)) break;
+	    if (sl->option && !_tcsicmp (line1b, sl->option)) break;
   	}
   	if (!sl) {
 	    struct strlist *u = xcalloc (struct strlist, 1);
@@ -3974,19 +3968,19 @@ int parse_cmdline_option (struct uae_prefs *p, TCHAR c, const TCHAR *arg)
 	    break;
 
 	  case 'l':
-		  if (0 == strcasecmp(arg, _T("de")))
+		  if (0 == _tcsicmp(arg, _T("de")))
 			  p->keyboard_lang = KBD_LANG_DE;
-		  else if (0 == strcasecmp(arg, _T("dk")))
+		  else if (0 == _tcsicmp(arg, _T("dk")))
 			  p->keyboard_lang = KBD_LANG_DK;
-		  else if (0 == strcasecmp(arg, _T("us")))
+		  else if (0 == _tcsicmp(arg, _T("us")))
 			  p->keyboard_lang = KBD_LANG_US;
-		  else if (0 == strcasecmp(arg, _T("se")))
+		  else if (0 == _tcsicmp(arg, _T("se")))
 			  p->keyboard_lang = KBD_LANG_SE;
-		  else if (0 == strcasecmp(arg, _T("fr")))
+		  else if (0 == _tcsicmp(arg, _T("fr")))
 			  p->keyboard_lang = KBD_LANG_FR;
-		  else if (0 == strcasecmp(arg, _T("it")))
+		  else if (0 == _tcsicmp(arg, _T("it")))
 			  p->keyboard_lang = KBD_LANG_IT;
-		  else if (0 == strcasecmp(arg, _T("es")))
+		  else if (0 == _tcsicmp(arg, _T("es")))
 			  p->keyboard_lang = KBD_LANG_ES;
 		  break;
 
@@ -4285,7 +4279,7 @@ static const TCHAR *cfgfile_read_config_value (const TCHAR *option)
 {
 	struct strlist *sl;
 	for (sl = currprefs.all_lines; sl; sl = sl->next) {
-		if (sl->option && !strcasecmp (sl->option, option))
+		if (sl->option && !_tcsicmp (sl->option, option))
 			return sl->value;
 	}
 	return NULL;

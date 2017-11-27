@@ -3,19 +3,22 @@ ifeq ($(PLATFORM),)
 endif
 
 ifeq ($(PLATFORM),rpi3)
-  CPU_FLAGS +=  -march=armv8-a -mfpu=neon-fp-armv8 -mfloat-abi=hard -mtune=cortex-a8
+  CPU_FLAGS += -march=armv8-a -mfpu=neon-fp-armv8 -mfloat-abi=hard -mtune=cortex-a8
   MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DCAPSLOCK_DEBIAN_WORKAROUND
-  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm
+  MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
+  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
 else ifeq ($(PLATFORM),rpi2)
 	CPU_FLAGS += -march=armv7-a -mfpu=neon -mfloat-abi=hard -mtune=cortex-a8
 	MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DCAPSLOCK_DEBIAN_WORKAROUND
-  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm
+  MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
+  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
 else ifeq ($(PLATFORM),rpi1)
 	CPU_FLAGS += -march=armv6zk -mfpu=vfp -mfloat-abi=hard
   MORE_CFLAGS += -DRASPBERRY -DCAPSLOCK_DEBIAN_WORKAROUND
-  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm
+  MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
+  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
 else ifeq ($(PLATFORM),Pandora)
   CPU_FLAGS +=  -march=armv7-a -mfpu=neon -mfloat-abi=softfp -mtune=cortex-a8
@@ -25,6 +28,9 @@ endif
 
 NAME   = uae4arm
 RM     = rm -f
+CC     ?= gcc
+CXX    ?= g++
+STRIP  ?= strip
 
 PROG   = $(NAME)
 
@@ -77,7 +83,7 @@ ifdef GEN_PROFILE
 MORE_CFLAGS += -fprofile-generate=$(PROFILER_PATH) -fprofile-arcs -fvpt
 endif
 ifdef USE_PROFILE
-MORE_CFLAGS += -fprofile-use -fbranch-probabilities -fvpt
+MORE_CFLAGS += -fprofile-use -fprofile-correction -fbranch-probabilities -fvpt
 endif
 
 
@@ -283,12 +289,10 @@ endif
 .cpp.s:
 	$(CXX) $(CXXFLAGS) -S -c $< -o $@
 
-$(PROG): $(OBJS) src/trace.o
+$(PROG): $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $(PROG) $(OBJS) $(LDFLAGS)
 ifndef DEBUG
-	$(CXX) $(CXXFLAGS) -o $(PROG) $(OBJS) $(LDFLAGS)
 	$(STRIP) $(PROG)
-else
-	$(CXX) $(CXXFLAGS) -o $(PROG) $(OBJS) $(LDFLAGS)
 endif
 
 ASMS = \

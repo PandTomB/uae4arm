@@ -54,7 +54,7 @@ using namespace std;
 #endif
 
 #ifndef __STDC__
-#ifndef _MSC_VER
+#ifndef _MSC_VER_
 #error "Your compiler is not ANSI. Get a real one."
 #endif
 #endif
@@ -242,7 +242,7 @@ extern void to_upper (TCHAR *s, int len);
 #define DONT_HAVE_POSIX
 #endif
 
-#if !defined(FSUAE) && defined _WIN32
+#if !defined(FSUAE) && defined _WIN32_
 
 //#ifdef FSUAE
 //#error _WIN32 should not be defined here
@@ -271,7 +271,7 @@ extern void to_upper (TCHAR *s, int len);
 
 #define mkdir(a,b) mkdir(a)
 
-#elif defined _MSC_VER
+#elif defined _MSC_VER_
 
 #ifdef HAVE_GETTIMEOFDAY
 #include <winsock.h> // for 'struct timeval' definition
@@ -446,7 +446,7 @@ extern void gui_message (const TCHAR *,...);
 #endif
 #define NOINLINE __attribute__ ((noinline))
 #define NORETURN __attribute__ ((noreturn))
-#elif _MSC_VER
+#elif _MSC_VER_
 #define STATIC_INLINE static __forceinline
 #define NOINLINE __declspec(noinline)
 #define NORETURN __declspec(noreturn)

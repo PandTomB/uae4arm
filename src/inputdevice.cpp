@@ -2016,21 +2016,6 @@ void JOYTEST (uae_u16 v)
 	mouse_frame_y[1] = mouse_y[1];
 }
 
-#ifndef INPUTDEVICE_SIMPLE
-static uae_u8 parconvert (uae_u8 v, int jd, int shift)
-{
-	if (jd & DIR_UP)
-		v &= ~(1 << shift);
-	if (jd & DIR_DOWN)
-		v &= ~(2 << shift);
-	if (jd & DIR_LEFT)
-		v &= ~(4 << shift);
-	if (jd & DIR_RIGHT)
-		v &= ~(8 << shift);
-	return v;
-}
-#endif
-
 /* p5 is 1 or floating = cd32 2-button mode */
 static bool cd32padmode (uae_u16 p5dir, uae_u16 p5dat)
 {
@@ -2585,7 +2570,7 @@ static int handle_input_event (int nr, int state, int max, int autofire)
 	if (nr <= 0 || nr == INPUTEVENT_SPC_CUSTOM_EVENT)
 		return 0;
 
-#ifdef _WIN32
+#ifdef _WIN32_
 	// ignore normal GUI event if forced gui key is in use
 	if (currprefs.win32_guikey >= 0 && nr == INPUTEVENT_SPC_ENTERGUI)
 		return 0;
