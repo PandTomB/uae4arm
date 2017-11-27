@@ -1,4 +1,11 @@
 
+2015-10-26 - Release version with bugfixes
+   - Switched to newer picasso code from WinUAE. Works much better, even with JIT.
+   - Minor update of sprite handling
+   - Corrected cpu cycle count in exceptions
+   - Minor graphic gliteches fixed (Love-Demo)
+   - Compiled with gcc 5.2
+  
 2015-10-03 - First release
   Changes:
    - Cleanup of code

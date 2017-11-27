@@ -37,8 +37,7 @@ uae_u32 blit_masktable[BLITTER_MAX_WORDS];
 enum blitter_states bltstate;
 
 static long int blit_cyclecounter;
-// blitter_slowdown doesn't work at the moment
-//static int blit_slowdown;
+static int blit_slowdown;
 
 static long blit_firstline_cycles;
 static long blit_first_cycle;
@@ -257,10 +256,14 @@ static void blitter_dofast(void)
 		    bltddatptr += 2;
 		}
 	    }
-	    if (bltadatptr) bltadatptr += blt_info.bltamod;
-	    if (bltbdatptr) bltbdatptr += blt_info.bltbmod;
-	    if (bltcdatptr) bltcdatptr += blt_info.bltcmod;
-	    if (bltddatptr) bltddatptr += blt_info.bltdmod;
+	    if (bltadatptr) 
+    bltadatptr += blt_info.bltamod;
+	    if (bltbdatptr) 
+    bltbdatptr += blt_info.bltbmod;
+	    if (bltcdatptr) 
+    bltcdatptr += blt_info.bltcmod;
+	    if (bltddatptr) 
+    bltddatptr += blt_info.bltdmod;
 	}
 	if (dstp)
 	  CHIPMEM_AGNUS_WPUT_CUSTOM (dstp, blt_info.bltddat);
@@ -349,10 +352,14 @@ static void blitter_dofast_desc(void)
 		    bltddatptr -= 2;
 		}
 	    }
-	    if (bltadatptr) bltadatptr -= blt_info.bltamod;
-	    if (bltbdatptr) bltbdatptr -= blt_info.bltbmod;
-	    if (bltcdatptr) bltcdatptr -= blt_info.bltcmod;
-	    if (bltddatptr) bltddatptr -= blt_info.bltdmod;
+	    if (bltadatptr) 
+    bltadatptr -= blt_info.bltamod;
+	    if (bltbdatptr) 
+    bltbdatptr -= blt_info.bltbmod;
+	    if (bltcdatptr) 
+    bltcdatptr -= blt_info.bltcmod;
+	    if (bltddatptr) 
+    bltddatptr -= blt_info.bltdmod;
 	}
 	if (dstp)
 	  CHIPMEM_AGNUS_WPUT_CUSTOM (dstp, blt_info.bltddat);
@@ -499,13 +506,11 @@ void blitter_handler(uae_u32 data)
 		*/
 	}
 	blitter_stuck = 0;
-
-// blitter_slowdown doesn't work at the moment
-//	if (blit_slowdown > 0 && !currprefs.immediate_blits) {
-//	  event2_newevent (ev2_blitter, blit_slowdown);
-//		blit_slowdown = -1;
-//		return;
-//	}
+	if (blit_slowdown > 0 && !currprefs.immediate_blits) {
+	  event2_newevent (ev2_blitter, blit_slowdown);
+		blit_slowdown = -1;
+		return;
+	}
 
   actually_do_blit ();
   blitter_done();
@@ -619,8 +624,8 @@ void do_blitter(void)
   blit_cyclecounter = cycles * (blit_dmacount2 + (blit_nod ? 0 : 1)); 
   
 	bltstate = BLT_init;
-// blitter_slowdown doesn't work at the moment
-//	blit_slowdown = 0;
+
+	blit_slowdown = 0;
 
     if (dmaen(DMA_BLITPRI))
       set_special (&regs, SPCFLAG_BLTNASTY);
@@ -698,9 +703,7 @@ int blitnasty (void)
 	return ccnt;
 }
 
-// blitter_slowdown doesn't work at the moment (causes gfx glitches in Shadow of the Beast)
 /* very approximate emulation of blitter slowdown caused by bitplane DMA */
-/*
 void blitter_slowdown (int ddfstrt, int ddfstop, int totalcycles, int freecycles)
 {
   static int oddfstrt, oddfstop, ototal, ofree;
@@ -711,7 +714,7 @@ void blitter_slowdown (int ddfstrt, int ddfstop, int totalcycles, int freecycles
   if (ddfstrt != oddfstrt || ddfstop != oddfstop || totalcycles != ototal || ofree != freecycles) {
   	int linecycles = ((ddfstop - ddfstrt + totalcycles - 1) / totalcycles) * totalcycles;
   	int freelinecycles = ((ddfstop - ddfstrt + totalcycles - 1) / totalcycles) * freecycles;
-	  int dmacycles = (linecycles * blit_dmacount) / blit_diag[1];
+	  int dmacycles = (linecycles * blit_dmacount) / blit_diag[0];
 	  oddfstrt = ddfstrt;
 	  oddfstop = ddfstop;
 	  ototal = totalcycles;
@@ -724,7 +727,6 @@ void blitter_slowdown (int ddfstrt, int ddfstop, int totalcycles, int freecycles
 	  return;
   blit_slowdown += slow;
 }
-*/
 
 #ifdef SAVESTATE
 
@@ -759,7 +761,7 @@ uae_u8 *save_blitter (int *len, uae_u8 *dstptr)
     if (dstptr)
     	dstbak = dst = dstptr;
     else
-      dstbak = dst = (uae_u8 *)malloc (16);
+      dstbak = dst = (uae_u8 *)xmalloc (16);
     save_u32(((bltstate != BLT_done) ? 0 : 1) | forced);
     *len = dst - dstbak;
     return dstbak;
