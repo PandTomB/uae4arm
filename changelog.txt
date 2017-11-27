@@ -1,3 +1,7 @@
+2016-08-22 - Release version
+   - Border sprites (tested with Speris Legacy)
+   - CPU fastest: automatic timing adjust to reduce stutter 
+
 2016-08-21 - Beta version
    - Avoid audio delays in some games/demos
    - Automatic switch of freshrate for programmed NTSC/PAL mode change

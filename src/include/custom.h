@@ -22,6 +22,7 @@
 #define CHIPSET_CLOCK_PAL  3546895
 #define CHIPSET_CLOCK_NTSC 3579545
 
+extern void set_speedup_values(void);
 extern int custom_init (void);
 extern void custom_prepare (void);
 extern void custom_reset (bool hardreset, bool keyboardreset);

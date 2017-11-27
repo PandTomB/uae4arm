@@ -234,8 +234,8 @@ void signal_segv(int signum, siginfo_t* info, void*ptr)
 	unsigned long *regs = &context->arm_r0;
 	uintptr addr = (uintptr)info->si_addr;
   addr = (uae_u32) addr - (uae_u32) natmem_offset;
-//	if (handle_arm_instruction(regs, addr))
-//	  return;
+	if (handle_arm_instruction(regs, addr))
+	  return;
 	  
   if(signum == 4)
     printf("Illegal Instruction!\n");

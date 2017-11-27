@@ -12,7 +12,7 @@ all: $(PROG)
 
 PANDORA=1
 #GEN_PROFILE=1
-USE_PROFILE=1
+#USE_PROFILE=1
 
 DEFAULT_CFLAGS = $(CFLAGS) `sdl-config --cflags`
 

@@ -388,6 +388,7 @@ void check_prefs_changed_cpu (void)
   if (changed) {
   	set_special (SPCFLAG_BRK);
 		reset_frame_rate_hack ();
+		set_speedup_values();
 	}
 }
 

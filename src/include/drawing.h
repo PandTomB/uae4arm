@@ -21,7 +21,6 @@
 
 #define lores_shift 0
 extern bool aga_mode;
-extern bool ham_drawn;
 
 STATIC_INLINE int coord_hw_to_window_x (int x)
 {
@@ -57,6 +56,7 @@ struct color_entry {
   uae_u16 color_regs_ecs[32];
   xcolnr acolors[256];
   uae_u32 color_regs_aga[256];
+	bool borderblank;
 };
 
 /* convert 24 bit AGA Amiga RGB to native color */
@@ -106,6 +106,7 @@ STATIC_INLINE void color_reg_set (struct color_entry *ce, int c, int v)
 /* ugly copy hack, is there better solution? */
 STATIC_INLINE void color_reg_cpy (struct color_entry *dst, struct color_entry *src)
 {
+	dst->borderblank = src->borderblank;
   if (aga_mode)
   	/* copy acolors and color_regs_aga */
   	memcpy (dst->acolors, src->acolors, sizeof(struct color_entry) - sizeof(uae_u16) * 32);
@@ -123,6 +124,7 @@ STATIC_INLINE void color_reg_cpy (struct color_entry *dst, struct color_entry *s
  * but a list of structures containing information on how to draw the line.
  */
 
+#define COLOR_CHANGE_BRDBLANK 0x80000000
 struct color_change {
   int linepos;
   int regno;

@@ -35,7 +35,7 @@ STATIC_INLINE int isvsync_rtg (void)
 	return 1;
 }
 
-extern void flush_screen ();
+extern void flush_screen (void);
 
 extern int lockscr (void);
 extern void unlockscr (void);

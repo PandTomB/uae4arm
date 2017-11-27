@@ -46,10 +46,8 @@ static int frh_count = 0;
 #define LAST_SPEEDUP_LINE 30
 #define SPEEDUP_CYCLES_JIT 2800
 #define SPEEDUP_CYCLES_NONJIT 600
-#define SPEEDUP_CYCLES_HAM 1000
-#define SPEEDUP_TIMELIMIT_JIT -1200
+#define SPEEDUP_TIMELIMIT_JIT -1500
 #define SPEEDUP_TIMELIMIT_NONJIT -2000
-#define SPEEDUP_TIMELIMIT_HAM -4000
 int pissoff_value = SPEEDUP_CYCLES_JIT * CYCLE_UNIT;
 int speedup_timelimit = SPEEDUP_TIMELIMIT_JIT;
 
@@ -273,6 +271,23 @@ enum fetchstate {
  */
 
 #define nodraw() (framecnt != 0)
+
+void set_speedup_values(void)
+{
+  if(currprefs.m68k_speed < 0) {
+    if (currprefs.cachesize) {
+      pissoff_value = SPEEDUP_CYCLES_JIT * CYCLE_UNIT;
+      speedup_timelimit = SPEEDUP_TIMELIMIT_JIT;
+    } else {
+      pissoff_value = SPEEDUP_CYCLES_NONJIT * CYCLE_UNIT;
+      speedup_timelimit = SPEEDUP_TIMELIMIT_NONJIT;
+    }
+  } else {
+    pissoff_value = 0;
+    speedup_timelimit = 0;
+  }
+}
+
 
 void reset_frame_rate_hack (void)
 {
@@ -1662,11 +1677,26 @@ static void record_color_change (int hpos, int regno, unsigned long value)
   record_color_change2 (hpos, regno, value);
 }
 
+static bool isbrdblank (int hpos, uae_u16 bplcon0, uae_u16 bplcon3)
+{
+	bool brdblank;
+	brdblank = (currprefs.chipset_mask & CSMASK_ECS_DENISE) && (bplcon0 & 1) && (bplcon3 & 0x20);
+	if (hpos >= 0 && current_colors.borderblank != brdblank) {
+		record_color_change (hpos, 0, COLOR_CHANGE_BRDBLANK | (brdblank ? 1 : 0));
+		current_colors.borderblank = brdblank;
+		remembered_color_entry = -1;
+	}
+	return brdblank;
+}
+
 static void record_register_change (int hpos, int regno, uae_u16 value)
 {
   if (regno == 0x100) { // BPLCON0
 	  if (value & 0x800)
 	    thisline_decision.ham_seen = 1;
+		isbrdblank (hpos, value, bplcon3);
+	} else if (regno == 0x106) { // BPLCON3
+		isbrdblank (hpos, bplcon0, value);
   }
   record_color_change (hpos, regno + 0x1000, value);
 }
@@ -2827,6 +2857,10 @@ static void BPLxPTL (int hpos, uae_u16 v, int num)
 
 static void BPLCON0_Denise (int hpos, uae_u16 v, bool immediate)
 {
+	if (! (currprefs.chipset_mask & CSMASK_ECS_DENISE))
+		v &= ~0x00F1;
+	else if (! (currprefs.chipset_mask & CSMASK_AGA))
+		v &= ~0x00B0;
 	v &= ~(0x0200 | 0x0100 | 0x0080 | 0x0020);
 
 	if (bplcon0d == v)
@@ -4248,26 +4282,12 @@ static void vsync_handler_post (void)
   if (currprefs.cachesize) {
     vsyncmintime = last_synctime;
     frh_count = 0;
-    if(ham_drawn) {
-      pissoff_value = SPEEDUP_CYCLES_HAM * CYCLE_UNIT;
-      speedup_timelimit = SPEEDUP_TIMELIMIT_HAM;
-    } else {
-      pissoff_value = SPEEDUP_CYCLES_JIT * CYCLE_UNIT;
-      speedup_timelimit = SPEEDUP_TIMELIMIT_JIT;
-    }
   }
   else
 #endif
   {
     vsyncmintime = last_synctime + vsynctimebase * (maxvpos_nom - LAST_SPEEDUP_LINE) / maxvpos_nom;
-    pissoff_value = SPEEDUP_CYCLES_NONJIT * CYCLE_UNIT;
-    if(ham_drawn) {
-      speedup_timelimit = SPEEDUP_TIMELIMIT_HAM;
-    } else {
-      speedup_timelimit = SPEEDUP_TIMELIMIT_NONJIT;
-    }
   }
-  ham_drawn = false;
   
 	if ((beamcon0 & (0x20 | 0x80)) != (new_beamcon0 & (0x20 | 0x80)) || (vpos_count > 0 && abs (vpos_count - vpos_count_diff) > 1) || lof_changed) {
 		init_hz ();
@@ -5446,6 +5466,7 @@ uae_u8 *restore_custom (uae_u8 *src)
   fmode = RW;			/* 1FC FMODE */
   last_custom_value1 = RW;	/* 1FE ? */
 
+	current_colors.borderblank = isbrdblank (-1, bplcon0, bplcon3);
   DISK_restore_custom (dskpt, dsklen, dskbytr);
 
 	FMODE (0, fmode);
