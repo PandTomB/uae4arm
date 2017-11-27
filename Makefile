@@ -342,7 +342,7 @@ genasm: $(ASMS)
 
 
 clean:
-	$(RM) $(PROG) $(OBJS) $(ASMS)
+	$(RM) $(PROG) $(OBJS) $(ASMS) src/trace.o
 
 delasm:
 	$(RM) $(ASMS)

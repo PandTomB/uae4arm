@@ -1609,6 +1609,7 @@ static uae_u32 filesys_media_change_reply (int mode)
       xfree (u->ui.volname);
 			ui->volname = u->ui.volname = filesys_createvolname (u->mount_volume, u->mount_rootdir, u->zarchive, _T("removable"));
 			uci = getuci (currprefs.mountconfig, nr);
+
 			if (u->ui.unknown_media) {
 				write_log (_T("FILESYS: inserted unreadable volume NR=%d RO=%d\n"), nr, u->mount_readonly);
 			} else {
@@ -5029,7 +5030,6 @@ static void	action_rename_object(TrapContext *ctx, Unit *unit, dpacket *packet)
   	PUT_PCK_RES2 (packet, err1);
   	return;
   }
-
   /* rename always fails if file is open for writing */
   for (k1 = unit->keys; k1; k1 = knext) {
     knext = k1->next;
@@ -5891,7 +5891,6 @@ static int filesys_iteration(UnitInfo *ui)
 	};
 	struct trapmd *mdp;
 	int mdcnt;
-
 	if (ret >= 0) {
 		mdp = &md2[0];
 		mdcnt = 3;
@@ -6324,7 +6323,6 @@ static uae_u32 REGPARAM2 filesys_diagentry (TrapContext *ctx)
   resaddr += 0x1A;
 	if (!KS12_BOOT_HACK || expansion)
     first_resident = resaddr;
-    
   /* The good thing about this function is that it always gets called
    * when we boot. So we could put all sorts of stuff that wants to be done
    * here.
@@ -6935,7 +6933,7 @@ static int rdb_mount (TrapContext *ctx, UnitInfo *uip, int unit_no, int partnum,
 	/* we found required FSHD block */
 	fsmem = xmalloc (uae_u8, 262144);
 	lsegblock = rl (buf + 72);
-	i = 0;
+	int cnt = 0;
 	for (;;) {
 		int pb = lsegblock;
 		if (!legalrdbblock (uip, lsegblock))
@@ -6949,18 +6947,18 @@ static int rdb_mount (TrapContext *ctx, UnitInfo *uip, int unit_no, int partnum,
 		lsegblock = rl (buf + 16);
 		if (lsegblock == pb)
 			goto error;
-		if ((i + 1) * (blocksize - 20) >= 262144)
+		if ((cnt + 1) * (blocksize - 20) >= 262144)
 			goto error;
-		memcpy (fsmem + i * (blocksize - 20), buf + 20, blocksize - 20);
-		i++;
+		memcpy (fsmem + cnt * (blocksize - 20), buf + 20, blocksize - 20);
+		cnt++;
 		if (lsegblock == -1)
 			break;
 	}
-	write_log (_T("RDB: Filesystem loaded, %d bytes\n"), i * (blocksize - 20));
-	trap_put_long(ctx, parmpacket + PP_FSSIZE, i * (blocksize - 20)); /* RDB filesystem size hack */
+	write_log (_T("RDB: Filesystem loaded, %d bytes\n"), cnt * (blocksize - 20));
+	trap_put_long(ctx, parmpacket + PP_FSSIZE, cnt * (blocksize - 20)); /* RDB filesystem size hack */
 	trap_put_long(ctx, parmpacket + PP_ADDTOFSRES, -1);
 	uip->rdb_filesysstore = fsmem;
-	uip->rdb_filesyssize = i * (blocksize - 20);
+	uip->rdb_filesyssize = cnt * (blocksize - 20);
 	xfree (buf);
 	return 2;
 error:
@@ -7403,6 +7401,7 @@ void filesys_install (void)
 
   fsdevname = ds_ansi ("uae.device"); /* does not really exist */
 	fshandlername = ds_bstr_ansi ("uaefs");
+
 	afterdos_name = ds_ansi("UAE afterdos");
 	afterdos_id = ds_ansi("UAE afterdos 0.1");
 

@@ -312,6 +312,7 @@ static uae_u32 REGPARAM2 chipmem_bget (uaecptr addr)
 void REGPARAM2 chipmem_lput (uaecptr addr, uae_u32 l)
 {
   uae_u32 *m;
+
   addr &= chipmem_bank.mask;
   m = (uae_u32 *)(chipmem_bank.baseaddr + addr);
   do_put_mem_long(m, l);
@@ -320,6 +321,7 @@ void REGPARAM2 chipmem_lput (uaecptr addr, uae_u32 l)
 void REGPARAM2 chipmem_wput (uaecptr addr, uae_u32 w)
 {
   uae_u16 *m;
+
   addr &= chipmem_bank.mask;
   m = (uae_u16 *)(chipmem_bank.baseaddr + addr);
   do_put_mem_word (m, w);

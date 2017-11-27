@@ -2449,7 +2449,6 @@ static void expansion_add_autoconfig(struct uae_prefs *p)
 	add_expansions(p, BOARD_AUTOCONFIG_Z3, NULL, 1);
 
 	add_expansions(p, BOARD_NONAUTOCONFIG_AFTER_Z3, NULL, 0);
-
 }
 
 void expansion_scan_autoconfig(struct uae_prefs *p, bool log)

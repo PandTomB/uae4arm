@@ -279,6 +279,7 @@ static void pfield_init_linetoscr (bool border)
 	int ddf_left = dp_for_drawing->plfleft * 2 + DIW_DDF_OFFSET;
 	int ddf_right = dp_for_drawing->plfright * 2 + DIW_DDF_OFFSET;
 	int leftborderhidden;
+	bool expanded = false;
 
 	if (border)
 		ddf_left = DISPLAY_LEFT_SHIFT;
@@ -346,6 +347,13 @@ static void pfield_init_linetoscr (bool border)
 		}
 	}
 
+	// if BPLCON4 is non-zero: it will affect background color until end of DIW.
+	if (dp_for_drawing->xor_seen) {
+		if (playfield_end < linetoscr_diw_end && MAX_STOP > playfield_end) {
+			playfield_end = linetoscr_diw_end;
+			expanded = true;
+		}
+	}
 	if (dp_for_drawing->bordersprite_seen && !ce_is_borderblank(colors_for_drawing.extra) && dip_for_drawing->nr_sprites) {
 		int min = visible_right_border, max = visible_left_border, i;
 		for (i = 0; i < dip_for_drawing->nr_sprites; i++) {
@@ -405,7 +413,7 @@ static void pfield_init_linetoscr (bool border)
   leftborderhidden = playfield_start - native_ddf_left;
 	src_pixel = MAX_PIXELS_PER_LINE + res_shift_from_window (leftborderhidden);
 
-	if (dip_for_drawing->nr_sprites == 0)
+	if (dip_for_drawing->nr_sprites == 0 && !expanded)
 		return;
 
 	/* We need to clear parts of apixels.  */
@@ -1536,7 +1544,7 @@ STATIC_INLINE void do_color_changes (line_draw_func worker_border, line_draw_fun
 	  if (i == dip_for_drawing->last_color_change)
       nextpos = endpos;
 	  else
-		  nextpos = coord_hw_to_window_x (curr_color_changes[i].linepos);
+			nextpos = shres_coord_hw_to_window_x (curr_color_changes[i].linepos);
 
 	  nextpos_in_range = nextpos;
     if (nextpos > endpos)
@@ -1607,6 +1615,7 @@ static void pfield_draw_line (int lineno, int gfx_ypos)
 	xlinebuffer -= linetoscr_x_adjust_pixbytes;
 
 	if (border == 0) {
+
 		pfield_expand_dp_bplcon ();
 		pfield_init_linetoscr (false);
     pfield_doline (lineno);
@@ -1615,11 +1624,19 @@ static void pfield_draw_line (int lineno, int gfx_ypos)
    
     /* The problem is that we must call decode_ham() BEFORE we do the sprites. */
     if (dp_for_drawing->ham_seen) {
+			uae_u8 b0 = dp_for_drawing->bplcon0;
+			uae_u8 b2 = dp_for_drawing->bplcon2;
+			uae_u8 b3 = dp_for_drawing->bplcon3;
+			uae_u8 b4 = dp_for_drawing->bplcon4;
       init_ham_decoding ();
       do_color_changes (dummy_worker, decode_ham);
 	    if (have_color_changes) {
-				// do_color_changes() did color changes, reset colors back to original state
+				// do_color_changes() did color changes and register changes, restore them.
         adjust_drawing_colors (dp_for_drawing->ctable, -1);
+				dp_for_drawing->bplcon0 = b0;
+				dp_for_drawing->bplcon2 = b2;
+				dp_for_drawing->bplcon3 = b3;
+				dp_for_drawing->bplcon4 = b4;
 				pfield_expand_dp_bplcon ();
       }
 			ham_decode_pixel = src_pixel;
@@ -1667,14 +1684,17 @@ static void pfield_draw_line (int lineno, int gfx_ypos)
 		}
 
 		if (dosprites) {
+
 			for (int i = 0; i < dip_for_drawing->nr_sprites; i++)
       	draw_sprites_aga (curr_sprite_entries + dip_for_drawing->first_sprite_entry + i, 1);
 			do_color_changes (pfield_do_linetoscr_bordersprite_aga, pfield_do_linetoscr_bordersprite_aga);
+
 		}	else {
 
 			playfield_start = visible_right_border;
 			playfield_end = visible_right_border;
 			do_color_changes(pfield_do_fill_line, pfield_do_fill_line);
+
 		}
 	}
 }

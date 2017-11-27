@@ -1,4 +1,8 @@
-2017-11-17 - Alpha vesion
+2017-11-19 - Alpha version
+   - Now using more code from WinUAE in custom.cpp
+   - Minor changes in cpu emulation
+   
+2017-11-17 - Alpha version
    - Use sprite drawing code from WinUAE 3.5.0
    - Cleanup code
    - Bufix for render thread

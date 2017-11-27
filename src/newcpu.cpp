@@ -52,7 +52,6 @@ static bool last_notinstruction_for_exception_3;
 static int exception_in_exception;
 
 int cpu_cycles;
-int bus_error_offset;
 int m68k_pc_indirect;
 static int cpu_prefs_changed_flag;
 
@@ -198,25 +197,13 @@ static void set_x_funcs (void)
 static void flush_cpu_caches(bool force)
 {
 	if (currprefs.cpu_model == 68020) {
-		if (regs.cacr & 0x08) { // clear instr cache
-			regs.cacr &= ~0x08;
-		}
-		if (regs.cacr & 0x04) { // clear entry in instr cache
-			regs.cacr &= ~0x04;
-		}
+		regs.cacr &= ~0x08;
+		regs.cacr &= ~0x04;
   } else if (currprefs.cpu_model == 68030) {
-		if (regs.cacr & 0x08) { // clear instr cache
-			regs.cacr &= ~0x08;
-		}
-		if (regs.cacr & 0x04) { // clear entry in instr cache
-			regs.cacr &= ~0x04;
-		}
-		if (regs.cacr & 0x800) { // clear data cache
-			regs.cacr &= ~0x800;
-		}
-		if (regs.cacr & 0x400) { // clear entry in data cache
-			regs.cacr &= ~0x400;
-		}
+		regs.cacr &= ~0x08;
+		regs.cacr &= ~0x04;
+		regs.cacr &= ~0x800;
+		regs.cacr &= ~0x400;
   }
 }
 
@@ -824,7 +811,6 @@ void Exception (int nr)
 	    int i;
 	    if (currprefs.cpu_model >= 68040) {
     		if (nr == 2) {
-
   				// 68040 bus error (not really, some garbage?)
 	  	    for (i = 0 ; i < 18 ; i++) {
 	      		m68k_areg(regs, 7) -= 2;
@@ -1710,7 +1696,6 @@ void m68k_go (int may_quit)
 
 	cpu_prefs_changed_flag = 0;
   in_m68k_go++;
-  
   for (;;) {
   	void (*run_func)(void);
 
@@ -2067,7 +2052,7 @@ void exception3b (uae_u32 opcode, uaecptr addr, bool w, bool i, uaecptr pc)
 
 void exception2 (uaecptr addr, bool read, int size, uae_u32 fc)
 {
-	last_addr_for_exception_3 = m68k_getpc() + bus_error_offset;
+	last_addr_for_exception_3 = m68k_getpc();
 	last_fault_for_exception_3 = addr;
 	last_writeaccess_for_exception_3 = read == 0;
 	last_instructionaccess_for_exception_3 = (fc & 1) == 0;

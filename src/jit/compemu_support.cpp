@@ -404,7 +404,6 @@ void invalidate_block(blockinfo* bi)
   bi->direct_handler = NULL;
   set_dhtu(bi, bi->direct_pen);
   bi->needed_flags = 0xff;
-
 	bi->status = BI_INVALID;
   for (i=0; i<2; i++) {
 	  bi->dep[i].jmp_off = NULL;
@@ -497,7 +496,7 @@ STATIC_INLINE blockinfo* get_blockinfo_addr_new(void* addr, int setstate)
 
 static void prepare_block(blockinfo* bi);
 
-/* Managment of blockinfos.
+/* Management of blockinfos.
 
    A blockinfo struct is allocated whenever a new block has to be
    compiled. If the list of free blockinfos is empty, we allocate a new
@@ -641,7 +640,6 @@ STATIC_INLINE void alloc_blockinfos(void)
   	if (hold_bi[i])
 	    return;
   	bi=hold_bi[i]=alloc_blockinfo();
-
   	prepare_block(bi);
   }
 }
@@ -937,6 +935,7 @@ static  void evict(int r)
   if (live.nat[rr].nholds != live.state[r].realind) { /* Was not last */
 	  int topreg = live.nat[rr].holds[live.nat[rr].nholds];
 	  int thisind = live.state[r].realind;
+	
 	  live.nat[rr].holds[thisind] = topreg;
 	  live.state[topreg].realind = thisind;
   }
@@ -2020,7 +2019,6 @@ STATIC_INLINE int block_check_checksum(blockinfo* bi)
 	     means we have to move it into the needs-to-be-flushed list */
 	  bi->handler_to_use = bi->handler;
 	  set_dhtu(bi, bi->direct_handler);
-
 	  bi->status = BI_CHECKING;
 	  isgood = called_check_checksum(bi) != 0;
   }
