@@ -1,4 +1,11 @@
 
+2015-10-03 - First release
+  Changes:
+   - Cleanup of code
+   - Minor bugfixes
+   - Updated CPU cycles for 68020
+   - GUI: create hardfile and floppy disks
+    
 2015-08-16 - Alpha version
   Changes:
    - JIT: minor optimization of emitted ARM code

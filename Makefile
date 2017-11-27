@@ -18,21 +18,20 @@ all: $(PROG)
 
 PANDORA=1
 
+#USE_XFD=1
+
 DEFAULT_CFLAGS = `$(SDL_BASE)sdl-config --cflags`
 LDFLAGS = -lSDL -lpthread  -lz -lSDL_image -lpng -lrt
 
 MORE_CFLAGS += -DGP2X -DPANDORA -DDOUBLEBUFFER -DARMV6_ASSEMBLY -DUSE_ARMNEON
-MORE_CFLAGS += -DSUPPORT_THREADS -DUAE_FILESYS_THREADS -DNO_MAIN_IN_MAIN_C -DFILESYS -DAUTOCONFIG -DSAVESTATE -DPICASSO96
-MORE_CFLAGS += -DDONT_PARSE_CMDLINE
 #MORE_CFLAGS += -DWITH_LOGGING
 #MORE_CFLAGS += -DDEBUG_M68K
 
-MORE_CFLAGS += -DJIT -DCPU_arm -DARM_ASSEMBLY
+MORE_CFLAGS += -DCPU_arm -DARM_ASSEMBLY
 
 MORE_CFLAGS += -Isrc -Isrc/gp2x -Isrc/menu -Isrc/include -Isrc/gp2x/menu -fomit-frame-pointer -Wno-unused -Wno-format -DUSE_SDL -DGCCCONSTFUNC="__attribute__((const))" -DUSE_UNDERSCORE -DUNALIGNED_PROFITABLE -DOPTIMIZED_FLAGS
 LDFLAGS +=  -lSDL_ttf -lguichan_sdl -lguichan
 MORE_CFLAGS += -fexceptions
-
 
 MORE_CFLAGS += -DROM_PATH_PREFIX=\"./\" -DDATA_PREFIX=\"./data/\" -DSAVE_PREFIX=\"./saves/\"
 
@@ -52,7 +51,6 @@ endif
 ASFLAGS += -mfloat-abi=soft
 
 CFLAGS  = $(DEFAULT_CFLAGS) $(MORE_CFLAGS)
-CFLAGS+= -DCPUEMU_0 -DCPUEMU_11 -DFPUEMU
 
 OBJS =	\
 	src/audio.o \
@@ -82,7 +80,6 @@ OBJS =	\
 	src/missing.o \
 	src/native2amiga.o \
 	src/savestate.o \
-	src/scsi-none.o \
 	src/traps.o \
 	src/uaelib.o \
 	src/zfile.o \
@@ -108,6 +105,18 @@ OBJS =	\
 	src/archivers/dms/u_medium.o \
 	src/archivers/dms/u_quick.o \
 	src/archivers/dms/u_rle.o \
+	src/archivers/lha/crcio.o \
+	src/archivers/lha/dhuf.o \
+	src/archivers/lha/header.o \
+	src/archivers/lha/huf.o \
+	src/archivers/lha/larc.o \
+	src/archivers/lha/lhamaketbl.o \
+	src/archivers/lha/lharc.o \
+	src/archivers/lha/shuf.o \
+	src/archivers/lha/slide.o \
+	src/archivers/lha/uae_lha.o \
+	src/archivers/lha/util.o \
+	src/archivers/lzx/unlzx.o \
 	src/archivers/wrp/warp.o \
 	src/archivers/zip/unzip.o \
 	src/machdep/support.o \
@@ -135,6 +144,7 @@ OBJS =	\
 	src/osdep/gui/ShowMessage.o \
 	src/osdep/gui/SelectFolder.o \
 	src/osdep/gui/SelectFile.o \
+	src/osdep/gui/CreateFilesysHardfile.o \
 	src/osdep/gui/EditFilesysVirtual.o \
 	src/osdep/gui/EditFilesysHardfile.o \
 	src/osdep/gui/PanelPaths.o \
@@ -156,11 +166,19 @@ ifdef PANDORA
 OBJS += src/osdep/gui/sdltruetypefont.o
 endif
 
+ifdef USE_XFD
+OBJS += src/cpu_small.o \
+	src/cpuemu_small.o \
+	src/cpustbl_small.o \
+	src/archivers/xfd/xfd.o
+endif
+
 OBJS += src/newcpu.o
 OBJS += src/readcpu.o
 OBJS += src/cpudefs.o
 OBJS += src/cpustbl.o
 OBJS += src/cpuemu_0.o
+OBJS += src/cpuemu_4.o
 OBJS += src/cpuemu_11.o
 OBJS += src/compemu.o
 OBJS += src/compemu_fpp.o
