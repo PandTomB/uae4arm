@@ -352,7 +352,6 @@ bool EditFilesysHardfile(int unit_no)
   }
 
   EditFilesysHardfileLoop();
-  ExitEditFilesysHardfile();
   
   if(dialogResult)
   {
@@ -367,6 +366,8 @@ bool EditFilesysHardfile(int unit_no)
     if (uci)
     	hardfile_do_disk_change (uci, 1);
   }
+
+  ExitEditFilesysHardfile();
 
   return dialogResult;
 }

@@ -25,6 +25,7 @@ static gcn::UaeCheckBox* chkShowGUI;
 static gcn::Label* lblPandoraSpeed;
 static gcn::Label* lblPandoraSpeedInfo;
 static gcn::Slider* sldPandoraSpeed;
+static gcn::UaeCheckBox* chkBSDSocket;
 
 
 class MiscActionListener : public gcn::ActionListener
@@ -38,6 +39,9 @@ class MiscActionListener : public gcn::ActionListener
       else if (actionEvent.getSource() == chkShowGUI)
         changed_prefs.start_gui = chkShowGUI->isSelected();
 
+      else if (actionEvent.getSource() == chkBSDSocket)
+        changed_prefs.socket_emu = chkBSDSocket->isSelected();
+        
       else if (actionEvent.getSource() == sldPandoraSpeed)
       {
         int newspeed = (int) sldPandoraSpeed->getValue();
@@ -63,7 +67,7 @@ void InitPanelMisc(const struct _ConfigCategory& category)
 	chkShowGUI = new gcn::UaeCheckBox("Show GUI on startup");
 	chkShowGUI->setId("ShowGUI");
   chkShowGUI->addActionListener(miscActionListener);
-  
+
 	lblPandoraSpeed = new gcn::Label("Pandora Speed:");
   lblPandoraSpeed->setSize(110, LABEL_HEIGHT);
   lblPandoraSpeed->setAlignment(gcn::Graphics::RIGHT);
@@ -76,6 +80,10 @@ void InitPanelMisc(const struct _ConfigCategory& category)
   sldPandoraSpeed->addActionListener(miscActionListener);
   lblPandoraSpeedInfo = new gcn::Label("1000 MHz");
 
+	chkBSDSocket = new gcn::UaeCheckBox("bsdsocket.library");
+  chkBSDSocket->setId("BSDSocket");
+  chkBSDSocket->addActionListener(miscActionListener);
+  
 	int posY = DISTANCE_BORDER;
   category.panel->add(chkStatusLine, DISTANCE_BORDER, posY);
   posY += chkStatusLine->getHeight() + DISTANCE_NEXT_Y;
@@ -85,6 +93,8 @@ void InitPanelMisc(const struct _ConfigCategory& category)
   category.panel->add(sldPandoraSpeed, DISTANCE_BORDER + lblPandoraSpeed->getWidth() + 8, posY);
   category.panel->add(lblPandoraSpeedInfo, sldPandoraSpeed->getX() + sldPandoraSpeed->getWidth() + 12, posY);
   posY += sldPandoraSpeed->getHeight() + DISTANCE_NEXT_Y;
+  category.panel->add(chkBSDSocket, DISTANCE_BORDER, posY);
+  posY += chkBSDSocket->getHeight() + DISTANCE_NEXT_Y;
   
   RefreshPanelMisc();
 }
@@ -97,6 +107,7 @@ void ExitPanelMisc(void)
   delete lblPandoraSpeed;
   delete sldPandoraSpeed;
   delete lblPandoraSpeedInfo;
+  delete chkBSDSocket;
   delete miscActionListener;
 }
 
@@ -111,4 +122,6 @@ void RefreshPanelMisc(void)
   sldPandoraSpeed->setValue(changed_prefs.pandora_cpu_speed);
   snprintf(tmp, 20, "%d MHz", changed_prefs.pandora_cpu_speed);
   lblPandoraSpeedInfo->setCaption(tmp);
+  
+  chkBSDSocket->setSelected(changed_prefs.socket_emu);
 }

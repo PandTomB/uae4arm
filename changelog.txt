@@ -1,5 +1,15 @@
 
-2015-10-26 - Release version with bugfixes
+2016-04-03 - Beta version
+   - Disk images in zip files
+   - Support for rp9
+   - New mousehack code
+   - Picasso96: 8 bit color mode
+   - Max. Z3 mem now 128 MB
+   - Built-in AROS
+   - Bugfix: Press q in a textfield in GUI quits UAE4ARM
+   - bsdsocket.library 
+
+2015-10-26 - Release version with bug fixes
    - Switched to newer picasso code from WinUAE. Works much better, even with JIT.
    - Minor update of sprite handling
    - Corrected cpu cycle count in exceptions

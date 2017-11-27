@@ -1,16 +1,7 @@
-PREFIX	=/usr
 $(shell ./link_pandora_dirs.sh)
 
-#SDL_BASE = $(PREFIX)/bin/
-SDL_BASE = 
-
 NAME   = uae4arm
-O      = o
 RM     = rm -f
-#CC     = gcc
-#CXX    = g++
-STRIP  = strip
-#AS     = as
 
 PROG   = $(NAME)
 
@@ -18,49 +9,48 @@ all: $(PROG)
 
 PANDORA=1
 
-#USE_XFD=1
+DEFAULT_CFLAGS = $(CFLAGS) `sdl-config --cflags`
 
-DEFAULT_CFLAGS = `$(SDL_BASE)sdl-config --cflags`
+MY_LDFLAGS = $(LDFLAGS)
+MY_LDFLAGS += -lSDL -lpthread  -lz -lSDL_image -lpng -lrt
+MY_LDFLAGS +=  -lSDL_ttf -lguichan_sdl -lguichan
 
-LDFLAGS = -lSDL -lpthread  -lz -lSDL_image -lpng -lrt
-LDFLAGS +=  -lSDL_ttf -lguichan_sdl -lguichan
-
-MORE_CFLAGS += -DGP2X -DPANDORA -DARMV6_ASSEMBLY -DUSE_ARMNEON
-MORE_CFLAGS += -DCPU_arm -DARM_ASSEMBLY
+MORE_CFLAGS = -DGP2X -DPANDORA -DARMV6_ASSEMBLY -DUSE_ARMNEON
+MORE_CFLAGS += -DCPU_arm
 #MORE_CFLAGS += -DWITH_LOGGING
-#MORE_CFLAGS += -DDEBUG_M68K
 
-MORE_CFLAGS += -Isrc -Isrc/include -fomit-frame-pointer -Wno-unused -Wno-format -Wno-write-strings -DUSE_SDL
+MORE_CFLAGS += -Isrc -Isrc/include -Wno-unused -Wno-format -Wno-write-strings -Wno-multichar -DUSE_SDL
 MORE_CFLAGS += -fexceptions
-MORE_CFLAGS += -msoft-float -ffast-math -D_GLIBCXX_USE_CXX11_ABI=0
+MORE_CFLAGS += -msoft-float
 
 ifndef DEBUG
-MORE_CFLAGS += -O3 -fexpensive-optimizations
-MORE_CFLAGS += -fstrict-aliasing -mstructure-size-boundary=32
-MORE_CFLAGS += -fweb -frename-registers -fomit-frame-pointer
-#MORE_CFLAGS += -falign-functions=32 -falign-loops -falign-labels -falign-jumps
-MORE_CFLAGS += -falign-functions=32
-MORE_CFLAGS += -finline -finline-functions -fno-builtin
+MORE_CFLAGS += -mstructure-size-boundary=32
+MORE_CFLAGS += -falign-functions=32 
+MORE_CFLAGS += -fno-builtin -fweb -frename-registers
+MORE_CFLAGS += -fipa-pta 
 #MORE_CFLAGS += -S
 else
 MORE_CFLAGS += -ggdb
 endif
 
-CFLAGS  = $(DEFAULT_CFLAGS) $(MORE_CFLAGS)
+MY_CFLAGS  = $(MORE_CFLAGS) $(DEFAULT_CFLAGS)
 
 OBJS =	\
+	src/aros.rom.o \
 	src/audio.o \
 	src/autoconf.o \
 	src/blitfunc.o \
 	src/blittable.o \
 	src/blitter.o \
+	src/bsdsocket.o \
 	src/cfgfile.o \
 	src/cia.o \
 	src/crc32.o \
 	src/custom.o \
 	src/disk.o \
+	src/diskutil.o \
 	src/drawing.o \
-	src/ersatz.o \
+	src/events.o \
 	src/expansion.o \
 	src/filesys.o \
 	src/fpp.o \
@@ -73,24 +63,27 @@ OBJS =	\
 	src/keybuf.o \
 	src/main.o \
 	src/memory.o \
-	src/missing.o \
 	src/native2amiga.o \
+	src/rommgr.o \
 	src/savestate.o \
 	src/traps.o \
 	src/uaelib.o \
 	src/uaeresource.o \
 	src/zfile.o \
 	src/zfile_archive.o \
-	src/archivers/7z/7zAlloc.o \
-	src/archivers/7z/7zBuffer.o \
+	src/archivers/7z/Archive/7z/7zAlloc.o \
+	src/archivers/7z/Archive/7z/7zDecode.o \
+	src/archivers/7z/Archive/7z/7zExtract.o \
+	src/archivers/7z/Archive/7z/7zHeader.o \
+	src/archivers/7z/Archive/7z/7zIn.o \
+	src/archivers/7z/Archive/7z/7zItem.o \
+	src/archivers/7z/7zBuf.o \
 	src/archivers/7z/7zCrc.o \
-	src/archivers/7z/7zDecode.o \
-	src/archivers/7z/7zExtract.o \
-	src/archivers/7z/7zHeader.o \
-	src/archivers/7z/7zIn.o \
-	src/archivers/7z/7zItem.o \
-	src/archivers/7z/7zMethodID.o \
-	src/archivers/7z/LzmaDecode.o \
+	src/archivers/7z/7zStream.o \
+  src/archivers/7z/Bcj2.o \
+	src/archivers/7z/Bra.o \
+	src/archivers/7z/Bra86.o \
+	src/archivers/7z/LzmaDec.o \
 	src/archivers/dms/crc_csum.o \
 	src/archivers/dms/getbits.o \
 	src/archivers/dms/maketbl.o \
@@ -118,6 +111,7 @@ OBJS =	\
 	src/archivers/zip/unzip.o \
 	src/machdep/support.o \
 	src/osdep/neon_helper.o \
+	src/osdep/bsdsocket_host.o \
 	src/osdep/fsdb_host.o \
 	src/osdep/joystick.o \
 	src/osdep/keyboard.o \
@@ -163,13 +157,6 @@ ifdef PANDORA
 OBJS += src/osdep/gui/sdltruetypefont.o
 endif
 
-ifdef USE_XFD
-OBJS += src/cpu_small.o \
-	src/cpuemu_small.o \
-	src/cpustbl_small.o \
-	src/archivers/xfd/xfd.o
-endif
-
 OBJS += src/newcpu.o
 OBJS += src/readcpu.o
 OBJS += src/cpudefs.o
@@ -182,13 +169,14 @@ OBJS += src/jit/compemu_fpp.o
 OBJS += src/jit/compstbl.o
 OBJS += src/jit/compemu_support.o
 
-CPPFLAGS  = $(CFLAGS)
-
 src/osdep/neon_helper.o: src/osdep/neon_helper.s
-	$(CXX) -falign-functions=32 -march=armv7-a -mcpu=cortex-a8 -mtune=cortex-a8 -mfpu=neon -mfloat-abi=softfp -Wall -o src/osdep/neon_helper.o -c src/osdep/neon_helper.s
+	$(CXX) -falign-functions=32 -mcpu=cortex-a8 -mtune=cortex-a8 -mfpu=neon -mfloat-abi=softfp -Wall -o src/osdep/neon_helper.o -c src/osdep/neon_helper.s
+
+.cpp.o:
+	$(CXX) $(MY_CFLAGS) -c $< -o $@
 
 $(PROG): $(OBJS)
-	$(CXX) $(CFLAGS) -o $(PROG) $(OBJS) $(LDFLAGS)
+	$(CXX) $(MY_CFLAGS) -o $(PROG) $(OBJS) $(MY_LDFLAGS)
 ifndef DEBUG
 	$(STRIP) $(PROG)
 endif
