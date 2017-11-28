@@ -30,6 +30,8 @@ SDL_Surface *prSDLScreen = NULL;
 static unsigned int current_vsync_frame = 0;
 unsigned long time_per_frame = 20000; // Default for PAL (50 Hz): 20000 microsecs
 static unsigned long last_synctime;
+static int vsync_modulo = 1;
+static int host_hz = 50;
 
 /* Dummy SDL variable for screen init */
 SDL_Surface *Dummy_prSDLScreen = NULL;
@@ -83,6 +85,25 @@ int graphics_setup(void)
 	picasso_InitResolutions();
 	InitPicasso96();
 #endif
+  VCHI_INSTANCE_T vchi_instance;
+  VCHI_CONNECTION_T *vchi_connection;
+  TV_DISPLAY_STATE_T tvstate;
+
+  if(vchi_initialise(&vchi_instance) == 0) {
+    if(vchi_connect(NULL, 0, vchi_instance) == 0) {
+      vc_vchi_tv_init(vchi_instance, &vchi_connection, 1);
+      if(vc_tv_get_display_state(&tvstate) == 0) {
+        HDMI_PROPERTY_PARAM_T property;
+        property.property = HDMI_PROPERTY_PIXEL_CLOCK_TYPE;
+        vc_tv_hdmi_get_property(&property);
+        float frame_rate = property.param1 == HDMI_PIXEL_CLOCK_TYPE_NTSC ? tvstate.display.hdmi.frame_rate * (1000.0f/1001.0f) : tvstate.display.hdmi.frame_rate;
+        host_hz = (int)frame_rate;
+      }
+      vc_vchi_tv_stop();
+      vchi_disconnect(vchi_instance);
+    }
+  }
+
 	bcm_host_init();
 	dispmanxdisplay = vc_dispmanx_display_open(0);
   vc_dispmanx_vsync_callback(dispmanxdisplay, vsync_callback, NULL);
@@ -374,17 +395,43 @@ void show_screen(int mode)
   unsigned long start = read_processor_time();
 
   int wait_till = current_vsync_frame;
-  do 
-  {
-    usleep(100);
-    current_vsync_frame = vsync_counter;
-  } while (wait_till >= current_vsync_frame && read_processor_time() - start < 40000);
-  
-  if(wait_till + 1 != current_vsync_frame) 
-  {
-    // We missed a vsync...
-    next_synctime = 0;
+  if(vsync_modulo == 1) {
+    // Amiga framerate is equal to host framerate
+    do 
+    {
+      usleep(10);
+      current_vsync_frame = vsync_counter;
+    } while (wait_till >= current_vsync_frame && read_processor_time() - start < 40000);
+
+    if(wait_till + 1 != current_vsync_frame) {
+      // We missed a vsync...
+      next_synctime = 0;
+    }
+  } else {
+    // Amiga framerate differs from host framerate
+    unsigned long wait_till_time = (next_synctime != 0) ? next_synctime : last_synctime + time_per_frame;
+    if(current_vsync_frame % vsync_modulo == 0) {
+      // Real vsync
+      if(start < wait_till_time) {
+        // We are in time, wait for vsync
+        atomic_set(&vsync_counter, current_vsync_frame);
+        do 
+        {
+          usleep(10);
+          current_vsync_frame = vsync_counter;
+        } while (wait_till >= current_vsync_frame && read_processor_time() - start < 40000);
+      } else {
+        // Too late for vsync
+      }
+    } else {
+      // Estimate vsync by time
+      while (wait_till_time > read_processor_time()) {
+        usleep(10);
+      }
+      ++current_vsync_frame;
+    }
   }
+
   current_vsync_frame += currprefs.gfx_framerate;
 
   last_synctime = read_processor_time();
@@ -711,6 +758,13 @@ bool vsync_switchmode(int hz)
   	black_screen_now();
     fpscounter_reset();
     time_per_frame = 1000 * 1000 / (hz);
+
+    if(hz == host_hz)
+      vsync_modulo = 1;
+    else if (hz > host_hz)
+      vsync_modulo = 6; // Amiga draws 6 frames while host has 5 vsyncs -> sync every 6th Amiga frame
+    else
+      vsync_modulo = 5; // Amiga draws 5 frames while host has 6 vsyncs -> sync every 5th Amiga frame
   }
   
   if(!picasso_on && !picasso_requested_on)

@@ -60,11 +60,12 @@ static void uae_abort (const TCHAR *format,...)
 	nomore = 1;
 }
 
-#define SPEEDUP_CYCLES_JIT 5000
+#define SPEEDUP_CYCLES_JIT_PAL 5000
+#define SPEEDUP_CYCLES_JIT_NTSC 4000
 #define SPEEDUP_CYCLES_NONJIT 256
 #define SPEEDUP_TIMELIMIT_JIT -750
 #define SPEEDUP_TIMELIMIT_NONJIT -750
-int pissoff_value = SPEEDUP_CYCLES_JIT * CYCLE_UNIT;
+int pissoff_value = SPEEDUP_CYCLES_JIT_PAL * CYCLE_UNIT;
 int speedup_timelimit = SPEEDUP_TIMELIMIT_JIT;
 
 /* Events */
@@ -341,7 +342,7 @@ void set_speedup_values(void)
 {
   if(currprefs.m68k_speed < 0) {
     if (currprefs.cachesize) {
-      pissoff_value = SPEEDUP_CYCLES_JIT * CYCLE_UNIT;
+      pissoff_value = ((vblank_hz > 55) ? SPEEDUP_CYCLES_JIT_NTSC : SPEEDUP_CYCLES_JIT_PAL) * CYCLE_UNIT;
       speedup_timelimit = SPEEDUP_TIMELIMIT_JIT;
     } else {
       pissoff_value = SPEEDUP_CYCLES_NONJIT * CYCLE_UNIT;
