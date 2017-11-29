@@ -193,17 +193,19 @@ static NavigationMap navMap[] =
   
 // PanelDisplay
 #ifndef RASPBERRY
-  { "sldWidth",       "",               "",               "Frameskip",      "sldHeight" },
-  { "sldHeight",      "",               "",               "sldWidth",       "sldVertPos" },
-  { "sldVertPos",     "",               "",               "sldHeight",      "Frameskip" },
-  { "Frameskip",      "Display",        "Display",        "sldVertPos",     "sldWidth" },
+  { "sldWidth",       "",             "",               "Frameskip",      "sldHeight" },
+  { "sldHeight",      "",             "",               "sldWidth",       "sldVertPos" },
+  { "sldVertPos",     "",             "",               "sldHeight",      "Line doubling" },
+  { "Line doubling",  "Display",      "Display",        "sldVertPos",     "Frameskip" },
+  { "Frameskip",      "Display",      "Display",        "Line doubling",  "sldWidth" },
 #else
-    { "sldWidth",       "",             "",               "Frameskip",      "sldHeight" },
-    { "sldHeight",      "",             "",               "sldWidth",       "sldVertPos" },
-    { "sldVertPos",     "",             "",               "sldHeight",      "FSRatio" },
-    { "FSRatio",        "",             "",               "sldVertPos",     "4by3Ratio" },
-    { "4by3Ratio",      "Display",      "Display",        "FSRatio",        "Frameskip" },
-    { "Frameskip",      "Display",      "Display",        "4by3Ratio",      "sldWidth" },
+  { "sldWidth",       "",             "",               "Frameskip",      "sldHeight" },
+  { "sldHeight",      "",             "",               "sldWidth",       "sldVertPos" },
+  { "sldVertPos",     "",             "",               "sldHeight",      "FSRatio" },
+  { "FSRatio",        "",             "",               "sldVertPos",     "4by3Ratio" },
+  { "4by3Ratio",      "Display",      "Display",        "FSRatio",        "Line doubling" },
+  { "Line doubling",  "Display",      "Display",        "4by3Ratio",      "Frameskip" },
+  { "Frameskip",      "Display",      "Display",        "Line doubling",  "sldWidth" },
 #endif
 
 //PanelSound

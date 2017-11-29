@@ -853,7 +853,7 @@ int main (int argc, char *argv[])
 	printf("Based on previous work by Chips and TomB (Pandora)\n");
 #endif
 	max_uae_width = 768;
-	max_uae_height = 270;
+	max_uae_height = 625;
 
   defaultCpuSpeed = getDefaultCpuSpeed();
   

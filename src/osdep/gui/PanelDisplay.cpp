@@ -13,6 +13,7 @@
 #include "options.h"
 #include "include/memory.h"
 #include "uae.h"
+#include "custom.h"
 #include "gui.h"
 #include "gui_handling.h"
 
@@ -34,6 +35,7 @@ static gcn::Slider* sldAmigaHeight;
 static gcn::Label* lblVertPos;
 static gcn::Label* lblVertPosInfo;
 static gcn::Slider* sldVertPos;
+static gcn::UaeCheckBox* chkLineDbl;
 static gcn::UaeCheckBox* chkFrameskip;
 #ifdef RASPBERRY
 static gcn::Label*  lblFSRatio;
@@ -75,6 +77,10 @@ class AmigaScreenActionListener : public gcn::ActionListener
       else if (actionEvent.getSource() == chkFrameskip) 
       {
         changed_prefs.gfx_framerate = chkFrameskip->isSelected() ? 1 : 0;
+      }
+      else if (actionEvent.getSource() == chkLineDbl) 
+      {
+        changed_prefs.gfx_vresolution = chkLineDbl->isSelected() ? VRES_DOUBLE : VRES_NONDOUBLE;
       }
 #ifdef RASPBERRY
       else if (actionEvent.getSource() == sldFSRatio)
@@ -151,6 +157,9 @@ void InitPanelDisplay(const struct _ConfigCategory& category)
   chkAspect->addActionListener(amigaScreenActionListener);
 #endif
 
+	chkLineDbl = new gcn::UaeCheckBox("Line doubling");
+  chkLineDbl->addActionListener(amigaScreenActionListener);
+
 	chkFrameskip = new gcn::UaeCheckBox("Frameskip");
   chkFrameskip->addActionListener(amigaScreenActionListener);
 
@@ -189,6 +198,8 @@ void InitPanelDisplay(const struct _ConfigCategory& category)
   category.panel->add(chkAspect, DISTANCE_BORDER, posY);
   posY += chkAspect->getHeight() + DISTANCE_NEXT_Y;
 #endif
+  category.panel->add(chkLineDbl, DISTANCE_BORDER, posY);
+  posY += chkLineDbl->getHeight() + DISTANCE_NEXT_Y;
   category.panel->add(chkFrameskip, DISTANCE_BORDER, posY);
 
   RefreshPanelDisplay();
@@ -207,6 +218,7 @@ void ExitPanelDisplay(void)
   delete sldVertPos;
   delete lblVertPosInfo;
   delete grpAmigaScreen;
+  delete chkLineDbl;
   delete chkFrameskip;
   delete amigaScreenActionListener;
 #ifdef RASPBERRY
@@ -264,6 +276,7 @@ void RefreshPanelDisplay(void)
   snprintf(tmp, 32, "%d", changed_prefs.pandora_vertical_offset - OFFSET_Y_ADJUST);
   lblVertPosInfo->setCaption(tmp);
   
+  chkLineDbl->setSelected(changed_prefs.gfx_vresolution != VRES_NONDOUBLE);
   chkFrameskip->setSelected(changed_prefs.gfx_framerate);
 }
 
@@ -277,6 +290,8 @@ bool HelpPanelDisplay(std::vector<std::string> &helptext)
   helptext.push_back("");
   helptext.push_back("With \"Vert. offset\" you can adjust the position of the first drawn line of the Amiga screen. You can also change");
   helptext.push_back("this during emulation with left and right shoulder button and dpad up/down.");
+  helptext.push_back("");
+  helptext.push_back("Activate line doubling to remove flicker in interlace modes.");
   helptext.push_back("");
   helptext.push_back("When you activate \"Frameskip\", only every second frame is drawn. This will improve performance and some");
   helptext.push_back("more games are playable.");

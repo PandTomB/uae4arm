@@ -84,6 +84,8 @@ bool aga_mode; /* mirror of chipset_mask & CSMASK_AGA */
    coordinates have a lower resolution (i.e. we're shrinking the image).  */
 static int res_shift;
 
+static int linedbl;
+
 int interlace_seen;
 
 /* Lookup tables for dual playfields.  The dblpf_*1 versions are for the case
@@ -152,11 +154,10 @@ static uae_u16 ham_linebuf[MAX_PIXELS_PER_LINE * 2];
 
 static uae_u8 *xlinebuffer;
 
-#define MAX_VIDHEIGHT 270
-
-static int *native2amiga_line_map;
-static uae_u8 *row_map[MAX_VIDHEIGHT + 1];
+static int *amiga2aspect_line_map, *native2amiga_line_map;
+static uae_u8 **row_map;
 static uae_u8 row_tmp[MAX_PIXELS_PER_LINE * 32 / 8];
+static int max_drawn_amiga_line;
 
 /* line_draw_funcs: pfield_do_linetoscr, pfield_do_fill_line, decode_ham */
 typedef void (*line_draw_func)(int, int, bool);
@@ -164,6 +165,7 @@ typedef void (*line_draw_func)(int, int, bool);
 static bool screenlocked = false;
 static int next_line_to_render = 0;
 static int linestate_first_undecided = 0;
+static bool nextline_as_previous = false;
 
 uae_u8 line_data[(MAXVPOS + 2) * 2][MAX_PLANES * MAX_WORDS_PER_LINE * 2];
 
@@ -172,7 +174,8 @@ uae_u8 line_data[(MAXVPOS + 2) * 2][MAX_PLANES * MAX_WORDS_PER_LINE * 2];
 static int visible_left_border, visible_right_border;
 
 static int linetoscr_x_adjust_pixbytes, linetoscr_x_adjust_pixels;
-static int thisframe_y_adjust_real, max_ypos_thisframe;
+static int thisframe_y_adjust;
+static int thisframe_y_adjust_real, max_ypos_thisframe, min_ypos_for_screen;
 
 #define MAX_STOP 30000
 
@@ -220,7 +223,7 @@ int coord_native_to_amiga_x (int x)
 
 int coord_native_to_amiga_y (int y)
 {
-  return native2amiga_line_map[y];
+	return native2amiga_line_map[y] + thisframe_y_adjust - minfirstline;
 }
 
 STATIC_INLINE int res_shift_from_window (int x)
@@ -1454,39 +1457,73 @@ static void pfield_doline (int lineno)
 
 void init_row_map (void)
 {
+	static uae_u8 *oldbufmem;
+	static int oldheight, oldpitch;
   int i, j;
 
-  for (i = gfxvidinfo.drawbuffer.outheight; i < MAX_VIDHEIGHT + 1; i++)
+	if (!row_map) {
+		row_map = xmalloc(uae_u8*, max_uae_height + 1);
+	}
+
+	if (oldbufmem && oldbufmem == gfxvidinfo.drawbuffer.bufmem &&
+		oldheight == gfxvidinfo.drawbuffer.outheight &&
+		oldpitch == gfxvidinfo.drawbuffer.rowbytes)
+		return;
+	j = oldheight == 0 ? max_uae_height : oldheight;
+  for (i = gfxvidinfo.drawbuffer.outheight; i < max_uae_height + 1 && i < j + 1; i++) {
     row_map[i] = row_tmp;
+  }
   for (i = 0, j = 0; i < gfxvidinfo.drawbuffer.outheight; i++, j += gfxvidinfo.drawbuffer.rowbytes) {
 		row_map[i] = gfxvidinfo.drawbuffer.bufmem + j;
   }
+	oldbufmem = gfxvidinfo.drawbuffer.bufmem;
+	oldheight = gfxvidinfo.drawbuffer.outheight;
+	oldpitch = gfxvidinfo.drawbuffer.rowbytes;
 }
 
 static void init_aspect_maps (void)
 {
   int i, maxl, h;
 
-  h = gfxvidinfo.drawbuffer.outheight;
+	linedbl = currprefs.gfx_vresolution;
+  maxl = (MAXVPOS + 1) << linedbl;
+	min_ypos_for_screen = minfirstline << linedbl;
+	max_drawn_amiga_line = -1;
 
+  h = gfxvidinfo.drawbuffer.outheight;
   if (h == 0)
 	  /* Do nothing if the gfx driver hasn't initialized the screen yet */
 	  return;
 
   if (native2amiga_line_map)
   	xfree (native2amiga_line_map);
+	if (amiga2aspect_line_map)
+		xfree (amiga2aspect_line_map);
 
+	/* At least for this array the +1 is necessary. */
+	amiga2aspect_line_map = xmalloc (int, (MAXVPOS + 1) * 2 + 1);
   native2amiga_line_map = xmalloc (int, h);
 
-  maxl = (MAXVPOS + 1);
+	for (i = 0; i < maxl; i++) {
+		int v = i - min_ypos_for_screen;
+		if (v >= h && max_drawn_amiga_line < 0)
+			max_drawn_amiga_line = v;
+		if (i < min_ypos_for_screen || v >= h)
+			v = -1;
+		amiga2aspect_line_map[i] = v;
+	}
+	if (max_drawn_amiga_line < 0)
+		max_drawn_amiga_line = maxl - min_ypos_for_screen;
 
   for (i = 0; i < h; i++)
   	native2amiga_line_map[i] = -1;
 
-  for (i = maxl - 1; i >= minfirstline; i--) {
+	for (i = maxl - 1; i >= min_ypos_for_screen; i--) {
     int j;
-  	for (j = i - minfirstline; j < h && native2amiga_line_map[j] == -1; j++)
-	    native2amiga_line_map[j] = i + currprefs.pandora_vertical_offset;
+		if (amiga2aspect_line_map[i] == -1)
+			continue;
+  	for (j = amiga2aspect_line_map[i]; j < h && native2amiga_line_map[j] == -1; j++)
+	    native2amiga_line_map[j] = (i + currprefs.pandora_vertical_offset) >> linedbl;
   }
 }
 
@@ -1712,14 +1749,24 @@ STATIC_INLINE bool is_color_changes(struct draw_info *di)
 	return changes > 1 || (changes == 1 && regno != 0xffff && regno != -1);
 }
 
-static void pfield_draw_line (int lineno, int gfx_ypos)
+static void pfield_draw_line (int lineno, int gfx_ypos, int follow_ypos)
 {
 	int border = 0;
+	int do_double = 0;
 	bool have_color_changes;
 
   dp_for_drawing = line_decisions + lineno;
   dip_for_drawing = curr_drawinfo + lineno;
 
+  if(currprefs.gfx_vresolution && !interlace_seen) {
+    if(nextline_as_previous) {
+      nextline_as_previous = false;
+      return;
+    }
+    nextline_as_previous = true;
+    if(follow_ypos >= 0)    
+      do_double = 1;
+  }
 	if (dp_for_drawing->plfleft < 0)
 		border = 1;
 
@@ -1777,6 +1824,10 @@ static void pfield_draw_line (int lineno, int gfx_ypos)
 		else
 			do_color_changes (pfield_do_fill_line, dip_for_drawing->nr_sprites ? pfield_do_linetoscr_spr : pfield_do_linetoscr);
 
+		if (do_double) {
+			memcpy (row_map[follow_ypos], row_map[gfx_ypos], gfxvidinfo.drawbuffer.pixbytes * gfxvidinfo.drawbuffer.outwidth);
+		}
+
 		if (dip_for_drawing->nr_sprites)
 			pfield_erase_hborder_sprites ();
 
@@ -1804,6 +1855,11 @@ static void pfield_draw_line (int lineno, int gfx_ypos)
 			  // normal border line
 			  fill_line_border(lineno);
       }
+
+			if (do_double) {
+				xlinebuffer = row_map[follow_ypos] - linetoscr_x_adjust_pixbytes;
+				fill_line_border(lineno);
+			}
 			return;
 		}
 
@@ -1820,6 +1876,11 @@ static void pfield_draw_line (int lineno, int gfx_ypos)
 			do_color_changes(pfield_do_fill_line, pfield_do_fill_line);
 
 		}
+
+		if (do_double) {
+			memcpy (row_map[follow_ypos], row_map[gfx_ypos], gfxvidinfo.drawbuffer.pixbytes * gfxvidinfo.drawbuffer.outwidth);
+		}
+
 	}
 }
 
@@ -1836,8 +1897,21 @@ static void center_image (void)
   linetoscr_x_adjust_pixels	= visible_left_border;
 	linetoscr_x_adjust_pixbytes = linetoscr_x_adjust_pixels * gfxvidinfo.drawbuffer.pixbytes;
 
-  thisframe_y_adjust_real = minfirstline + currprefs.pandora_vertical_offset;
-  max_ypos_thisframe = (maxvpos_display - minfirstline);
+	int max_drawn_amiga_line_tmp = max_drawn_amiga_line;
+	if (max_drawn_amiga_line_tmp > gfxvidinfo.drawbuffer.outheight)
+		max_drawn_amiga_line_tmp = gfxvidinfo.drawbuffer.outheight;
+	max_drawn_amiga_line_tmp >>= linedbl;
+
+	thisframe_y_adjust = minfirstline + currprefs.pandora_vertical_offset;
+
+	/* Make sure the value makes sense */
+	if (thisframe_y_adjust + max_drawn_amiga_line_tmp > maxvpos + maxvpos / 2)
+		thisframe_y_adjust = maxvpos + maxvpos / 2 - max_drawn_amiga_line_tmp;
+	if (thisframe_y_adjust < 0)
+		thisframe_y_adjust = 0;
+
+  thisframe_y_adjust_real = thisframe_y_adjust << linedbl;
+	max_ypos_thisframe = (maxvpos_display - minfirstline + 1) << linedbl;
 }
 
 static void init_drawing_frame (void)
@@ -1847,6 +1921,7 @@ static void init_drawing_frame (void)
   init_hardware_for_drawing_frame ();
 
   linestate_first_undecided = 0;
+  nextline_as_previous = false;
 
   center_image ();
 
@@ -1872,12 +1947,19 @@ static void partial_draw_frame(void)
     }
   
   	struct vidbuffer *vb = &gfxvidinfo.drawbuffer;
-  	for (; next_line_to_render < max_ypos_thisframe && next_line_to_render < vb->outheight; ++next_line_to_render) {
+  	for (; next_line_to_render < max_ypos_thisframe; ++next_line_to_render) {
+		  int i1 = next_line_to_render + min_ypos_for_screen;
   		int line = next_line_to_render + thisframe_y_adjust_real;
-      if(line >= linestate_first_undecided)
+		  int whereline = amiga2aspect_line_map[i1];
+		  int wherenext = amiga2aspect_line_map[i1 + 1];
+
+	    if (whereline >= vb->outheight || line >= linestate_first_undecided)
   			break;
+	    if (whereline < 0)
+		    continue;
+
 		  hposblank = 0;
-  		pfield_draw_line (line, next_line_to_render);
+  		pfield_draw_line (line, whereline, wherenext);
   	}
   }
 }
@@ -1901,13 +1983,19 @@ static void finish_drawing_frame (void)
     screenlocked = true;
   }
 
-	for (i = next_line_to_render; i < max_ypos_thisframe && i < vb->outheight; i++) {
+	for (i = next_line_to_render; i < max_ypos_thisframe; i++) {
+    int i1 = i + min_ypos_for_screen;
 		int line = i + thisframe_y_adjust_real;
-    if(line >= linestate_first_undecided)
+    int whereline = amiga2aspect_line_map[i1];
+    int wherenext = amiga2aspect_line_map[i1 + 1];
+
+    if (whereline >= vb->outheight || line >= linestate_first_undecided)
 			break;
+    if (whereline < 0)
+      continue;
 
     hposblank = 0;
-		pfield_draw_line (line, i);
+		pfield_draw_line (line, whereline, wherenext);
 	}
   
 	if (currprefs.leds_on_screen) {
@@ -2010,8 +2098,12 @@ void hsync_record_line_state (int lineno)
 
   linestate_first_undecided = lineno + 1;
 
-  if(render_tid && !(linestate_first_undecided & 0x1f) && !render_thread_busy) {
-    write_comm_pipe_u32 (render_pipe, RENDER_SIGNAL_PARTIAL, 1);
+  if(render_tid && linestate_first_undecided > 3 && !render_thread_busy) {
+    if (currprefs.gfx_vresolution) {
+      if (!(linestate_first_undecided & 0x3e))
+        write_comm_pipe_u32(render_pipe, RENDER_SIGNAL_PARTIAL, 1);
+    } else if(!(linestate_first_undecided & 0x1f))
+      write_comm_pipe_u32 (render_pipe, RENDER_SIGNAL_PARTIAL, 1);
   }
 }
 
@@ -2023,7 +2115,7 @@ bool notice_interlace_seen (bool lace)
 		if (interlace_seen == 0) {
 			changed = true;
 		}
-		interlace_seen = -1;
+		interlace_seen = currprefs.gfx_vresolution ? 1 : -1;
 	} else {
 		if (interlace_seen) {
 			changed = true;
@@ -2038,6 +2130,7 @@ void reset_drawing (void)
   lores_reset ();
 
   linestate_first_undecided = 0;
+  nextline_as_previous = false;
   
   init_aspect_maps ();
 

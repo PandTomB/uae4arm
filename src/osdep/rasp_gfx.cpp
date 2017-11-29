@@ -169,7 +169,7 @@ void InitAmigaVidMode(struct uae_prefs *p)
 	gfxvidinfo.drawbuffer.pixbytes = 2;
 	gfxvidinfo.drawbuffer.bufmem = (uae_u8 *)prSDLScreen->pixels;
 	gfxvidinfo.drawbuffer.outwidth = p->gfx_size.width;
-	gfxvidinfo.drawbuffer.outheight = p->gfx_size.height;
+	gfxvidinfo.drawbuffer.outheight = p->gfx_size.height << p->gfx_vresolution;
 	gfxvidinfo.drawbuffer.rowbytes = prSDLScreen->pitch;
 }
 
@@ -227,7 +227,7 @@ static void open_screen(struct uae_prefs *p)
 	{
 		p->gfx_resolution = p->gfx_size.width > 600 ? 1 : 0;
 		width  = p->gfx_size.width;
-		height = p->gfx_size.height;
+		height = p->gfx_size.height << p->gfx_vresolution;
 	}
 
 	if (Dummy_prSDLScreen != NULL)
@@ -314,12 +314,14 @@ int check_prefs_changed_gfx(void)
   
 	if (currprefs.gfx_size.height != changed_prefs.gfx_size.height ||
 	   currprefs.gfx_size.width != changed_prefs.gfx_size.width ||
-	   currprefs.gfx_resolution != changed_prefs.gfx_resolution)
+	   currprefs.gfx_resolution != changed_prefs.gfx_resolution ||
+		 currprefs.gfx_vresolution != changed_prefs.gfx_vresolution)
 	{
 		cfgfile_configuration_change(1);
 		currprefs.gfx_size.height = changed_prefs.gfx_size.height;
 		currprefs.gfx_size.width = changed_prefs.gfx_size.width;
 		currprefs.gfx_resolution = changed_prefs.gfx_resolution;
+		currprefs.gfx_vresolution = changed_prefs.gfx_vresolution;
 		update_display(&currprefs);
 		changed = 1;
 	}
