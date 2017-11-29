@@ -1,4 +1,4 @@
-﻿Read changelog.txt for the history of development of UAE4ARM for Pandora. 
+Read changelog.txt for the history of development of UAE4ARM for Pandora. 
 
 This version is compiled and tested with Raspbian Stretch.
 
@@ -14,6 +14,7 @@ Requirements:
  - libFLAC
 
 Install the libs to run emulator on Raspberry Pi:
+
       sudo apt-get install libsdl1.2debian
       sudo apt-get install libsdl-image1.2
       sudo apt-get install libsdl-gfx1.2
@@ -24,6 +25,7 @@ Install the libs to run emulator on Raspberry Pi:
       sudo apt-get install mpeg2dec
 
 Install the packages to compile uae4arm on Raspberry Pi:
+
       sudo apt-get install libsdl-dev
       sudo apt-get install libguichan-dev
       sudo apt-get install libsdl-ttf2.0-dev
