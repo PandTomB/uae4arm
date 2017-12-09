@@ -3,12 +3,17 @@
 
 #include <list>
 
-#include "guichan/keylistener.hpp"
+#ifdef USE_SDL2
+#include <guisan/listmodel.hpp>
+#include <guisan/platform.hpp>
+#include <guisan/widget.hpp>
+#include <guisan/widgets/listbox.hpp>
+#else
 #include "guichan/listmodel.hpp"
-#include "guichan/mouselistener.hpp"
 #include "guichan/platform.hpp"
 #include "guichan/widget.hpp"
 #include "guichan/widgets/listbox.hpp"
+#endif
 
 
 namespace gcn
@@ -18,7 +23,7 @@ namespace gcn
     public:
       UaeListBox();
 
-      UaeListBox(ListModel *listModel);
+		  explicit UaeListBox(ListModel* listModel);
 
       virtual ~UaeListBox();
 

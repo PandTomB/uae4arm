@@ -1,10 +1,11 @@
 #include "UaeCheckBox.hpp"
+#ifdef USE_SDL2
+#include <guisan/widgets/checkbox.hpp>
+#include <guisan/graphics.hpp>
+#else
 #include "guichan/widgets/checkbox.hpp"
-
-#include "guichan/font.hpp"
 #include "guichan/graphics.hpp"
-#include "guichan/key.hpp"
-#include "guichan/mouseinput.hpp"
+#endif
 
 
 namespace gcn

@@ -1,7 +1,14 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 #include "UaeRadioButton.hpp"
 #include "UaeDropDown.hpp"
@@ -59,12 +66,12 @@ static struct amigamodels amodels[] = {
 	{ 4, "Amiga 500+", { 
 	     "Basic non-expanded configuration",
 	     "2 MB Chip RAM expanded configuration",
-	     "MB Fast RAM expanded configuration\n",
+	     "4 MB Fast RAM expanded configuration",
 	     "\0" } },
 	{ 4, "Amiga 600", { 
 	     "Basic non-expanded configuration",
 	     "2 MB Chip RAM expanded configuration",
-	     "n MB Fast RAM expanded configuration",
+	     "4 MB Fast RAM expanded configuration",
 	     "\0" } },
 	{ 4, "Amiga 1200", {
 	      "Basic non-expanded configuration",
@@ -885,7 +892,7 @@ bool HelpPanelQuickstart(std::vector<std::string> &helptext)
   helptext.push_back("After selecting the Amiga model, you can choose from a small list of standard configurations for this model to");
   helptext.push_back("start with.");
   helptext.push_back("");
-  helptext.push_back("When you activate \"Start in Quickstart mode\", the next time you run UAE4ARM, it  will start with the quickstart");
+  helptext.push_back("When you activate \"Start in Quickstart mode\", the next time you run the emulator, it  will start with the quickstart");
   helptext.push_back("panel. Otherwise you start in configuraions panel.");
   return true;
 }

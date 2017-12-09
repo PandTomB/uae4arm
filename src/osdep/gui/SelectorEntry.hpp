@@ -1,12 +1,16 @@
 #ifndef GCN_SELECTORENTRY_HPP
 #define GCN_SELECTORENTRY_HPP
 
-#include <list>
-
+#ifdef USE_SDL2
+#include <guisan/basiccontainer.hpp>
+#include <guisan/platform.hpp>
+#include <guisan/widgetlistener.hpp>
+#include <string>
+#else
 #include "guichan/basiccontainer.hpp"
-#include "guichan/graphics.hpp"
 #include "guichan/platform.hpp"
 #include "guichan/widgetlistener.hpp"
+#endif
 
 
 namespace gcn

@@ -120,7 +120,11 @@ static void read_mouse (void)
     int x, y;
     SDL_GetMouseState(&x, &y);
 	  setmousestate(0, 0, x, 1);
+#ifdef USE_SDL2
 	  setmousestate(0, 1, y, 1);
+#else
+	  setmousestate(0, 1, y - OFFSET_Y_ADJUST, 1);
+#endif
   }
 }
 
@@ -274,8 +278,13 @@ static int init_joystick (void)
 	{
 		Joysticktable[cpt] = SDL_JoystickOpen(cpt);
 		if(Joysticktable[cpt] != NULL) {
+#ifdef USE_SDL2
+		  if(SDL_JoystickNameForIndex(cpt) != NULL)
+    		strncpy(JoystickName[cpt], SDL_JoystickNameForIndex(cpt), 80 - 1);
+#else
 		  if(SDL_JoystickName(cpt) != NULL)
     		strncpy(JoystickName[cpt], SDL_JoystickName(cpt), 80 - 1);
+#endif
       else
         sprintf(JoystickName[cpt], "Joystick%d", cpt);
   
@@ -524,77 +533,4 @@ int input_get_default_joystick (struct uae_input_device *uid, int num, int port,
 int input_get_default_joystick_analog (struct uae_input_device *uid, int num, int port, int af, bool joymouseswap) 
 {
   return 0;
-}
-
-
-void SimulateMouseOrJoy(int code, int keypressed)
-{
-  switch(code) {
-    case REMAP_MOUSEBUTTON_LEFT:
-      mouseBut1viaCustom = keypressed;
-      setmousebuttonstate (0, 0, keypressed);
-      setmousebuttonstate (1, 0, keypressed);
-      break;
-      
-    case REMAP_MOUSEBUTTON_RIGHT:
-      mouseBut2viaCustom = keypressed;
-      setmousebuttonstate (0, 1, keypressed);
-      setmousebuttonstate (1, 1, keypressed);
-      break;
-      
-    case REMAP_JOYBUTTON_ONE:
-      joyButXviaCustom[0] = keypressed;
-      setjoybuttonstate (0, 0, keypressed);
-      break;
-      
-    case REMAP_JOYBUTTON_TWO:
-      joyButXviaCustom[1] = keypressed;
-      setjoybuttonstate (0, 1, keypressed);
-      break;
-      
-    case REMAP_JOY_UP:
-      joyYviaCustom = keypressed;
-      setjoystickstate (0, 1, keypressed ? -32767 : 0, 32767);
-      break;
-      
-    case REMAP_JOY_DOWN:
-      joyYviaCustom = keypressed;
-      setjoystickstate (0, 1, keypressed ? 32767 : 0, 32767);
-      break;
-      
-    case REMAP_JOY_LEFT:
-      joyXviaCustom = keypressed;
-      setjoystickstate (0, 0, keypressed ? -32767 : 0, 32767);
-      break;
-      
-    case REMAP_JOY_RIGHT:
-      joyXviaCustom = keypressed;
-      setjoystickstate (0, 0, keypressed ? 32767 : 0, 32767);
-      break;
-
-    case REMAP_CD32_GREEN:
-      joyButXviaCustom[2] = keypressed;
-      setjoybuttonstate (0, 2, keypressed);
-      break;
-
-    case REMAP_CD32_YELLOW:
-      joyButXviaCustom[3] = keypressed;
-      setjoybuttonstate (0, 3, keypressed);
-      break;
-
-    case REMAP_CD32_PLAY:
-      joyButXviaCustom[6] = keypressed;
-      setjoybuttonstate (0, 6, keypressed);
-      break;
-
-    case REMAP_CD32_FFW:
-      joyButXviaCustom[5] = keypressed;
-      setjoybuttonstate (0, 5, keypressed);
-      break;
-
-    case REMAP_CD32_RWD:
-      joyButXviaCustom[4] = keypressed;
-      setjoybuttonstate (0, 4, keypressed);
-      break;
-  }  
 }

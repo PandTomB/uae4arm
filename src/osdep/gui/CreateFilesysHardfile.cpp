@@ -1,7 +1,14 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 #include "UaeRadioButton.hpp"
 #include "UaeDropDown.hpp"
@@ -146,18 +153,28 @@ static void InitCreateFilesysHardfile(void)
   cmdPath->addActionListener(createFilesysHardfileActionListener);
 
   int posY = DISTANCE_BORDER;
+	int posX = DISTANCE_BORDER;
+
   wndCreateFilesysHardfile->add(lblDevice, DISTANCE_BORDER, posY);
-  wndCreateFilesysHardfile->add(txtDevice, DISTANCE_BORDER + lblDevice->getWidth() + 8, posY);
-  wndCreateFilesysHardfile->add(chkAutoboot, 235, posY + 1);
-  wndCreateFilesysHardfile->add(lblBootPri, 335, posY);
-  wndCreateFilesysHardfile->add(txtBootPri, 335 + lblBootPri->getWidth() + 8, posY);
+  posX += lblDevice->getWidth() + 8;
+
+  wndCreateFilesysHardfile->add(txtDevice, posX, posY);
+	posX += txtDevice->getWidth() + DISTANCE_BORDER * 2;
+
+  wndCreateFilesysHardfile->add(chkAutoboot, posX, posY + 1);
+	posX += chkAutoboot->getWidth() + DISTANCE_BORDER;
+
+  wndCreateFilesysHardfile->add(lblBootPri, posX, posY);
+  wndCreateFilesysHardfile->add(txtBootPri, posX + lblBootPri->getWidth() + 8, posY);
   posY += txtDevice->getHeight() + DISTANCE_NEXT_Y;
+
   wndCreateFilesysHardfile->add(lblPath, DISTANCE_BORDER, posY);
   wndCreateFilesysHardfile->add(txtPath, DISTANCE_BORDER + lblPath->getWidth() + 8, posY);
   wndCreateFilesysHardfile->add(cmdPath, wndCreateFilesysHardfile->getWidth() - DISTANCE_BORDER - SMALL_BUTTON_WIDTH, posY);
   posY += txtPath->getHeight() + DISTANCE_NEXT_Y;
-  wndCreateFilesysHardfile->add(lblSize, DISTANCE_BORDER, posY);
-  wndCreateFilesysHardfile->add(txtSize, DISTANCE_BORDER + lblSize->getWidth() + 8, posY);
+
+  wndCreateFilesysHardfile->add(lblSize, lblDevice->getX(), posY);
+  wndCreateFilesysHardfile->add(txtSize, txtDevice->getX(), posY);
 
   wndCreateFilesysHardfile->add(cmdOK);
   wndCreateFilesysHardfile->add(cmdCancel);
@@ -195,7 +212,9 @@ static void ExitCreateFilesysHardfile(void)
 
 static void CreateFilesysHardfileLoop(void)
 {
+#ifndef USE_SDL2
   FocusBugWorkaround(wndCreateFilesysHardfile);  
+#endif
 
   while(!dialogFinished)
   {
@@ -236,11 +255,13 @@ static void CreateFilesysHardfileLoop(void)
             gui_input->pushInput(event); // Fire key down
             event.type = SDL_KEYUP;  // and the key up
             break;
+				  default: 
+					  break;
         }
       }
 
       //-------------------------------------------------
-      // Send event to guichan-controls
+      // Send event to guichan/guisan-controls
       //-------------------------------------------------
       gui_input->pushInput(event);
     }
@@ -251,7 +272,11 @@ static void CreateFilesysHardfileLoop(void)
     uae_gui->draw();
     // Finally we update the screen.
     wait_for_vsync();
+#ifdef USE_SDL2
+		UpdateGuiScreen();
+#else
     SDL_Flip(gui_screen);
+#endif
   }  
 }
 

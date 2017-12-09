@@ -163,7 +163,10 @@ struct my_openfile_s *my_open (const TCHAR *name, int flags)
 	mos = xmalloc (struct my_openfile_s, 1);
 	if (!mos)
 		return NULL;
-  mos->h = (void *) open(name, flags);
+  if(flags & O_CREAT)
+    mos->h = (void *) open(name, flags, 0660);
+  else
+    mos->h = (void *) open(name, flags);
 	if (!mos->h) {
 		xfree (mos);
 		mos = NULL;

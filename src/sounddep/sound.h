@@ -28,6 +28,7 @@ extern void resume_sound (void);
 extern void pause_sound (void);
 extern void reset_sound (void);
 extern void sound_volume (int);
+extern void stop_sound(void);
 
 STATIC_INLINE void set_sound_buffers (void)
 {

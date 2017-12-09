@@ -1,7 +1,14 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 #include "UaeRadioButton.hpp"
 #include "UaeDropDown.hpp"
@@ -20,7 +27,7 @@
 
 const int amigawidth_values[] = { 320, 352, 384, 640, 704, 768 };
 const int amigaheight_values[] = { 200, 216, 240, 256, 262, 270 };
-#ifdef RASPBERRY
+#if defined(RASPBERRY) && !defined(USE_SDL2)
 const int FullscreenRatio[] = { 80, 81, 82, 83, 84, 85, 86, 87, 88, 89,
                                 90, 91, 92, 93, 94, 95, 96, 97,98, 99,100 };
 #endif
@@ -37,7 +44,7 @@ static gcn::Label* lblVertPosInfo;
 static gcn::Slider* sldVertPos;
 static gcn::UaeCheckBox* chkLineDbl;
 static gcn::UaeCheckBox* chkFrameskip;
-#ifdef RASPBERRY
+#if defined(RASPBERRY) && !defined(USE_SDL2)
 static gcn::Label*  lblFSRatio;
 static gcn::Label*  lblFSRatioInfo;
 static gcn::Slider* sldFSRatio;
@@ -82,7 +89,7 @@ class AmigaScreenActionListener : public gcn::ActionListener
       {
         changed_prefs.gfx_vresolution = chkLineDbl->isSelected() ? VRES_DOUBLE : VRES_NONDOUBLE;
       }
-#ifdef RASPBERRY
+#if defined(RASPBERRY) && !defined(USE_SDL2)
       else if (actionEvent.getSource() == sldFSRatio)
       {
         if(changed_prefs.gfx_fullscreen_ratio != FullscreenRatio[(int)(sldFSRatio->getValue())])
@@ -139,7 +146,7 @@ void InitPanelDisplay(const struct _ConfigCategory& category)
   sldVertPos->addActionListener(amigaScreenActionListener);
   lblVertPosInfo = new gcn::Label("000");
 
-#ifdef RASPBERRY
+#if defined(RASPBERRY) && !defined(USE_SDL2)
   lblFSRatio = new gcn::Label("Fullscreen Ratio:");
   lblFSRatio->setSize(150, LABEL_HEIGHT);
   lblFSRatio->setAlignment(gcn::Graphics::RIGHT);
@@ -180,7 +187,7 @@ void InitPanelDisplay(const struct _ConfigCategory& category)
 	grpAmigaScreen->add(lblVertPosInfo, 160 + sldVertPos->getWidth() + 12, posY);
 	posY += sldVertPos->getHeight() + DISTANCE_NEXT_Y;
 
-#ifdef RASPBERRY
+#if defined(RASPBERRY) && !defined(USE_SDL2)
   grpAmigaScreen->add(lblFSRatio, 0, posY);
   grpAmigaScreen->add(sldFSRatio, 160, posY);
   grpAmigaScreen->add(lblFSRatioInfo, 160 + sldFSRatio->getWidth() + 12, posY);
@@ -194,7 +201,7 @@ void InitPanelDisplay(const struct _ConfigCategory& category)
   category.panel->add(grpAmigaScreen);
   posY = DISTANCE_BORDER + grpAmigaScreen->getHeight() + DISTANCE_NEXT_Y;
 
-#ifdef RASPBERRY
+#if defined(RASPBERRY) && !defined(USE_SDL2)
   category.panel->add(chkAspect, DISTANCE_BORDER, posY);
   posY += chkAspect->getHeight() + DISTANCE_NEXT_Y;
 #endif
@@ -221,7 +228,7 @@ void ExitPanelDisplay(void)
   delete chkLineDbl;
   delete chkFrameskip;
   delete amigaScreenActionListener;
-#ifdef RASPBERRY
+#if defined(RASPBERRY) && !defined(USE_SDL2)
   delete lblFSRatio;
   delete sldFSRatio;
   delete lblFSRatioInfo;
@@ -257,7 +264,7 @@ void RefreshPanelDisplay(void)
     }
   }
 
-#ifdef RASPBERRY
+#if defined(RASPBERRY) && !defined(USE_SDL2)
   for(i=0; i<21; ++i)
   {
     if(changed_prefs.gfx_fullscreen_ratio == FullscreenRatio[i])

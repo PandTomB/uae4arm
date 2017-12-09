@@ -6,8 +6,8 @@
   * Copyright 1997, 2001 Bernd Schmidt
   */
 
-#include "SDL.h"
-#include "SDL_thread.h"
+#include <SDL.h>
+#include <SDL_thread.h>
 
 /* Sempahores. We use POSIX semaphores; if you are porting this to a machine
  * with different ones, make them look like POSIX semaphores. */
@@ -40,7 +40,11 @@ STATIC_INLINE void uae_end_thread (uae_thread_id *tid)
 
 STATIC_INLINE int uae_start_thread (const TCHAR *name, void *(*f) (void *), void *arg, uae_thread_id *foo)
 {
+#ifdef USE_SDL2
+  uae_thread_id id = SDL_CreateThread ((int (*)(void *))f, "StartThread", arg);
+#else
   uae_thread_id id = SDL_CreateThread ((int (*)(void *))f, arg);
+#endif
   if(foo != NULL)
     *foo = id;
   return (int)id;
@@ -48,7 +52,11 @@ STATIC_INLINE int uae_start_thread (const TCHAR *name, void *(*f) (void *), void
 
 STATIC_INLINE int uae_start_thread_fast (void *(*f) (void *), void *arg, uae_thread_id *foo)
 {
+#ifdef USE_SDL2
+  uae_thread_id id = SDL_CreateThread ((int (*)(void *))f, "StartThreadFast", arg);
+#else
   uae_thread_id id = SDL_CreateThread ((int (*)(void *))f, arg);
+#endif
   if(foo != NULL)
     *foo = id;
   return (int)id;

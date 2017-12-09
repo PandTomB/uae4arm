@@ -1,7 +1,14 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 #include "UaeRadioButton.hpp"
 #include "UaeCheckBox.hpp"

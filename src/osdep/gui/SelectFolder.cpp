@@ -1,10 +1,17 @@
 #include <algorithm>
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
-#include <iostream>
-#include <sstream>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
+#include <iostream>
+#include <sstream>
 #include "SelectorEntry.hpp"
 
 #include "sysconfig.h"
@@ -150,7 +157,11 @@ static void InitSelectFolder(const char *title)
   lstFolders->addActionListener(listBoxActionListener);
   
   scrAreaFolders = new gcn::ScrollArea(lstFolders);
+#ifdef USE_SDL2
+	scrAreaFolders->setBorderSize(1);
+#else
   scrAreaFolders->setFrameSize(1);
+#endif
   scrAreaFolders->setPosition(DISTANCE_BORDER, 10 + TEXTFIELD_HEIGHT + 10);
   scrAreaFolders->setSize(DIALOG_WIDTH - 2 * DISTANCE_BORDER - 4, 272);
   scrAreaFolders->setScrollbarWidth(20);
@@ -189,7 +200,9 @@ static void ExitSelectFolder(void)
 
 static void SelectFolderLoop(void)
 {
-  FocusBugWorkaround(wndSelectFolder);  
+#ifndef USE_SDL2
+  FocusBugWorkaround(wndSelectFolder);
+#endif
 
   while(!dialogFinished)
   {
@@ -238,11 +251,13 @@ static void SelectFolderLoop(void)
             gui_input->pushInput(event); // Fire key down
             event.type = SDL_KEYUP;  // and the key up
             break;
+				  default: 
+					  break;
         }
       }
 
       //-------------------------------------------------
-      // Send event to guichan-controls
+      // Send event to guichan/guisan-controls
       //-------------------------------------------------
       gui_input->pushInput(event);
     }
@@ -253,7 +268,11 @@ static void SelectFolderLoop(void)
     uae_gui->draw();
     // Finally we update the screen.
     wait_for_vsync();
+#ifdef USE_SDL2
+		UpdateGuiScreen();
+#else
     SDL_Flip(gui_screen);
+#endif
   }  
 }
 

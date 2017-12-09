@@ -1,7 +1,14 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 #include "UaeRadioButton.hpp"
 #include "UaeDropDown.hpp"
@@ -308,7 +315,7 @@ class SaveForDiskActionListener : public gcn::ActionListener
         strncat(filename, diskname, MAX_DPATH - 1);
         strncat(filename, ".uae", MAX_DPATH) - 1;
         
-        snprintf(changed_prefs.description, 256, "Configuration for disk '%s'", diskname);
+			  snprintf(changed_prefs.description, sizeof (changed_prefs.description), "Configuration for disk '%s'", diskname);
         if(cfgfile_save(&changed_prefs, filename, 0))
           RefreshPanelConfig();
       }

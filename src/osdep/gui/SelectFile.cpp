@@ -1,10 +1,17 @@
 #include <algorithm>
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
-#include <iostream>
-#include <sstream>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
+#include <iostream>
+#include <sstream>
 #include "SelectorEntry.hpp"
 
 #include "sysconfig.h"
@@ -157,7 +164,7 @@ class SelectFileActionListener : public gcn::ActionListener
     void action(const gcn::ActionEvent& actionEvent)
     {
       int selected_item;
-      char foldername[256] = "";
+      char foldername[MAX_PATH] = "";
 
       selected_item = lstFiles->getSelected();
       strncpy(foldername, workingDir, MAX_PATH);
@@ -214,7 +221,11 @@ static void InitSelectFile(const char *title)
   lstFiles->addActionListener(selectFileActionListener);
   
   scrAreaFiles = new gcn::ScrollArea(lstFiles);
+#ifdef USE_SDL2
+	scrAreaFiles->setBorderSize(1);
+#else
   scrAreaFiles->setFrameSize(1);
+#endif
   scrAreaFiles->setPosition(DISTANCE_BORDER, 10 + TEXTFIELD_HEIGHT + 10);
   scrAreaFiles->setSize(DIALOG_WIDTH - 2 * DISTANCE_BORDER - 4, 272);
   scrAreaFiles->setScrollbarWidth(20);
@@ -275,7 +286,9 @@ static void ExitSelectFile(void)
 
 static void SelectFileLoop(void)
 {
+#ifndef USE_SDL2
   FocusBugWorkaround(wndSelectFile);  
+#endif
   
   while(!dialogFinished)
   {
@@ -334,11 +347,13 @@ static void SelectFileLoop(void)
             gui_input->pushInput(event); // Fire key down
             event.type = SDL_KEYUP;  // and the key up
             break;
+				  default: 
+					  break;
         }
       }
 
       //-------------------------------------------------
-      // Send event to guichan-controls
+      // Send event to guichan/guisan-controls
       //-------------------------------------------------
       gui_input->pushInput(event);
     }
@@ -349,7 +364,11 @@ static void SelectFileLoop(void)
     uae_gui->draw();
     // Finally we update the screen.
     wait_for_vsync();
+#ifdef USE_SDL2
+		UpdateGuiScreen();
+#else
     SDL_Flip(gui_screen);
+#endif
     
     if(!dialogCreated)
     {

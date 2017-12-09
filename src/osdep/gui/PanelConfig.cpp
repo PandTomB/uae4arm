@@ -1,7 +1,14 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 #include "UaeListBox.hpp"
 
@@ -247,9 +254,7 @@ void InitPanelConfig(const struct _ConfigCategory& category)
   buttonX += BUTTON_WIDTH + DISTANCE_NEXT_X;
   category.panel->add(cmdSave, buttonX, buttonY);
   buttonX += BUTTON_WIDTH + 3 * DISTANCE_NEXT_X;
-//  category.panel->add(cmdLoadFrom, buttonX, buttonY);
   buttonX += BUTTON_WIDTH + DISTANCE_NEXT_X;
-//  category.panel->add(cmdSaveAs, buttonX, buttonY);
   buttonX = category.panel->getWidth() - DISTANCE_BORDER - BUTTON_WIDTH;
   category.panel->add(cmdDelete, buttonX, buttonY);
 
@@ -267,11 +272,6 @@ void InitPanelConfig(const struct _ConfigCategory& category)
   txtDesc->setSize(300, TEXTFIELD_HEIGHT);
   txtDesc->setId("ConfigDesc");
   
-  category.panel->add(lblName, DISTANCE_BORDER, 2 + buttonY - DISTANCE_NEXT_Y - 2 * TEXTFIELD_HEIGHT - 10);
-  category.panel->add(txtName, DISTANCE_BORDER + lblName->getWidth() + 8, buttonY - DISTANCE_NEXT_Y - 2 * TEXTFIELD_HEIGHT - 10);
-  category.panel->add(lblDesc, DISTANCE_BORDER, 2 + buttonY - DISTANCE_NEXT_Y - TEXTFIELD_HEIGHT);
-  category.panel->add(txtDesc, DISTANCE_BORDER + lblName->getWidth() + 8, buttonY - DISTANCE_NEXT_Y - TEXTFIELD_HEIGHT);
-
   ReadConfigFileList();
   configsList = new ConfigsListModel();
   configsList->InitConfigsList();
@@ -285,12 +285,21 @@ void InitPanelConfig(const struct _ConfigCategory& category)
   lstConfigs->addActionListener(configsListActionListener);
   
   scrAreaConfigs = new gcn::ScrollArea(lstConfigs);
+#ifdef USE_SDL2
+	scrAreaConfigs->setBorderSize(1);
+#else
   scrAreaConfigs->setFrameSize(1);
+#endif
   scrAreaConfigs->setPosition(DISTANCE_BORDER, DISTANCE_BORDER);
   scrAreaConfigs->setSize(category.panel->getWidth() - 2 * DISTANCE_BORDER - 2, 252);
   scrAreaConfigs->setScrollbarWidth(20);
   scrAreaConfigs->setBaseColor(gui_baseCol);
   category.panel->add(scrAreaConfigs);
+
+  category.panel->add(lblName, DISTANCE_BORDER, 2 + buttonY - DISTANCE_NEXT_Y - 2 * TEXTFIELD_HEIGHT - 10);
+  category.panel->add(txtName, DISTANCE_BORDER + lblName->getWidth() + 8, buttonY - DISTANCE_NEXT_Y - 2 * TEXTFIELD_HEIGHT - 10);
+  category.panel->add(lblDesc, DISTANCE_BORDER, 2 + buttonY - DISTANCE_NEXT_Y - TEXTFIELD_HEIGHT);
+  category.panel->add(txtDesc, DISTANCE_BORDER + lblName->getWidth() + 8, buttonY - DISTANCE_NEXT_Y - TEXTFIELD_HEIGHT);
 
   if(strlen(last_active_config) == 0)
     strncpy(last_active_config, OPTIONSFILENAME, MAX_PATH);
@@ -343,7 +352,7 @@ void RefreshPanelConfig(void)
   {
     for(int i=0; i<ConfigFilesList.size(); ++i)
     {
-      if(!strcmp(ConfigFilesList[i]->Name, txtName->getText().c_str()))
+      if(!_tcscmp(ConfigFilesList[i]->Name, txtName->getText().c_str()))
       {
         // Select current entry
         lstConfigs->setSelected(i);

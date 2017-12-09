@@ -176,7 +176,7 @@ static int pandora_start_sound(int rate, int bits, int stereo)
 
 
 // this is meant to be called only once on exit
-void pandora_stop_sound(void)
+void stop_sound(void)
 {
 	if (sound_thread_exit)
 		printf("don't call pandora_stop_sound more than once!\n");
@@ -285,7 +285,8 @@ void close_sound (void)
 
   // testing shows that reopenning sound device is not a good idea on pandora (causes random sound driver crashes)
   // we will close it on real exit instead
-  //pandora_stop_sound();
+  //stop_sound();
+
   have_sound = 0;
 }
 

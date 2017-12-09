@@ -1,8 +1,14 @@
+#ifdef USE_SDL2
+#include "osdep/gui/SelectorEntry.hpp"
+#include "guisan/widgets/container.hpp"
+#include "guisan/widgets/icon.hpp"
+#include "guisan/widgets/label.hpp"
+#else
 #include "gui/SelectorEntry.hpp"
-
 #include "guichan/widgets/container.hpp"
 #include "guichan/widgets/icon.hpp"
 #include "guichan/widgets/label.hpp"
+#endif
 
 
 namespace gcn

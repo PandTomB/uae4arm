@@ -1,7 +1,14 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 #include "UaeRadioButton.hpp"
 #include "UaeDropDown.hpp"
@@ -245,7 +252,7 @@ void InitPanelROM(const struct _ConfigCategory& category)
   cmdExtROM->addActionListener(romButtonActionListener);
 
 #ifdef ACTION_REPLAY
-  lblCartROM = new gcn::Label("Cardridge ROM File:");
+  lblCartROM = new gcn::Label("Cartridge ROM File:");
   lblCartROM->setSize(200, LABEL_HEIGHT);
 	cboCartROM = new gcn::UaeDropDown(cartROMList);
   cboCartROM->setSize(400, DROPDOWN_HEIGHT);

@@ -1,10 +1,17 @@
 #include <algorithm>
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
-#include <iostream>
-#include <sstream>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
+#include <iostream>
+#include <sstream>
 #include "SelectorEntry.hpp"
 
 #include "sysconfig.h"
@@ -81,7 +88,11 @@ static void InitShowHelp(const std::vector<std::string>& helptext)
   lstHelp->setWrappingEnabled(true);
 
   scrAreaHelp = new gcn::ScrollArea(lstHelp);
+#ifdef USE_SDL2
+	scrAreaHelp->setBorderSize(1);
+#else
   scrAreaHelp->setFrameSize(1);
+#endif
   scrAreaHelp->setPosition(DISTANCE_BORDER, 10 + TEXTFIELD_HEIGHT + 10);
   scrAreaHelp->setSize(DIALOG_WIDTH - 2 * DISTANCE_BORDER - 4, DIALOG_HEIGHT - 3 * DISTANCE_BORDER - BUTTON_HEIGHT - DISTANCE_NEXT_Y - 10);
   scrAreaHelp->setScrollbarWidth(20);
@@ -122,7 +133,9 @@ static void ExitShowHelp(void)
 
 static void ShowHelpLoop(void)
 {
+#ifndef USE_SDL2
   FocusBugWorkaround(wndShowHelp);  
+#endif
 
   while(!dialogFinished)
   {
@@ -143,11 +156,13 @@ static void ShowHelpLoop(void)
             gui_input->pushInput(event); // Fire key down
             event.type = SDL_KEYUP;  // and the key up
             break;
+				  default:
+					  break;
         }
       }
 
       //-------------------------------------------------
-      // Send event to guichan-controls
+      // Send event to guichan/guisan-controls
       //-------------------------------------------------
       gui_input->pushInput(event);
     }
@@ -158,7 +173,11 @@ static void ShowHelpLoop(void)
     uae_gui->draw();
     // Finally we update the screen.
     wait_for_vsync();
+#ifdef USE_SDL2
+		UpdateGuiScreen();
+#else
     SDL_Flip(gui_screen);
+#endif
   }  
 }
 

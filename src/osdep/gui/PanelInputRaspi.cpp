@@ -1,7 +1,14 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 #include "UaeRadioButton.hpp"
 #include "UaeDropDown.hpp"
@@ -35,58 +42,86 @@ static gcn::Label* lblMouseSpeed;
 static gcn::Label* lblMouseSpeedInfo;
 static gcn::Slider* sldMouseSpeed;
   
-static gcn::UaeCheckBox* chkCustomCtrl;
-static gcn::Label *lblA;
-static gcn::UaeDropDown* cboA;
-static gcn::Label *lblB;
-static gcn::UaeDropDown* cboB;
-static gcn::Label *lblX;
-static gcn::UaeDropDown* cboX;
-static gcn::Label *lblY;
-static gcn::UaeDropDown* cboY;
-static gcn::Label *lblL;
-static gcn::UaeDropDown* cboL;
-static gcn::Label *lblR;
-static gcn::UaeDropDown* cboR;
-static gcn::Label *lblUp;
-static gcn::UaeDropDown* cboUp;
-static gcn::Label *lblDown;
-static gcn::UaeDropDown* cboDown;
-static gcn::Label *lblLeft;
-static gcn::UaeDropDown* cboLeft;
-static gcn::Label *lblRight;
-static gcn::UaeDropDown* cboRight;
+static gcn::Label *lblKeyForMenu;
+static gcn::UaeDropDown* KeyForMenu;
+static gcn::Label *lblButtonForMenu;
+static gcn::UaeDropDown* ButtonForMenu;
+static gcn::Label *lblKeyForQuit;
+static gcn::UaeDropDown* KeyForQuit;
+static gcn::Label *lblButtonForQuit;
+static gcn::UaeDropDown* ButtonForQuit;
+
+static gcn::Label *lblNumLock;
+static gcn::UaeDropDown* cboKBDLed_num;
+static gcn::Label *lblScrLock;
+static gcn::UaeDropDown* cboKBDLed_scr;
+static gcn::Label *lblCapLock;
+static gcn::UaeDropDown* cboKBDLed_cap;
 
 
 class StringListModel : public gcn::ListModel
 {
-  private:
-    std::vector<std::string> values;
-  public:
-    StringListModel(const char *entries[], int count)
-    {
-      for(int i=0; i<count; ++i)
+private:
+  std::vector<std::string> values;
+public:
+  StringListModel(const char *entries[], int count)
+  {
+    for(int i=0; i<count; ++i)
       values.push_back(entries[i]);
-    }
+  }
 
-    int getNumberOfElements()
-    {
-      return values.size();
-    }
+  int getNumberOfElements()
+  {
+    return values.size();
+  }
 
-    int AddElement(const char * Elem)
-    {
-      values.push_back(Elem);
-      return 0;
-    }
+  int AddElement(const char * Elem)
+  {
+    values.push_back(Elem);
+    return 0;
+  }
 
-    std::string getElementAt(int i)
-    {
-      if(i < 0 || i >= values.size())
-        return "---";
-      return values[i];
-    }
+  std::string getElementAt(int i)
+  {
+    if(i < 0 || i >= values.size())
+      return "---";
+    return values[i];
+  }
 };
+
+
+static const char *listValues[] = { "none", "POWER", "DF0", "DF1", "DF2", "DF3", "DF*", "HD", "CD" };
+static StringListModel KBDLedList(listValues, 9);
+
+static const int ControlKey_SDLKeyValues[] = { 0, SDLK_F11, SDLK_F12 };
+static const char *ControlKeyValues[] = { "------------------", "F11", "F12" };
+static StringListModel ControlKeyList(ControlKeyValues, 3);
+
+static int GetControlKeyIndex(int key)
+{
+	int ControlKey_SDLKeyValues_Length = sizeof(ControlKey_SDLKeyValues) / sizeof(int);
+	for (int i = 0; i < (ControlKey_SDLKeyValues_Length + 1); ++i)
+	{
+		if (ControlKey_SDLKeyValues[i] == key)
+			return i;
+	}
+	return 0; // Default: no key
+}
+
+static const int ControlButton_SDLButtonValues[] = { -1, 0, 1, 2, 3 };
+static const char *ControlButtonValues[] = { "------------------", "JoyButton0", "JoyButton1", "JoyButton2", "JoyButton3" };
+static StringListModel ControlButtonList(ControlButtonValues, 5);
+
+static int GetControlButtonIndex(int button)
+{
+	int ControlButton_SDLButtonValues_Length = sizeof(ControlButton_SDLButtonValues) / sizeof(int);
+	for (int i = 0; i < (ControlButton_SDLButtonValues_Length + 1); ++i)
+	{
+		if (ControlButton_SDLButtonValues[i] == button)
+			return i;
+	}
+	return 0; // Default: no key
+}
 
 static StringListModel ctrlPortList(NULL, 0);
 static int portListIDs[MAX_INPUT_DEVICES];
@@ -131,7 +166,6 @@ static int amigaKey[] =
    AK_4,          AK_5,     AK_6,       AK_7,     AK_8,         AK_9,         AK_0,           AK_F1,        /*  93 - 100 */
    AK_F2,         AK_F3,    AK_F4,      AK_F5,    AK_F6,        AK_F7,        AK_F8,          AK_F9,        /* 101 - 108 */
    AK_F10,        0 }; /*  109 - 110 */
-extern int customControlMap[SDLK_LAST];
 
 static int GetAmigaKeyIndex(int key)
 {
@@ -181,39 +215,24 @@ class InputActionListener : public gcn::ActionListener
     		changed_prefs.input_joymouse_multiplier = mousespeed_values[(int)(sldMouseSpeed->getValue())];
     		RefreshPanelInput();
     	}
-    	
- 	    else if (actionEvent.getSource() == chkCustomCtrl)
- 	      changed_prefs.pandora_customControls = chkCustomCtrl->isSelected() ? 1 : 0;
- 	        
- 	    else if (actionEvent.getSource() == cboA)
-        customControlMap[VK_A] = amigaKey[cboA->getSelected()];
 
- 	    else if (actionEvent.getSource() == cboB)
-        customControlMap[VK_B] = amigaKey[cboB->getSelected()];
+	    else if (actionEvent.getSource() == KeyForMenu)
+		    changed_prefs.key_for_menu = ControlKey_SDLKeyValues[KeyForMenu->getSelected()];
+        
+	    else if (actionEvent.getSource() == KeyForQuit)
+		    changed_prefs.key_for_quit = ControlKey_SDLKeyValues[KeyForQuit->getSelected()];
 
- 	    else if (actionEvent.getSource() == cboX)
-        customControlMap[VK_X] = amigaKey[cboX->getSelected()];
+	    else if (actionEvent.getSource() == ButtonForMenu)
+		    changed_prefs.button_for_menu = ControlButton_SDLButtonValues[ButtonForMenu->getSelected()];
+        
+	    else if (actionEvent.getSource() == ButtonForQuit)
+		    changed_prefs.button_for_quit = ControlButton_SDLButtonValues[ButtonForQuit->getSelected()];
 
- 	    else if (actionEvent.getSource() == cboY)
-        customControlMap[VK_Y] = amigaKey[cboY->getSelected()];
+      else if (actionEvent.getSource() == cboKBDLed_num)
+        changed_prefs.kbd_led_num = cboKBDLed_num->getSelected();
 
- 	    else if (actionEvent.getSource() == cboL)
-        customControlMap[VK_L] = amigaKey[cboL->getSelected()];
-
- 	    else if (actionEvent.getSource() == cboR)
-        customControlMap[VK_R] = amigaKey[cboR->getSelected()];
-
- 	    else if (actionEvent.getSource() == cboUp)
-        customControlMap[VK_UP] = amigaKey[cboUp->getSelected()];
-
- 	    else if (actionEvent.getSource() == cboDown)
-        customControlMap[VK_DOWN] = amigaKey[cboDown->getSelected()];
-
- 	    else if (actionEvent.getSource() == cboLeft)
-        customControlMap[VK_LEFT] = amigaKey[cboLeft->getSelected()];
-
- 	    else if (actionEvent.getSource() == cboRight)
-        customControlMap[VK_RIGHT] = amigaKey[cboRight->getSelected()];
+      else if (actionEvent.getSource() == cboKBDLed_scr)
+  			changed_prefs.kbd_led_scr = cboKBDLed_scr->getSelected();
     }
 };
 static InputActionListener* inputActionListener;
@@ -283,99 +302,68 @@ void InitPanelInput(const struct _ConfigCategory& category)
   sldMouseSpeed->addActionListener(inputActionListener);
   lblMouseSpeedInfo = new gcn::Label(".25");
 
-	chkCustomCtrl = new gcn::UaeCheckBox("Custom Control");
-	chkCustomCtrl->setId("CustomCtrl");
-  chkCustomCtrl->addActionListener(inputActionListener);
+  lblNumLock = new gcn::Label("NumLock LED:");
+  lblNumLock->setSize(100, LABEL_HEIGHT);
+  lblNumLock->setAlignment(gcn::Graphics::RIGHT);
+  cboKBDLed_num = new gcn::UaeDropDown(&KBDLedList);
+  cboKBDLed_num->setSize(150, DROPDOWN_HEIGHT);
+  cboKBDLed_num->setBaseColor(gui_baseCol);
+  cboKBDLed_num->setId("numlock");
+  cboKBDLed_num->addActionListener(inputActionListener);
 
-  lblA = new gcn::Label("<A>:");
-  lblA->setSize(100, LABEL_HEIGHT);
-  lblA->setAlignment(gcn::Graphics::RIGHT);
-	cboA = new gcn::UaeDropDown(&mappingList);
-  cboA->setSize(150, DROPDOWN_HEIGHT);
-  cboA->setBaseColor(gui_baseCol);
-  cboA->setId("cboA");
-  cboA->addActionListener(inputActionListener);
+//  lblCapLock = new gcn::Label("CapsLock LED:");
+//  lblCapLock->setSize(100, LABEL_HEIGHT);
+//  lblCapLock->setAlignment(gcn::Graphics::RIGHT);
+//  cboKBDLed_cap = new gcn::UaeDropDown(&KBDLedList);
+//  cboKBDLed_cap->setSize(150, DROPDOWN_HEIGHT);
+//  cboKBDLed_cap->setBaseColor(gui_baseCol);
+//  cboKBDLed_cap->setId("capslock");
+//  cboKBDLed_cap->addActionListener(inputActionListener);
 
-  lblB = new gcn::Label("<B>:");
-  lblB->setSize(100, LABEL_HEIGHT);
-  lblB->setAlignment(gcn::Graphics::RIGHT);
-	cboB = new gcn::UaeDropDown(&mappingList);
-  cboB->setSize(150, DROPDOWN_HEIGHT);
-  cboB->setBaseColor(gui_baseCol);
-  cboB->setId("cboB");
-  cboB->addActionListener(inputActionListener);
+  lblScrLock = new gcn::Label("ScrollLock LED:");
+  lblScrLock->setSize(100, LABEL_HEIGHT);
+  lblScrLock->setAlignment(gcn::Graphics::RIGHT);
+  cboKBDLed_scr = new gcn::UaeDropDown(&KBDLedList);
+  cboKBDLed_scr->setSize(150, DROPDOWN_HEIGHT);
+  cboKBDLed_scr->setBaseColor(gui_baseCol);
+  cboKBDLed_scr->setId("scrolllock");
+  cboKBDLed_scr->addActionListener(inputActionListener);
 
-  lblX = new gcn::Label("<X>:");
-  lblX->setSize(100, LABEL_HEIGHT);
-  lblX->setAlignment(gcn::Graphics::RIGHT);
-	cboX = new gcn::UaeDropDown(&mappingList);
-  cboX->setSize(150, DROPDOWN_HEIGHT);
-  cboX->setBaseColor(gui_baseCol);
-  cboX->setId("cboX");
-  cboX->addActionListener(inputActionListener);
+	lblKeyForMenu = new gcn::Label("Menu Key:");
+	lblKeyForMenu->setSize(100, LABEL_HEIGHT);
+	lblKeyForMenu->setAlignment(gcn::Graphics::RIGHT);
+	KeyForMenu = new gcn::UaeDropDown(&ControlKeyList);
+	KeyForMenu->setSize(150, DROPDOWN_HEIGHT);
+	KeyForMenu->setBaseColor(gui_baseCol);
+	KeyForMenu->setId("KeyForMenu");
+	KeyForMenu->addActionListener(inputActionListener);
 
-  lblY = new gcn::Label("<Y>:");
-  lblY->setSize(100, LABEL_HEIGHT);
-  lblY->setAlignment(gcn::Graphics::RIGHT);
-	cboY = new gcn::UaeDropDown(&mappingList);
-  cboY->setSize(150, DROPDOWN_HEIGHT);
-  cboY->setBaseColor(gui_baseCol);
-  cboY->setId("cboY");
-  cboY->addActionListener(inputActionListener);
+	lblKeyForQuit = new gcn::Label("Quit Key:");
+	lblKeyForQuit->setSize(100, LABEL_HEIGHT);
+	lblKeyForQuit->setAlignment(gcn::Graphics::RIGHT);
+	KeyForQuit = new gcn::UaeDropDown(&ControlKeyList);
+	KeyForQuit->setSize(150, DROPDOWN_HEIGHT);
+	KeyForQuit->setBaseColor(gui_baseCol);
+	KeyForQuit->setId("KeyForQuit");
+	KeyForQuit->addActionListener(inputActionListener);
 
-  lblL = new gcn::Label("<L>:");
-  lblL->setSize(100, LABEL_HEIGHT);
-  lblL->setAlignment(gcn::Graphics::RIGHT);
-	cboL = new gcn::UaeDropDown(&mappingList);
-  cboL->setSize(150, DROPDOWN_HEIGHT);
-  cboL->setBaseColor(gui_baseCol);
-  cboL->setId("cboL");
-  cboL->addActionListener(inputActionListener);
+	lblButtonForMenu = new gcn::Label("Menu Button:");
+	lblButtonForMenu->setSize(100, LABEL_HEIGHT);
+	lblButtonForMenu->setAlignment(gcn::Graphics::RIGHT);
+	ButtonForMenu = new gcn::UaeDropDown(&ControlButtonList);
+	ButtonForMenu->setSize(150, DROPDOWN_HEIGHT);
+	ButtonForMenu->setBaseColor(gui_baseCol);
+	ButtonForMenu->setId("ButtonForMenu");
+	ButtonForMenu->addActionListener(inputActionListener);
 
-  lblR = new gcn::Label("<R>:");
-  lblR->setSize(100, LABEL_HEIGHT);
-  lblR->setAlignment(gcn::Graphics::RIGHT);
-	cboR = new gcn::UaeDropDown(&mappingList);
-  cboR->setSize(150, DROPDOWN_HEIGHT);
-  cboR->setBaseColor(gui_baseCol);
-  cboR->setId("cboR");
-  cboR->addActionListener(inputActionListener);
-
-  lblUp = new gcn::Label("Up:");
-  lblUp->setSize(100, LABEL_HEIGHT);
-  lblUp->setAlignment(gcn::Graphics::RIGHT);
-	cboUp = new gcn::UaeDropDown(&mappingList);
-  cboUp->setSize(150, DROPDOWN_HEIGHT);
-  cboUp->setBaseColor(gui_baseCol);
-  cboUp->setId("cboUp");
-  cboUp->addActionListener(inputActionListener);
-
-  lblDown = new gcn::Label("Down:");
-  lblDown->setSize(100, LABEL_HEIGHT);
-  lblDown->setAlignment(gcn::Graphics::RIGHT);
-	cboDown = new gcn::UaeDropDown(&mappingList);
-  cboDown->setSize(150, DROPDOWN_HEIGHT);
-  cboDown->setBaseColor(gui_baseCol);
-  cboDown->setId("cboDown");
-  cboDown->addActionListener(inputActionListener);
-
-  lblLeft = new gcn::Label("Left:");
-  lblLeft->setSize(100, LABEL_HEIGHT);
-  lblLeft->setAlignment(gcn::Graphics::RIGHT);
-	cboLeft = new gcn::UaeDropDown(&mappingList);
-  cboLeft->setSize(150, DROPDOWN_HEIGHT);
-  cboLeft->setBaseColor(gui_baseCol);
-  cboLeft->setId("cboLeft");
-  cboLeft->addActionListener(inputActionListener);
-
-  lblRight = new gcn::Label("Right:");
-  lblRight->setSize(100, LABEL_HEIGHT);
-  lblRight->setAlignment(gcn::Graphics::RIGHT);
-	cboRight = new gcn::UaeDropDown(&mappingList);
-  cboRight->setSize(150, DROPDOWN_HEIGHT);
-  cboRight->setBaseColor(gui_baseCol);
-  cboRight->setId("cboRight");
-  cboRight->addActionListener(inputActionListener);
+	lblButtonForQuit = new gcn::Label("Quit Button:");
+	lblButtonForQuit->setSize(100, LABEL_HEIGHT);
+	lblButtonForQuit->setAlignment(gcn::Graphics::RIGHT);
+	ButtonForQuit = new gcn::UaeDropDown(&ControlButtonList);
+	ButtonForQuit->setSize(150, DROPDOWN_HEIGHT);
+	ButtonForQuit->setBaseColor(gui_baseCol);
+	ButtonForQuit->setId("ButtonForQuit");
+	ButtonForQuit->addActionListener(inputActionListener);
 
   int posY = DISTANCE_BORDER;
   category.panel->add(lblPort0, DISTANCE_BORDER, posY);
@@ -393,34 +381,27 @@ void InitPanelInput(const struct _ConfigCategory& category)
   category.panel->add(lblMouseSpeedInfo, sldMouseSpeed->getX() + sldMouseSpeed->getWidth() + 12, posY);
   posY += sldMouseSpeed->getHeight() + DISTANCE_NEXT_Y;
 
-  category.panel->add(chkCustomCtrl, DISTANCE_BORDER + lblA->getWidth() + 8, posY);
-  posY += chkCustomCtrl->getHeight() + DISTANCE_NEXT_Y;
-  category.panel->add(lblA, DISTANCE_BORDER, posY);
-  category.panel->add(cboA, DISTANCE_BORDER + lblA->getWidth() + 8, posY);
-  category.panel->add(lblB, 300, posY);
-  category.panel->add(cboB, 300 + lblB->getWidth() + 8, posY);
-  posY += cboA->getHeight() + 4;
-  category.panel->add(lblX, DISTANCE_BORDER, posY);
-  category.panel->add(cboX, DISTANCE_BORDER + lblX->getWidth() + 8, posY);
-  category.panel->add(lblY, 300, posY);
-  category.panel->add(cboY, 300 + lblY->getWidth() + 8, posY);
-  posY += cboX->getHeight() + 4;
-  category.panel->add(lblL, DISTANCE_BORDER, posY);
-  category.panel->add(cboL, DISTANCE_BORDER + lblL->getWidth() + 8, posY);
-  category.panel->add(lblR, 300, posY);
-  category.panel->add(cboR, 300 + lblR->getWidth() + 8, posY);
-  posY += cboL->getHeight() + 4;
-  category.panel->add(lblUp, DISTANCE_BORDER, posY);
-  category.panel->add(cboUp, DISTANCE_BORDER + lblUp->getWidth() + 8, posY);
-  category.panel->add(lblDown, 300, posY);
-  category.panel->add(cboDown, 300 + lblDown->getWidth() + 8, posY);
-  posY += cboUp->getHeight() + 4;
-  category.panel->add(lblLeft, DISTANCE_BORDER, posY);
-  category.panel->add(cboLeft, DISTANCE_BORDER + lblLeft->getWidth() + 8, posY);
-  category.panel->add(lblRight, 300, posY);
-  category.panel->add(cboRight, 300 + lblRight->getWidth() + 8, posY);
-  posY += cboLeft->getHeight() + DISTANCE_NEXT_Y;
-  
+  category.panel->add(lblNumLock, DISTANCE_BORDER, posY);
+	category.panel->add(cboKBDLed_num, DISTANCE_BORDER + lblNumLock->getWidth() + 8, posY);
+//  category.panel->add(lblCapLock, lblNumLock->getX() + lblNumLock->getWidth() + DISTANCE_NEXT_X, posY);
+//  category.panel->add(cboKBDLed_cap, cboKBDLed_num->getX() + cboKBDLed_num->getWidth() + DISTANCE_NEXT_X, posY);
+	category.panel->add(lblScrLock, cboKBDLed_num->getX() + cboKBDLed_num->getWidth() + DISTANCE_NEXT_X, posY);
+	category.panel->add(cboKBDLed_scr, lblScrLock->getX() + lblScrLock->getWidth() + 8, posY);
+  posY += cboKBDLed_scr->getHeight() + DISTANCE_NEXT_Y;
+
+	category.panel->add(lblKeyForMenu, DISTANCE_BORDER, posY);
+	category.panel->add(KeyForMenu, DISTANCE_BORDER + lblKeyForMenu->getWidth() + 8, posY);
+	category.panel->add(lblKeyForQuit, KeyForMenu->getX() + KeyForMenu->getWidth() + DISTANCE_NEXT_X, posY);
+	category.panel->add(KeyForQuit, lblKeyForQuit->getX() + lblKeyForQuit->getWidth() + 8, posY);
+	posY += KeyForMenu->getHeight() + DISTANCE_NEXT_Y;
+
+	category.panel->add(lblButtonForMenu, DISTANCE_BORDER, posY);
+	category.panel->add(ButtonForMenu, DISTANCE_BORDER + lblButtonForMenu->getWidth() + 8, posY);
+	category.panel->add(lblButtonForQuit, ButtonForMenu->getX() + ButtonForMenu->getWidth() + DISTANCE_NEXT_X, posY);
+	category.panel->add(ButtonForQuit, lblButtonForQuit->getX() + lblButtonForQuit->getWidth() + 8, posY);
+	posY += ButtonForMenu->getHeight() + DISTANCE_NEXT_Y;
+
+
   RefreshPanelInput();
 }
 
@@ -438,27 +419,21 @@ void ExitPanelInput(void)
   delete sldMouseSpeed;
   delete lblMouseSpeedInfo;
 
-  delete chkCustomCtrl;
-  delete lblA;
-  delete cboA;
-  delete lblB;
-  delete cboB;
-  delete lblX;
-  delete cboX;
-  delete lblY;
-  delete cboY;
-  delete lblL;
-  delete cboL;
-  delete lblR;
-  delete cboR;
-  delete lblUp;
-  delete cboUp;
-  delete lblDown;
-  delete cboDown;
-  delete lblLeft;
-  delete cboLeft;
-  delete lblRight;
-  delete cboRight;
+  delete lblCapLock;
+  delete lblScrLock;
+  delete lblNumLock;
+  delete cboKBDLed_num;
+  delete cboKBDLed_cap;
+  delete cboKBDLed_scr;
+
+	delete lblKeyForMenu;
+	delete KeyForMenu;
+	delete lblKeyForQuit;
+	delete KeyForQuit;
+	delete lblButtonForMenu;
+	delete ButtonForMenu;
+	delete lblButtonForQuit;
+	delete ButtonForQuit;
 
   delete inputActionListener;
 }
@@ -507,17 +482,12 @@ void RefreshPanelInput(void)
     }
   }
 
-  chkCustomCtrl->setSelected(changed_prefs.pandora_customControls);
-  cboA->setSelected(GetAmigaKeyIndex(customControlMap[VK_A]));
-  cboB->setSelected(GetAmigaKeyIndex(customControlMap[VK_B]));
-  cboX->setSelected(GetAmigaKeyIndex(customControlMap[VK_X]));
-  cboY->setSelected(GetAmigaKeyIndex(customControlMap[VK_Y]));
-  cboL->setSelected(GetAmigaKeyIndex(customControlMap[VK_L]));
-  cboR->setSelected(GetAmigaKeyIndex(customControlMap[VK_R]));
-  cboUp->setSelected(GetAmigaKeyIndex(customControlMap[VK_UP]));
-  cboDown->setSelected(GetAmigaKeyIndex(customControlMap[VK_DOWN]));
-  cboLeft->setSelected(GetAmigaKeyIndex(customControlMap[VK_LEFT]));
-  cboRight->setSelected(GetAmigaKeyIndex(customControlMap[VK_RIGHT]));
+	cboKBDLed_num->setSelected(changed_prefs.kbd_led_num);
+	cboKBDLed_scr->setSelected(changed_prefs.kbd_led_scr);
+	KeyForMenu->setSelected(GetControlKeyIndex(changed_prefs.key_for_menu));
+	KeyForQuit->setSelected(GetControlKeyIndex(changed_prefs.key_for_quit));
+	ButtonForMenu->setSelected(GetControlButtonIndex(changed_prefs.button_for_menu));
+	ButtonForQuit->setSelected(GetControlButtonIndex(changed_prefs.button_for_quit));
 }
 
 
@@ -527,9 +497,5 @@ bool HelpPanelInput(std::vector<std::string> &helptext)
   helptext.push_back("You can select the control type for both ports and the rate for autofire.");
   helptext.push_back("");
   helptext.push_back("Set the emulated mouse speed to .25x, .5x, 1x, 2x and 4x to slow down or speed up the mouse.");
-  helptext.push_back("");
-  helptext.push_back("When you activate \"Custom Control\", you can define which Amiga key should be emulated by pressing one of the");
-  helptext.push_back("ABXY- or D-pad buttons. Useful to setup controls for pinball games. During emulation, you can switch between");
-  helptext.push_back("regular buttons and custom settings by pressing left shoulder button and 'c'.");
   return true;
 }

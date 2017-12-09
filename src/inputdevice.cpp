@@ -39,12 +39,6 @@
 #include "statusline.h"
 #include "native2amiga_api.h"
 
-#if SIZEOF_TCHAR != 1
-/* FIXME: replace strcasecmp with _tcsicmp in source code instead */
-#undef strcasecmp
-#define strcasecmp _tcsicmp
-#endif
-
 #define COMPA_RESERVED_FLAGS (ID_FLAG_INVERT)
 
 #define ID_FLAG_CANRELEASE 0x1000
@@ -1309,32 +1303,32 @@ void read_inputdevice_config (struct uae_prefs *pr, const TCHAR *option, TCHAR *
 
   option += 6; /* "input." */
   p = getstring (&option);
-	if (!strcasecmp (p, _T("config"))) {
+	if (!_tcsicmp (p, _T("config"))) {
 		pr->input_selected_setting = _tstol (value) - 1;
 		if (pr->input_selected_setting == -1)
 			pr->input_selected_setting = GAMEPORT_INPUT_SETTINGS;
 		if (pr->input_selected_setting < 0 || pr->input_selected_setting > MAX_INPUT_SETTINGS)
 			pr->input_selected_setting = 0;
 	}
-  if (!strcasecmp (p, _T("joymouse_speed_analog")))
+  if (!_tcsicmp (p, _T("joymouse_speed_analog")))
 	  pr->input_joymouse_multiplier = _tstol (value);
-	if (!strcasecmp (p, _T("joymouse_speed_digital")))
+	if (!_tcsicmp (p, _T("joymouse_speed_digital")))
 		pr->input_joymouse_speed = _tstol (value);
-	if (!strcasecmp (p, _T("joystick_deadzone")))
+	if (!_tcsicmp (p, _T("joystick_deadzone")))
 		pr->input_joystick_deadzone = _tstol (value);
-	if (!strcasecmp (p, _T("joymouse_deadzone")))
+	if (!_tcsicmp (p, _T("joymouse_deadzone")))
 		pr->input_joymouse_deadzone = _tstol (value);
-	if (!strcasecmp (p, _T("mouse_speed")))
+	if (!_tcsicmp (p, _T("mouse_speed")))
 		pr->input_mouse_speed = _tstol (value);
-  if (!strcasecmp (p, _T("autofire")))
+  if (!_tcsicmp (p, _T("autofire")))
 	  pr->input_autofire_linecnt = _tstol (value) * 312;
-	if (!strcasecmp (p, _T("autofire_speed")))
+	if (!_tcsicmp (p, _T("autofire_speed")))
 		pr->input_autofire_linecnt = _tstol (value);
-	if (!strcasecmp (p, _T("analog_joystick_multiplier")))
+	if (!_tcsicmp (p, _T("analog_joystick_multiplier")))
 		pr->input_analog_joystick_mult = _tstol (value);
-	if (!strcasecmp (p, _T("analog_joystick_offset")))
+	if (!_tcsicmp (p, _T("analog_joystick_offset")))
 		pr->input_analog_joystick_offset = _tstol (value);
-	if (!strcasecmp (p, _T("keyboard_type"))) {
+	if (!_tcsicmp (p, _T("keyboard_type"))) {
 		cfgfile_strval (option, value, NULL, &pr->input_keyboard_type, kbtypes, 0);
 		keyboard_default = keyboard_default_table[pr->input_keyboard_type];
 		inputdevice_default_kb_all (pr);
@@ -1467,7 +1461,7 @@ void read_inputdevice_config (struct uae_prefs *pr, const TCHAR *option, TCHAR *
 			} else {
   			newdevnum = matchdevice(idf, tid->configname, tid->name);
     	}
-	}
+	  }
 		newdev = true;
 		if (newdevnum >= 0) {
 			temp_uid_index[devnum][tid->devtype] = newdevnum;
@@ -1487,7 +1481,6 @@ void read_inputdevice_config (struct uae_prefs *pr, const TCHAR *option, TCHAR *
 			}
 		}
 	}
-
 	devnum = temp_uid_index[devnum][tid->devtype];
 	if (devnum < 0) {
 		if (devnum == -1)
@@ -1982,6 +1975,7 @@ uae_u16 JOY1DAT (void)
 	uae_u16 v;
 	readinput ();
 	v = getjoystate (1);
+
   return v;
 }
 
@@ -2643,6 +2637,7 @@ static int handle_input_event (int nr, int state, int max, int autofire)
 				mouse_delta[joy][unit] += delta;
 
 			max = 32;
+
 		} else if (ie->type & 32) { /* button mouse emulation vertical */
 
 			int speed = currprefs.input_joymouse_speed;
@@ -2985,6 +2980,7 @@ static int switchdevice (struct uae_input_device *id, int num, bool buttonmode)
 		return 0;
 
 	} else {
+
 		int oldport = getoldport (id);
 		int k, evt;
 		const struct inputevent *ie, *ie2;
@@ -5412,12 +5408,6 @@ void inputdevice_copyconfig (struct uae_prefs *src, struct uae_prefs *dst)
 	dst->input_joymouse_speed = src->input_joymouse_speed;
 	dst->input_mouse_speed = src->input_mouse_speed;
   dst->input_autofire_linecnt = src->input_autofire_linecnt;
-
-  dst->key_for_menu = src->key_for_menu;
-  dst->key_for_quit = src->key_for_quit;
-  dst->button_for_menu = src->button_for_menu;
-  dst->button_for_quit = src->button_for_quit;
-
 	for (int i = 0; i < MAX_JPORTS; i++) {
 		copyjport (src, dst, i);
 	}
@@ -5718,8 +5708,6 @@ void setjoystickstate (int joy, int axis, int state, int max)
 	if (v2 < deadzone && v2 > -deadzone)
 		v2 = 0;
 
-	//write_log (_T("%d:%d new=%d old=%d state=%d max=%d\n"), joy, axis, v1, v2, state, max);
-
 	if (!joysticks[joy].enabled) {
 		if (v1 > 0)
 			v1 = 1;
@@ -5798,10 +5786,11 @@ void setmousestate (int mouse, int axis, int data, int isabs)
 		d = data - *oldm_p;
 		*oldm_p = data;
 		*mouse_p += d;
-		if (axis == 0)
+		if (axis == 0) {
 			lastmx = data;
-		else
+		} else {
 			lastmy = data;
+		}
 		if (axis)
 			mousehack_helper (mice2[mouse].buttonmask);
 		if (currprefs.input_tablet == TABLET_MOUSEHACK && mousehack_alive () && axis < 2)

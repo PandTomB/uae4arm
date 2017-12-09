@@ -1,7 +1,14 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 #include "UaeRadioButton.hpp"
 #include "UaeDropDown.hpp"
@@ -144,16 +151,27 @@ static void InitEditFilesysVirtual(void)
   txtBootPri->setId("virtBootpri");
   
   int posY = DISTANCE_BORDER;
+	int posX = DISTANCE_BORDER;
+
   wndEditFilesysVirtual->add(lblDevice, DISTANCE_BORDER, posY);
-  wndEditFilesysVirtual->add(txtDevice, DISTANCE_BORDER + lblDevice->getWidth() + 8, posY);
-  wndEditFilesysVirtual->add(chkReadWrite, 250, posY + 1);
+	posX += lblDevice->getWidth() + 8;
+
+  wndEditFilesysVirtual->add(txtDevice, posX, posY);
+	posX += txtDevice->getWidth() + DISTANCE_BORDER * 2;
+
+  wndEditFilesysVirtual->add(chkReadWrite, posX, posY + 1);
   posY += txtDevice->getHeight() + DISTANCE_NEXT_Y;
+
   wndEditFilesysVirtual->add(lblVolume, DISTANCE_BORDER, posY);
-  wndEditFilesysVirtual->add(txtVolume, DISTANCE_BORDER + lblDevice->getWidth() + 8, posY);
-  wndEditFilesysVirtual->add(chkAutoboot, 250, posY + 1);
-  wndEditFilesysVirtual->add(lblBootPri, 374, posY);
-  wndEditFilesysVirtual->add(txtBootPri, 374 + lblBootPri->getWidth() + 8, posY);
+	wndEditFilesysVirtual->add(txtVolume, txtDevice->getX(), posY);
+
+	wndEditFilesysVirtual->add(chkAutoboot, chkReadWrite->getX(), posY + 1);
+	posX += chkAutoboot->getWidth() + DISTANCE_BORDER * 2;
+
+	wndEditFilesysVirtual->add(lblBootPri, posX, posY);
+	wndEditFilesysVirtual->add(txtBootPri, posX + lblBootPri->getWidth() + 8, posY);
   posY += txtDevice->getHeight() + DISTANCE_NEXT_Y;
+
   wndEditFilesysVirtual->add(lblPath, DISTANCE_BORDER, posY);
   wndEditFilesysVirtual->add(txtPath, DISTANCE_BORDER + lblDevice->getWidth() + 8, posY);
   wndEditFilesysVirtual->add(cmdPath, wndEditFilesysVirtual->getWidth() - DISTANCE_BORDER - SMALL_BUTTON_WIDTH, posY);
@@ -196,7 +214,9 @@ static void ExitEditFilesysVirtual(void)
 
 static void EditFilesysVirtualLoop(void)
 {
+#ifndef USE_SDL2
   FocusBugWorkaround(wndEditFilesysVirtual);  
+#endif
 
   while(!dialogFinished)
   {
@@ -237,11 +257,13 @@ static void EditFilesysVirtualLoop(void)
             gui_input->pushInput(event); // Fire key down
             event.type = SDL_KEYUP;  // and the key up
             break;
+				  default:
+					  break;
         }
       }
 
       //-------------------------------------------------
-      // Send event to guichan-controls
+      // Send event to guichan/guisan-controls
       //-------------------------------------------------
       gui_input->pushInput(event);
     }
@@ -252,7 +274,11 @@ static void EditFilesysVirtualLoop(void)
     uae_gui->draw();
     // Finally we update the screen.
     wait_for_vsync();
+#ifdef USE_SDL2
+		UpdateGuiScreen();
+#else
     SDL_Flip(gui_screen);
+#endif
   }  
 }
 
@@ -285,7 +311,7 @@ bool EditFilesysVirtual(int unit_no)
     txtPath->setText(strroot);
     chkReadWrite->setSelected(!ci->readonly);
     chkAutoboot->setSelected(ci->bootpri != BOOTPRI_NOAUTOBOOT);
-    snprintf(tmp, 32, "%d", ci->bootpri >= -127 ? ci->bootpri : -127);
+		snprintf(tmp, sizeof (tmp), "%d", ci->bootpri >= -127 ? ci->bootpri : -127);
     txtBootPri->setText(tmp);
   }
   else

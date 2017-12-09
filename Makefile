@@ -3,27 +3,43 @@ ifeq ($(PLATFORM),)
 endif
 
 ifeq ($(PLATFORM),rpi3)
-  CPU_FLAGS += -march=armv8-a -mfpu=neon-fp-armv8 -mfloat-abi=hard -mtune=cortex-a8
-  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DCAPSLOCK_DEBIAN_WORKAROUND
+  CPU_FLAGS += -march=armv8-a -mfpu=neon-fp-armv8 -mfloat-abi=hard -mtune=cortex-a53
+  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
   LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
+  ifeq ($(USE_SDL_VERSION),)
+    USE_SDL_VERSION = sdl1
+  endif
 else ifeq ($(PLATFORM),rpi2)
 	CPU_FLAGS += -march=armv7-a -mfpu=neon -mfloat-abi=hard -mtune=cortex-a8
-	MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DCAPSLOCK_DEBIAN_WORKAROUND
+	MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
   LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
+  ifeq ($(USE_SDL_VERSION),)
+    USE_SDL_VERSION = sdl1
+  endif
 else ifeq ($(PLATFORM),rpi1)
 	CPU_FLAGS += -march=armv6zk -mfpu=vfp -mfloat-abi=hard
-  MORE_CFLAGS += -DRASPBERRY -DCAPSLOCK_DEBIAN_WORKAROUND
+  MORE_CFLAGS += -DRASPBERRY
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
   LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
+  ifeq ($(USE_SDL_VERSION),)
+    USE_SDL_VERSION = sdl1
+  endif
 else ifeq ($(PLATFORM),Pandora)
-  CPU_FLAGS +=  -march=armv7-a -mfpu=neon -mfloat-abi=softfp -mtune=cortex-a8
-  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DPANDORA -msoft-float
+  CPU_FLAGS += -march=armv7-a -mfpu=neon -mfloat-abi=softfp -mtune=cortex-a8
+  MORE_CFLAGS += $(CFLAGS) -DARMV6T2 -DUSE_ARMNEON -DPANDORA -msoft-float
   PROFILER_PATH = /media/MAINSD/pandora/test
+  ifeq ($(USE_SDL_VERSION),)
+    USE_SDL_VERSION = sdl1
+  endif
+endif
+
+ifeq ($(USE_SDL_VERSION),)
+  USE_SDL_VERSION = sdl1
 endif
 
 NAME   = uae4arm
@@ -34,7 +50,14 @@ STRIP  ?= strip
 
 PROG   = $(NAME)
 
+ifeq ($(USE_SDL_VERSION),sdl1)
 all: $(PROG)
+else
+all: guisan $(PROG)
+endif
+
+guisan:
+	$(MAKE) -C src/guisan
 
 #DEBUG=1
 #TRACER=1
@@ -42,37 +65,44 @@ all: $(PROG)
 #GEN_PROFILE=1
 #USE_PROFILE=1
 
+ifeq ($(USE_SDL_VERSION),sdl1)
 SDL_CFLAGS = `sdl-config --cflags`
+else
+SDL_CFLAGS = `sdl2-config --cflags --libs`
+endif
 
-DEFS +=  `xml2-config --cflags`
+DEFS += `xml2-config --cflags`
 DEFS += -DCPU_arm -DARMV6_ASSEMBLY
-DEFS += -DWITH_INGAME_WARNING 
 DEFS += -DUSE_SDL
 #DEFS += -DWITH_LOGGING
 
+ifeq ($(USE_SDL_VERSION),sdl2)
+MORE_CFLAGS += -Isrc/guisan/include -DUSE_SDL2
+endif
 MORE_CFLAGS += -Isrc -Isrc/osdep -Isrc/include -Isrc/archivers
 MORE_CFLAGS += -Wno-write-strings -Wno-shift-overflow -Wno-narrowing 
 MORE_CFLAGS += -fuse-ld=gold -fdiagnostics-color=auto
 MORE_CFLAGS += -mstructure-size-boundary=32
 MORE_CFLAGS += -falign-functions=32
 
-LDFLAGS += -lSDL -lpthread -lz -lSDL_image -lpng -lxml2 -lFLAC -lmpg123 -ldl -lmpeg2convert -lmpeg2
-LDFLAGS += -lSDL_ttf -lguichan_sdl -lguichan
+LDFLAGS += -lpthread -lz -lpng -lrt -lxml2 -lFLAC -lmpg123 -ldl -lmpeg2convert -lmpeg2
+ifeq ($(USE_SDL_VERSION),sdl1)
+LDFLAGS += -lSDL -lSDL_image -lSDL_ttf -lguichan_sdl -lguichan
+else
+LDFLAGS += -lSDL2 -lSDL2_image -lSDL2_ttf -lguisan -Lsrc/guisan/lib
+endif
 
 TRACE_CFLAGS = 
 
 ifndef DEBUG
-MORE_CFLAGS += -Ofast -pipe
-MORE_CFLAGS += -fweb -frename-registers
-MORE_CFLAGS += -funroll-loops -ftracer -funswitch-loops
-
+  MORE_CFLAGS += -Ofast -pipe
+  MORE_CFLAGS += -frename-registers
+  MORE_CFLAGS += -funroll-loops -ftracer
 else
-MORE_CFLAGS += -g -rdynamic -funwind-tables -mapcs-frame -DDEBUG -Wl,--export-dynamic
-
-ifdef TRACER
-TRACE_CFLAGS = -DTRACER -finstrument-functions -Wall -rdynamic
-endif
-
+  MORE_CFLAGS += -g -rdynamic -funwind-tables -mapcs-frame -DDEBUG -Wl,--export-dynamic
+  ifdef TRACER
+    TRACE_CFLAGS = -DTRACER -finstrument-functions -Wall -rdynamic
+  endif
 endif
 
 ASFLAGS += $(CPU_FLAGS) -falign-functions=32
@@ -196,16 +226,16 @@ OBJS =	\
 	src/osdep/cda_play.o \
 	src/osdep/charset.o \
 	src/osdep/fsdb_host.o \
-	src/osdep/hardfile_pandora.o \
 	src/osdep/keyboard.o \
 	src/osdep/mp3decoder.o \
 	src/osdep/picasso96.o \
 	src/osdep/writelog.o \
-	src/osdep/pandora.o \
-	src/osdep/pandora_filesys.o \
-	src/osdep/pandora_gui.o \
-	src/osdep/pandora_rp9.o \
-	src/osdep/pandora_mem.o \
+	src/osdep/generic_hardfile.o \
+	src/osdep/generic_target.o \
+	src/osdep/generic_filesys.o \
+	src/osdep/generic_gui.o \
+	src/osdep/generic_rp9.o \
+	src/osdep/generic_mem.o \
 	src/osdep/sigsegv_handler.o \
 	src/osdep/gui/UaeRadioButton.o \
 	src/osdep/gui/UaeDropDown.o \
@@ -234,18 +264,24 @@ OBJS =	\
 	src/osdep/gui/PanelMisc.o \
 	src/osdep/gui/PanelSavestate.o \
 	src/osdep/gui/main_window.o \
-	src/osdep/gui/Navigation.o \
-  src/osdep/gui/sdltruetypefont.o
+	src/osdep/gui/Navigation.o
+  
+
+ifeq ($(USE_SDL_VERSION),sdl1)
+OBJS += src/osdep/gui/sdltruetypefont.o
+endif
 
 ifeq ($(PLATFORM),Pandora)
+OBJS += src/osdep/pandora.o
 OBJS += src/osdep/pandora_gfx.o
 OBJS += src/osdep/pandora_input.o
-OBJS += src/sounddep/sound.o
-OBJS += src/osdep/gui/PanelInput.o
+OBJS += src/sounddep/pandora_sound.o
+OBJS += src/osdep/gui/PanelInputPandora.o
 else
-OBJS += src/osdep/rasp_gfx.o
+OBJS += src/osdep/raspi.o
+OBJS += src/osdep/raspi_gfx.o
 OBJS += src/osdep/raspi_input.o
-OBJS += src/sounddep/sound_sdl_new.o
+OBJS += src/sounddep/sound_sdl.o
 OBJS += src/osdep/gui/PanelInputRaspi.o
 endif
 

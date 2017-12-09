@@ -248,9 +248,34 @@ void update_display(struct uae_prefs *p)
 }
 
 
+static int currVSyncRate = 0;
+static bool SetVSyncRate(int hz)
+{
+	char cmd[64];
+
+  if(currVSyncRate != hz && (hz == 50 || hz == 60))
+  {
+    snprintf((char*)cmd, 64, "sudo /usr/pandora/scripts/op_lcdrate.sh %d", hz);
+    system(cmd);
+    currVSyncRate = hz;
+    return true;
+  }
+  return false;
+}
+
+
 int check_prefs_changed_gfx (void)
 {
   int changed = 0;
+
+	if(changed_prefs.ntscmode != currprefs.ntscmode)
+	{
+		if(changed_prefs.ntscmode)
+			SetVSyncRate(60);
+		else
+			SetVSyncRate(50);
+		fix_apmodes(&changed_prefs);
+	}
   
   if(currprefs.gfx_size.height != changed_prefs.gfx_size.height ||
      currprefs.gfx_size.width != changed_prefs.gfx_size.width ||
@@ -281,6 +306,7 @@ int check_prefs_changed_gfx (void)
 	  changed = 1;
   }
 
+	// Not the correct place for this...
 	currprefs.filesys_limit = changed_prefs.filesys_limit;
 	currprefs.harddrive_read_only = changed_prefs.harddrive_read_only;
   

@@ -4,11 +4,15 @@
 #include <map>
 #include <string>
 
-#include "guichan/keylistener.hpp"
-#include "guichan/mouselistener.hpp"
+#ifdef USE_SDL2
+#include <guisan/platform.hpp>
+#include <guisan/widget.hpp>
+#include <guisan/widgets/radiobutton.hpp>
+#else
 #include "guichan/platform.hpp"
 #include "guichan/widget.hpp"
 #include "guichan/widgets/radiobutton.hpp"
+#endif
 
 
 namespace gcn

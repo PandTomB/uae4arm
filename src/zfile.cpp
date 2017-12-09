@@ -356,7 +356,6 @@ static struct zfile *zfile_gunzip (struct zfile *z, int *retcode)
 	  size |= b << 8;
 	  zfile_fseek (z, size + 2, SEEK_CUR);
   }
-
   if (flags & 8) { /* get original file name */
 		uae_char aname[MAX_DPATH];
   	i = 0;
@@ -1610,7 +1609,6 @@ struct zfile *zfile_fopen_empty (struct zfile *prev, const TCHAR *name, uae_u64 
   }
   return l;
 }
-
 struct zfile *zfile_fopen_empty (struct zfile *prev, const TCHAR *name)
 {
 	return zfile_fopen_empty (prev, name, 0);
@@ -2771,7 +2769,6 @@ struct zdirectory *zfile_opendir_archive (const TCHAR *path, int flags)
 	}
   struct znode *zn = get_znode(zv, path, TRUE);
   struct zdirectory *zd;
-
 	if (!zn || (!zn->child && !zn->vchild)) {
 		if (created)
 			zfile_fclose_archive (zv);

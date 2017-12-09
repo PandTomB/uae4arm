@@ -2,8 +2,13 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <guisan/sdl.hpp>
+#else
 #include <guichan.hpp>
 #include <guichan/sdl.hpp>
+#endif
 #include "sysconfig.h"
 #include "sysdeps.h"
 #include "config.h"
@@ -197,18 +202,18 @@ static struct romdata *scan_single_rom_2 (struct zfile *f)
 
 static struct romdata *scan_single_rom (char *path)
 {
-    struct zfile *z;
-    char tmp[MAX_DPATH];
-    struct romdata *rd;
+  struct zfile *z;
+  char tmp[MAX_DPATH];
+  struct romdata *rd;
 
-    strncpy (tmp, path, MAX_PATH);
-    rd = getromdatabypath(path);
-    if (rd && rd->crc32 == 0xffffffff)
-	return rd;
-    z = zfile_fopen (path, "rb", ZFD_NORMAL);
-    if (!z)
-	return 0;
-    return scan_single_rom_2 (z);
+  strncpy (tmp, path, MAX_PATH);
+  rd = getromdatabypath(path);
+  if (rd && rd->crc32 == 0xffffffff)
+  	return rd;
+  z = zfile_fopen (path, "rb", ZFD_NORMAL);
+  if (!z)
+  	return 0;
+  return scan_single_rom_2 (z);
 }
 
 static int isromext(char *path)
@@ -408,7 +413,6 @@ int gui_init (void)
   if(quit_program == UAE_QUIT)
     ret = -2; // Quit without start of emulator
 
-	setCpuSpeed();
   update_display(&changed_prefs);
 
   after_leave_gui();
@@ -419,9 +423,8 @@ int gui_init (void)
 
 void gui_exit(void)
 {
-	resetCpuSpeed();
 	sync();
-	pandora_stop_sound();
+	stop_sound();
 	saveAdfDir();
 	ClearConfigFileList();
 	ClearAvailableROMList();
@@ -479,6 +482,7 @@ int gui_update (void)
 	   	strncat(savestate_fname,".uss", MAX_PATH - 1);
   		strncat(screenshot_filename,".png", MAX_PATH - 1);
   }
+
   return 0;
 }
 
@@ -497,7 +501,6 @@ void gui_display (int shortcut)
   prefs_to_gui();
   run_gui();
   gui_to_prefs();
-	setCpuSpeed();
 	if(quit_program)
 		screen_is_picasso = 0;
 
@@ -518,24 +521,18 @@ void gui_display (int shortcut)
 }
 
   
-void moveVertical(int value)
-{
-	changed_prefs.pandora_vertical_offset += value;
-	if(changed_prefs.pandora_vertical_offset < -16 + OFFSET_Y_ADJUST)
-		changed_prefs.pandora_vertical_offset = -16 + OFFSET_Y_ADJUST;
-	else if(changed_prefs.pandora_vertical_offset > 16 + OFFSET_Y_ADJUST)
-		changed_prefs.pandora_vertical_offset = 16 + OFFSET_Y_ADJUST;
-}
-
 void gui_led(int led, int on, int brightness)
 {
 #ifdef RASPBERRY
 	unsigned char kbd_led_status;
    
 	// Check current prefs/ update if changed
-	if (currprefs.kbd_led_num != changed_prefs.kbd_led_num) currprefs.kbd_led_num = changed_prefs.kbd_led_num;
-	if (currprefs.kbd_led_scr != changed_prefs.kbd_led_scr) currprefs.kbd_led_scr = changed_prefs.kbd_led_scr;
-	if (currprefs.kbd_led_cap != changed_prefs.kbd_led_cap) currprefs.kbd_led_cap = changed_prefs.kbd_led_cap;
+	if (currprefs.kbd_led_num != changed_prefs.kbd_led_num) 
+	  currprefs.kbd_led_num = changed_prefs.kbd_led_num;
+	if (currprefs.kbd_led_scr != changed_prefs.kbd_led_scr) 
+	  currprefs.kbd_led_scr = changed_prefs.kbd_led_scr;
+	if (currprefs.kbd_led_cap != changed_prefs.kbd_led_cap) 
+	  currprefs.kbd_led_cap = changed_prefs.kbd_led_cap;
    
 	ioctl(0, KDGETLED, &kbd_led_status);
    
@@ -544,13 +541,17 @@ void gui_led(int led, int on, int brightness)
 	{ 
 		if (currprefs.kbd_led_num == led || currprefs.kbd_led_num == LED_DFs)
 		{  
-			if (on) kbd_led_status |= LED_NUM;
-			else kbd_led_status &= ~LED_NUM;
+			if (on) 
+			  kbd_led_status |= LED_NUM;
+			else 
+			  kbd_led_status &= ~LED_NUM;
 		}
 		if (currprefs.kbd_led_scr == led || currprefs.kbd_led_scr == LED_DFs)
 		{  
-			if (on) kbd_led_status |= LED_SCR;
-			else kbd_led_status &= ~LED_SCR;
+			if (on) 
+			  kbd_led_status |= LED_SCR;
+			else 
+			  kbd_led_status &= ~LED_SCR;
 		}
 	}
    
@@ -559,13 +560,17 @@ void gui_led(int led, int on, int brightness)
 	{ 
 		if (currprefs.kbd_led_num == led)
 		{   
-			if (on) kbd_led_status |= LED_NUM;
-			else kbd_led_status &= ~LED_NUM;
+			if (on) 
+			  kbd_led_status |= LED_NUM;
+			else 
+			  kbd_led_status &= ~LED_NUM;
 		}
 		if (currprefs.kbd_led_scr == led)
 		{   
-			if (on) kbd_led_status |= LED_SCR;
-			else kbd_led_status &= ~LED_SCR;
+			if (on) 
+			  kbd_led_status |= LED_SCR;
+			else 
+			  kbd_led_status &= ~LED_SCR;
 		}
 	}
   

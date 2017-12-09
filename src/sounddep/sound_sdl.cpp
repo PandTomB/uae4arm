@@ -118,7 +118,7 @@ static void init_soundbuffer_usage(void)
 }
 
 
-static int pandora_start_sound(int rate, int bits, int stereo)
+static int start_sound(int rate, int bits, int stereo)
 {
 	int frag = 0, buffers, ret;
 	unsigned int bsize;
@@ -162,7 +162,7 @@ static int pandora_start_sound(int rate, int bits, int stereo)
 }
 
 
-void pandora_stop_sound(void)
+void stop_sound(void)
 {
   if(sound_thread_exit == 0) {
   	SDL_PauseAudio(1);
@@ -229,7 +229,7 @@ bool cdaudio_catchup(void)
 /* Try to determine whether sound is available.  This is only for GUI purposes.  */
 int setup_sound(void)
 {
-	if (pandora_start_sound(currprefs.sound_freq, 16, currprefs.sound_stereo) != 0)
+	if (start_sound(currprefs.sound_freq, 16, currprefs.sound_stereo) != 0)
 		return 0;
 
 	sound_available = 1;
@@ -241,7 +241,7 @@ static int open_sound(void)
 {
   config_changed = 1;
 
-	if (pandora_start_sound(currprefs.sound_freq, 16, currprefs.sound_stereo) != 0)
+	if (start_sound(currprefs.sound_freq, 16, currprefs.sound_stereo) != 0)
 		return 0;
 
 	have_sound = 1;
@@ -263,7 +263,7 @@ void close_sound(void)
 	if (!have_sound)
 		return;
 
-	pandora_stop_sound();
+	stop_sound();
 
 	have_sound = 0;
 }

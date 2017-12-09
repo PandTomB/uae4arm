@@ -1,7 +1,14 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 #include "UaeRadioButton.hpp"
 #include "UaeDropDown.hpp"
@@ -290,27 +297,42 @@ static void InitEditFilesysHardfile(void)
   cboUnit->setId("hdfUnit");
 
   int posY = DISTANCE_BORDER;
+	int posX = DISTANCE_BORDER;
+
   wndEditFilesysHardfile->add(lblDevice, DISTANCE_BORDER, posY);
-  wndEditFilesysHardfile->add(txtDevice, DISTANCE_BORDER + lblDevice->getWidth() + 8, posY);
-  wndEditFilesysHardfile->add(chkReadWrite, 235, posY + 1);
-  wndEditFilesysHardfile->add(chkAutoboot, 360, posY + 1);
-  wndEditFilesysHardfile->add(lblBootPri, 460, posY);
-  wndEditFilesysHardfile->add(txtBootPri, 460 + lblBootPri->getWidth() + 8, posY);
+  posX += lblDevice->getWidth() + 8;
+
+  wndEditFilesysHardfile->add(txtDevice, posX, posY);
+	posX += txtDevice->getWidth() + DISTANCE_BORDER * 2;
+
+  wndEditFilesysHardfile->add(chkReadWrite, posX, posY + 1);
   posY += txtDevice->getHeight() + DISTANCE_NEXT_Y;
+
+  wndEditFilesysHardfile->add(chkAutoboot, chkReadWrite->getX(), posY + 1);
+	posX += chkAutoboot->getWidth() + DISTANCE_BORDER;
+
+  wndEditFilesysHardfile->add(lblBootPri, posX, posY);
+  wndEditFilesysHardfile->add(txtBootPri, posX + lblBootPri->getWidth() + 8, posY);
+	posY += txtBootPri->getHeight() + DISTANCE_NEXT_Y;
+
   wndEditFilesysHardfile->add(lblPath, DISTANCE_BORDER, posY);
   wndEditFilesysHardfile->add(txtPath, DISTANCE_BORDER + lblPath->getWidth() + 8, posY);
   wndEditFilesysHardfile->add(cmdPath, wndEditFilesysHardfile->getWidth() - DISTANCE_BORDER - SMALL_BUTTON_WIDTH, posY);
   posY += txtPath->getHeight() + DISTANCE_NEXT_Y;
+
   wndEditFilesysHardfile->add(lblSurfaces, DISTANCE_BORDER, posY);
   wndEditFilesysHardfile->add(txtSurfaces, DISTANCE_BORDER + lblSurfaces->getWidth() + 8, posY);
-  wndEditFilesysHardfile->add(lblReserved, 240, posY);
-  wndEditFilesysHardfile->add(txtReserved, 240 + lblReserved->getWidth() + 8, posY);
+	wndEditFilesysHardfile->add(lblReserved, txtSurfaces->getX() + txtSurfaces->getWidth() + DISTANCE_BORDER, posY);
+	wndEditFilesysHardfile->add(txtReserved, lblReserved->getX() + lblReserved->getWidth() + 8, posY);
   posY += txtSurfaces->getHeight() + DISTANCE_NEXT_Y;
+
   wndEditFilesysHardfile->add(lblSectors, DISTANCE_BORDER, posY);
   wndEditFilesysHardfile->add(txtSectors, DISTANCE_BORDER + lblSectors->getWidth() + 8, posY);
-  wndEditFilesysHardfile->add(lblBlocksize, 240, posY);
-  wndEditFilesysHardfile->add(txtBlocksize, 240 + lblBlocksize->getWidth() + 8, posY);
+
+	wndEditFilesysHardfile->add(lblBlocksize, txtSectors->getX() + txtSectors->getWidth() + DISTANCE_BORDER, posY);
+	wndEditFilesysHardfile->add(txtBlocksize, lblBlocksize->getX() + lblBlocksize->getWidth() + 8, posY);
   posY += txtSectors->getHeight() + DISTANCE_NEXT_Y;
+
   wndEditFilesysHardfile->add(lblController, DISTANCE_BORDER, posY);
   wndEditFilesysHardfile->add(cboController, DISTANCE_BORDER + lblController->getWidth() + 8, posY);
   wndEditFilesysHardfile->add(cboUnit, cboController->getX() + cboController->getWidth() + 8, posY);
@@ -362,7 +384,9 @@ static void ExitEditFilesysHardfile(void)
 
 static void EditFilesysHardfileLoop(void)
 {
+#ifndef USE_SDL2
   FocusBugWorkaround(wndEditFilesysHardfile);  
+#endif
 
   while(!dialogFinished)
   {
@@ -403,11 +427,13 @@ static void EditFilesysHardfileLoop(void)
             gui_input->pushInput(event); // Fire key down
             event.type = SDL_KEYUP;  // and the key up
             break;
+				  default:
+					  break;
         }
       }
 
       //-------------------------------------------------
-      // Send event to guichan-controls
+      // Send event to guichan/guisan-controls
       //-------------------------------------------------
       gui_input->pushInput(event);
     }
@@ -418,7 +444,11 @@ static void EditFilesysHardfileLoop(void)
     uae_gui->draw();
     // Finally we update the screen.
     wait_for_vsync();
+#ifdef USE_SDL2
+		UpdateGuiScreen();
+#else
     SDL_Flip(gui_screen);
+#endif
   }  
 }
 
@@ -452,15 +482,15 @@ bool EditFilesysHardfile(int unit_no)
 
     chkReadWrite->setSelected(!ci->readonly);
     chkAutoboot->setSelected(ci->bootpri != BOOTPRI_NOAUTOBOOT);
-    snprintf(tmp, 32, "%d", ci->bootpri >= -127 ? ci->bootpri : -127);
+		snprintf(tmp, sizeof (tmp), "%d", ci->bootpri >= -127 ? ci->bootpri : -127);
     txtBootPri->setText(tmp);
-    snprintf(tmp, 32, "%d", ci->surfaces);
+		snprintf(tmp, sizeof (tmp), "%d", ci->surfaces);
     txtSurfaces->setText(tmp);
-    snprintf(tmp, 32, "%d", ci->reserved);
+		snprintf(tmp, sizeof (tmp), "%d", ci->reserved);
     txtReserved->setText(tmp);
-    snprintf(tmp, 32, "%d", ci->sectors);
+		snprintf(tmp, sizeof (tmp), "%d", ci->sectors);
     txtSectors->setText(tmp);
-    snprintf(tmp, 32, "%d", ci->blocksize);
+		snprintf(tmp, sizeof (tmp), "%d", ci->blocksize);
     txtBlocksize->setText(tmp);
     int selIndex = 0;
     for(i = 0; i < 2; ++i) {

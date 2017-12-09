@@ -37,12 +37,6 @@
 #include "SDL.h"
 #endif
 
-#ifdef CAPSLOCK_DEBIAN_WORKAROUND
-#include <linux/kd.h>
-#include <sys/ioctl.h>
-#include "keyboard.h"
-#endif
-
 long int version = 256*65536L*UAEMAJOR + 65536L*UAEMINOR + UAESUBREV;
 
 struct uae_prefs currprefs, changed_prefs; 
@@ -329,7 +323,6 @@ void fixup_prefs (struct uae_prefs *p, bool userconfig)
 		p->floppyslots[3].dfxtype = -1;
 	  err = 1;
   }
-
   if (p->floppy_speed > 0 && p->floppy_speed < 10) {
 		error_log (_T("Invalid floppy speed."));
   	p->floppy_speed = 100;
@@ -624,17 +617,7 @@ void do_start_program (void)
 
 void start_program (void)
 {
-#ifdef CAPSLOCK_DEBIAN_WORKAROUND
-	char kbd_flags;
-	// set capslock state based upon current "real" state
-	ioctl(0, KDGKBLED, &kbd_flags);
-	if ((kbd_flags & 07) & LED_CAP)
-	{
-	  // record capslock pressed
-		inputdevice_do_keyboard(AK_CAPSLOCK, 1);
-	}
-#endif
-    do_start_program ();
+  do_start_program ();
 }
 
 void leave_program (void)
@@ -646,10 +629,14 @@ static int real_main2 (int argc, TCHAR **argv)
 {
 #ifdef USE_SDL
   int ret;
+#ifdef USE_SDL2
+  ret = SDL_Init(SDL_INIT_EVERYTHING);
+#else
 #ifdef PANDORA
   ret = SDL_Init(SDL_INIT_NOPARACHUTE | SDL_INIT_VIDEO);
 #else 
 	ret = SDL_Init(SDL_INIT_NOPARACHUTE | SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK);
+#endif
 #endif
   if (ret < 0)
 	{
@@ -706,7 +693,6 @@ static int real_main2 (int argc, TCHAR **argv)
   }
   else
   {
-  	setCpuSpeed();
     update_display(&currprefs);
   }
 

@@ -1,7 +1,14 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 
 #include "sysconfig.h"
@@ -13,6 +20,12 @@
 #include "gui_handling.h"
 #include "include/memory.h"
 #include "autoconf.h"
+
+#ifdef USE_SDL2
+extern SDL_Renderer* renderer;
+extern SDL_DisplayMode sdlMode;
+extern void check_error_sdl(bool check, const char* message);
+#endif
 
 bool gui_running = false;
 static int last_active_panel = 2;
@@ -52,18 +65,27 @@ enum { PANEL_PATHS, PANEL_QUICKSTART, PANEL_CONFIGURATIONS, PANEL_CPU, PANEL_CHI
        NUM_PANELS };
 
 
+#ifdef USE_SDL2
+SDL_Texture* gui_texture;
+SDL_Cursor* cursor;
+SDL_Surface* cursorSurface;
+gcn::SDLTrueTypeFont* gui_font;
+#else
+gcn::contrib::SDLTrueTypeFont* gui_font;
+#endif
+
+gcn::Container* gui_top;
+gcn::Container* selectors;
 gcn::Gui* uae_gui;
 gcn::Color gui_baseCol;
 gcn::Color gui_baseColLabel;
 gcn::Color colSelectorInactive;
 gcn::Color colSelectorActive;
-gcn::Container* gui_top;
-gcn::Container* selectors;
-gcn::contrib::SDLTrueTypeFont* gui_font;
 SDL_Surface* gui_screen;
 gcn::SDLGraphics* gui_graphics;
 gcn::SDLInput* gui_input;
 gcn::SDLImageLoader* gui_imageLoader;
+SDL_Event gui_event;
 
 namespace widgets 
 {
@@ -128,10 +150,11 @@ void RegisterRefreshFunc(void (*func)(void))
   refreshFuncAfterDraw = func;
 }
 
+#ifndef USE_SDL2
 void FocusBugWorkaround(gcn::Window *wnd)
 {
   // When modal dialog opens via mouse, the dialog will not
-  // has the focus unless one mouse click. We simulate the click...
+	// have the focus unless there is a mouse click. We simulate the click...
   SDL_Event event;
   event.type = SDL_MOUSEBUTTONDOWN;
   event.button.button = SDL_BUTTON_LEFT;
@@ -142,6 +165,7 @@ void FocusBugWorkaround(gcn::Window *wnd)
   event.type = SDL_MOUSEBUTTONUP;
   gui_input->pushInput(event);
 }
+#endif
 
 
 static void ShowHelpRequested()
@@ -158,30 +182,99 @@ static void ShowHelpRequested()
   }
 }
 
+#ifdef USE_SDL2
+void UpdateGuiScreen()
+{
+	// Update the texture from the surface
+	SDL_UpdateTexture(gui_texture, nullptr, gui_screen->pixels, gui_screen->pitch);
+	// Copy the texture on the renderer
+	SDL_RenderCopy(renderer, gui_texture, nullptr, nullptr);
+	// Update the window surface (show the renderer)
+	SDL_RenderPresent(renderer);
+}
+#endif
 
 namespace sdl
 {
+#ifdef USE_SDL2
+	// Sets the cursor image up
+	void setup_cursor() 
+	{
+		// Detect resolution and load appropiate cursor image
+		if (sdlMode.w > 1280)
+		{
+			cursorSurface = SDL_LoadBMP("data/cursor-x2.bmp");
+		}
+		else
+		{
+			cursorSurface = SDL_LoadBMP("data/cursor.bmp");
+		}
+		
+		if (cursorSurface == nullptr)
+		{
+			// Load failed. Log error.
+			printf("Could not load cursor bitmap: %d\n", SDL_GetError());
+			return;
+		}
+
+		// Create new cursor with surface
+		cursor = SDL_CreateColorCursor(cursorSurface, 0, 0);
+		if (cursor == nullptr)
+		{
+			// Cursor creation failed. Log error and free surface
+			printf("Could not create color cursor: %d\n", SDL_GetError());
+			SDL_FreeSurface(cursorSurface);
+			cursorSurface = nullptr;
+			return;
+		}
+
+		SDL_SetCursor(cursor);
+	}
+#endif
+
   void gui_init()
   {
     //-------------------------------------------------
     // Set layer for GUI screen
     //-------------------------------------------------
+#ifdef PANDORA
   	char tmp[20];
   	snprintf(tmp, 20, "%dx%d", GUI_WIDTH, GUI_HEIGHT);
   	setenv("SDL_OMAP_LAYER_SIZE", tmp, 1);
   	snprintf(tmp, 20, "0,0,0,0");
   	setenv("SDL_OMAP_BORDER_CUT", tmp, 1);
+#endif
 
     //-------------------------------------------------
     // Create new screen for GUI
     //-------------------------------------------------
+#ifdef USE_SDL2
+		setup_cursor();
+
+		// make the scaled rendering look smoother (linear scaling).
+		SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+
+		gui_screen = SDL_CreateRGBSurface(0, GUI_WIDTH, GUI_HEIGHT, 32, 0, 0, 0, 0);
+		check_error_sdl(gui_screen == NULL, "Unable to create a surface");
+
+		SDL_RenderSetLogicalSize(renderer, GUI_WIDTH, GUI_HEIGHT);
+
+		gui_texture = SDL_CreateTextureFromSurface(renderer, gui_screen);
+		check_error_sdl(gui_texture == NULL, "Unable to create texture");
+
+		if (cursor)
+		{
+			SDL_ShowCursor(SDL_ENABLE);
+		}
+#else
 		gui_screen = SDL_SetVideoMode(GUI_WIDTH, GUI_HEIGHT, 16, SDL_SWSURFACE | SDL_FULLSCREEN);
     SDL_EnableUNICODE(1);
     SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
     SDL_ShowCursor(SDL_ENABLE);
+#endif
 
     //-------------------------------------------------
-    // Create helpers for guichan
+    // Create helpers for guichan/guisan
     //-------------------------------------------------
     gui_imageLoader = new gcn::SDLImageLoader();
     gcn::Image::setImageLoader(gui_imageLoader);
@@ -204,6 +297,133 @@ namespace sdl
       SDL_FreeSurface(gui_screen);
       gui_screen = NULL;
     }
+#ifdef USE_SDL2
+		SDL_DestroyTexture(gui_texture);
+		gui_texture = NULL;
+
+		if (cursor)
+		{
+			SDL_FreeCursor(cursor);
+			cursor = nullptr;
+		}
+		if (cursorSurface)
+		{
+			SDL_FreeSurface(cursorSurface);
+			cursorSurface = nullptr;
+		}
+#endif
+  }
+
+	void checkInput()
+	{
+    while(SDL_PollEvent(&gui_event))
+    {
+  		if (gui_event.type == SDL_QUIT)
+  		{
+        //-------------------------------------------------
+        // Quit entire program via SQL-Quit
+        //-------------------------------------------------
+  			uae_quit();
+  			gui_running = false;
+  			break;
+  		}
+
+      else if (gui_event.type == SDL_KEYDOWN)
+      {
+        gcn::FocusHandler* focusHdl;
+        gcn::Widget* activeWidget;
+          
+#ifdef RASPBERRY
+				if (gui_event.key.keysym.sym == currprefs.key_for_menu)
+#else /* PANDORA */
+				if (gui_event.key.keysym.sym == SDLK_LCTRL)
+#endif
+				{
+			    if(emulating && widgets::cmdStart->isEnabled())
+		      {
+            //------------------------------------------------
+            // Continue emulation
+            //------------------------------------------------
+            gui_running = false;
+		      }
+          else
+          {
+            //------------------------------------------------
+            // First start of emulator -> reset Amiga
+            //------------------------------------------------
+      			uae_reset(0, 1);
+      			gui_running = false;
+          }
+        }
+				else
+        {
+          switch(gui_event.key.keysym.sym)
+          {
+            case SDLK_q:
+              //-------------------------------------------------
+              // Quit entire program via Q on keyboard
+              //-------------------------------------------------
+              focusHdl = gui_top->_getFocusHandler();
+              activeWidget = focusHdl->getFocused();
+              if(dynamic_cast<gcn::TextField*>(activeWidget) == NULL) {
+          			// ...but only if we are not in a Textfield...
+          			uae_quit();
+          			gui_running = false;
+          		}
+        			break;
+
+            case VK_ESCAPE:
+            case VK_R:
+              //-------------------------------------------------
+              // Reset Amiga
+              //-------------------------------------------------
+        			uae_reset(1, 1);
+        			gui_running = false;
+        			break;
+
+					  case VK_X:
+					  case VK_A:
+              //------------------------------------------------
+              // Simulate press of enter when 'X' pressed
+              //------------------------------------------------
+              gui_event.key.keysym.sym = SDLK_RETURN;
+              gui_input->pushInput(gui_event); // Fire key down
+              gui_event.type = SDL_KEYUP;  // and the key up
+              break;
+
+            case VK_UP:
+              if(HandleNavigation(DIRECTION_UP))
+                continue; // Don't change value when enter ComboBox -> don't send event to control
+              break;
+              
+            case VK_DOWN:
+              if(HandleNavigation(DIRECTION_DOWN))
+                continue; // Don't change value when enter ComboBox -> don't send event to control
+              break;
+              
+            case VK_LEFT:
+              if(HandleNavigation(DIRECTION_LEFT))
+                continue; // Don't change value when enter Slider -> don't send event to control
+              break;
+              
+            case VK_RIGHT:
+              if(HandleNavigation(DIRECTION_RIGHT))
+                continue; // Don't change value when enter Slider -> don't send event to control
+              break;
+          
+            case SDLK_F1:
+              ShowHelpRequested();
+              widgets::cmdHelp->requestFocus();
+              break;
+          }
+        }
+      }
+
+      //-------------------------------------------------
+      // Send event to guichan/guisan-controls
+      //-------------------------------------------------
+      gui_input->pushInput(gui_event);
+    }
   }
 
   void gui_run()
@@ -213,114 +433,8 @@ namespace sdl
     //-------------------------------------------------
     while(gui_running)
     {
-      //-------------------------------------------------
-      // Check user input
-      //-------------------------------------------------
-      SDL_Event event;
-      while(SDL_PollEvent(&event))
-      {
-    		if (event.type == SDL_QUIT)
-    		{
-          //-------------------------------------------------
-          // Quit entire program via SQL-Quit
-          //-------------------------------------------------
-    			uae_quit();
-    			gui_running = false;
-    			break;
-    		}
-
-        else if (event.type == SDL_KEYDOWN)
-        {
-          gcn::FocusHandler* focusHdl;
-          gcn::Widget* activeWidget;
-            
-					if (event.key.keysym.sym == currprefs.key_for_menu)
-					{
-  			    if(emulating && widgets::cmdStart->isEnabled())
-  		      {
-              //------------------------------------------------
-              // Continue emulation
-              //------------------------------------------------
-              gui_running = false;
-  		      }
-            else
-            {
-              //------------------------------------------------
-              // First start of emulator -> reset Amiga
-              //------------------------------------------------
-        			uae_reset(0, 1);
-        			gui_running = false;
-            }
-          }
-					else
-          {
-            switch(event.key.keysym.sym)
-            {
-              case SDLK_q:
-                //-------------------------------------------------
-                // Quit entire program via Q on keyboard
-                //-------------------------------------------------
-                focusHdl = gui_top->_getFocusHandler();
-                activeWidget = focusHdl->getFocused();
-                if(dynamic_cast<gcn::TextField*>(activeWidget) == NULL) {
-            			// ...but only if we are not in a Textfield...
-            			uae_quit();
-            			gui_running = false;
-            		}
-          			break;
-
-              case VK_ESCAPE:
-              case VK_R:
-                //-------------------------------------------------
-                // Reset Amiga
-                //-------------------------------------------------
-          			uae_reset(1, 1);
-          			gui_running = false;
-          			break;
-
-						  case VK_X:
-						  case VK_A:
-                //------------------------------------------------
-                // Simulate press of enter when 'X' pressed
-                //------------------------------------------------
-                event.key.keysym.sym = SDLK_RETURN;
-                gui_input->pushInput(event); // Fire key down
-                event.type = SDL_KEYUP;  // and the key up
-                break;
-
-              case VK_UP:
-                if(HandleNavigation(DIRECTION_UP))
-                  continue; // Don't change value when enter ComboBox -> don't send event to control
-                break;
-                
-              case VK_DOWN:
-                if(HandleNavigation(DIRECTION_DOWN))
-                  continue; // Don't change value when enter ComboBox -> don't send event to control
-                break;
-                
-              case VK_LEFT:
-                if(HandleNavigation(DIRECTION_LEFT))
-                  continue; // Don't change value when enter Slider -> don't send event to control
-                break;
-                
-              case VK_RIGHT:
-                if(HandleNavigation(DIRECTION_RIGHT))
-                  continue; // Don't change value when enter Slider -> don't send event to control
-                break;
-            
-              case SDLK_F1:
-                ShowHelpRequested();
-                widgets::cmdHelp->requestFocus();
-                break;
-            }
-          }
-        }
-
-        //-------------------------------------------------
-        // Send event to guichan-controls
-        //-------------------------------------------------
-        gui_input->pushInput(event);
-      }
+			// Poll input
+			checkInput();
 
   		if(gui_rtarea_flags_onenter != gui_create_rtarea_flag(&changed_prefs))
         DisableResume();
@@ -331,7 +445,11 @@ namespace sdl
       uae_gui->draw();
       // Finally we update the screen.
       wait_for_vsync();
+#ifdef USE_SDL2
+			UpdateGuiScreen();
+#else
       SDL_Flip(gui_screen);
+#endif
       
       if(refreshFuncAfterDraw != NULL)
       {
@@ -341,7 +459,6 @@ namespace sdl
       }
     }
   }
-
 }
 
 
@@ -419,7 +536,7 @@ namespace widgets
         }
       }
   };
-  MainButtonActionListener* mainButtonActionListener;
+  static MainButtonActionListener* mainButtonActionListener;
 
 
   class PanelFocusListener : public gcn::FocusListener
@@ -474,7 +591,11 @@ namespace widgets
     // Create container for main page
     //-------------------------------------------------
     gui_top = new gcn::Container();
+#ifdef USE_SDL2
+		gui_top->setDimension(gcn::Rectangle(0, 0, GUI_WIDTH, GUI_HEIGHT));
+#else
     gui_top->setDimension(gcn::Rectangle((gui_screen->w - GUI_WIDTH) / 2, (gui_screen->h - GUI_HEIGHT) / 2, GUI_WIDTH, GUI_HEIGHT));
+#endif
     gui_top->setBaseColor(gui_baseCol);
     uae_gui->setTop(gui_top);
 
@@ -482,7 +603,11 @@ namespace widgets
     // Initialize fonts
     //-------------------------------------------------
 	  TTF_Init();
+#ifdef USE_SDL2
+		gui_font = new gcn::SDLTrueTypeFont("data/FreeSans.ttf", 14);
+#else
 	  gui_font = new gcn::contrib::SDLTrueTypeFont("data/FreeSans.ttf", 14);
+#endif
     gcn::Widget::setGlobalFont(gui_font);
     
   	//--------------------------------------------------
@@ -535,7 +660,11 @@ namespace widgets
     selectors = new gcn::Container();
     selectors->setSize(150, workAreaHeight - 2);
     selectors->setBaseColor(colSelectorInactive);
+#ifdef USE_SDL2
+		selectors->setBorderSize(1);
+#else
     selectors->setFrameSize(1);
+#endif
   	int panelStartX = DISTANCE_BORDER + selectors->getWidth() + 2 + 11;
 
   	panelFocusListener = new PanelFocusListener();
@@ -551,7 +680,11 @@ namespace widgets
       categories[i].panel->setId(categories[i].category);
       categories[i].panel->setSize(GUI_WIDTH - panelStartX - DISTANCE_BORDER - 1, workAreaHeight - 2);
       categories[i].panel->setBaseColor(gui_baseCol);
+#ifdef USE_SDL2
+			categories[i].panel->setBorderSize(1);
+#else
       categories[i].panel->setFrameSize(1);
+#endif
       categories[i].panel->setVisible(false);
     }
 
@@ -667,22 +800,24 @@ void run_gui(void)
     widgets::gui_halt();
     sdl::gui_halt();
   }
-  // Catch all Guichan exceptions.
+  // Catch all Guichan/Guisan exceptions.
   catch (gcn::Exception e)
   {
-    std::cout << e.getMessage() << std::endl;
+    printf("%s\n", e.getMessage());
     uae_quit();
   }
+
   // Catch all Std exceptions.
   catch (std::exception e)
   {
-    std::cout << "Std exception: " << e.what() << std::endl;
+    printf("Std exception: %s\n", e.what());
     uae_quit();
   }
+	
   // Catch all unknown exceptions.
   catch (...)
   {
-    std::cout << "Unknown exception" << std::endl;
+    printf("Unknown exception\n");
     uae_quit();
   }
 

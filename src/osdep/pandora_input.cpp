@@ -104,7 +104,7 @@ static void read_mouse (void)
     int x, y;
     SDL_GetMouseState(&x, &y);
 	  setmousestate(0, 0, x, 1);
-	  setmousestate(0, 1, y, 1);
+	  setmousestate(0, 1, y - OFFSET_Y_ADJUST, 1);
   }
   
   if(currprefs.jports[0].id == JSEM_MICE + 1 || currprefs.jports[1].id == JSEM_MICE + 1) {

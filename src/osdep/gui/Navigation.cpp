@@ -1,7 +1,12 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 #include "UaeRadioButton.hpp"
 #include "UaeDropDown.hpp"
@@ -223,6 +228,7 @@ static NavigationMap navMap[] =
   
 //  active            move left           move right          move up           move down
 // PanelInput
+#ifdef PANDORA
   { "cboPort0",       "Input",          "Input",          "cboLeft",        "cboPort1" },
   { "cboPort1",       "Input",          "cboAutofire",    "cboPort0",       "MouseSpeed" },
   { "cboAutofire",    "cboPort1",       "Input",          "cboPort0",       "cboTapDelay" },
@@ -240,23 +246,35 @@ static NavigationMap navMap[] =
   { "cboDown",        "cboUp",          "Input",          "cboR",           "cboRight" },
   { "cboLeft",        "Input",          "cboRight",       "cboUp",          "cboPort0" },
   { "cboRight",       "cboLeft",        "Input",          "cboDown",        "cboPort0" },
+#else /* RASPBERRY */
+  { "cboPort0",       "Input",          "Input",          "cboLeft",        "cboPort1" },
+  { "cboPort1",       "Input",          "Input",          "cboPort0",       "cboAutofire" },
+  { "cboAutofire",    "Input",          "Input",          "cboPort1",       "MouseSpeed" },
+  { "MouseSpeed",     "",               "",               "cboAutofire",    "numlock" },
+
+	{ "numlock",		    "Miscellaneous",	"scrolllock",	    "MouseSpeed",	    "KeyForMenu"},
+	{ "scrolllock",		  "numlock",			  "Miscellaneous",  "MouseSpeed",	    "KeyForQuit"},
+
+	{ "KeyForMenu",		  "Miscellaneous",	"KeyForQuit",	    "numlock",	      "ButtonForMenu"},
+	{ "KeyForQuit",		  "KeyForMenu",			"Miscellaneous",  "scrolllock",	    "ButtonForQuit"},
+	{ "ButtonForMenu",	"Miscellaneous",	"ButtonForQuit",	"KeyForMenu",	    "cboPort0"},
+	{ "ButtonForQuit",	"ButtonForMenu",	"Miscellaneous",  "KeyForQuit",	    "cboPort0"},
+#endif
 
 // PanelMisc
-#ifndef RASPBERRY
+#ifdef PANDORA
   { "StatusLine",     "Miscellaneous",  "Miscellaneous",  "MasterWP",       "HideIdle" },
   { "HideIdle",       "Miscellaneous",  "Miscellaneous",  "StatusLine",     "ShowGUI" },
   { "ShowGUI",        "Miscellaneous",  "Miscellaneous",  "HideIdle",       "PandSpeed" },
   { "PandSpeed",      "",               "",               "ShowGUI",        "BSDSocket" },
   { "BSDSocket",      "Miscellaneous",  "Miscellaneous",  "PandSpeed",      "MasterWP" },
   { "MasterWP",       "Miscellaneous",  "Miscellaneous",  "BSDSocket",      "StatusLine" },
-#else
-  { "StatusLine",     "Miscellaneous",  "Miscellaneous",  "scrolllock",      "HideIdle" },
+#else /* RASPBERRY */
+  { "StatusLine",     "Miscellaneous",  "Miscellaneous",  "MasterWP",       "HideIdle" },
   { "HideIdle",       "Miscellaneous",  "Miscellaneous",  "StatusLine",     "ShowGUI" },
   { "ShowGUI",        "Miscellaneous",  "Miscellaneous",  "HideIdle",       "BSDSocket" },
-  { "BSDSocket",      "Miscellaneous",  "Miscellaneous",  "ShowGUI",        "numlock" },
-  { "MasterWP",       "Miscellaneous",  "Miscellaneous",  "BSDSocket",      "numlock" },
-	{ "numlock",		    "Miscellaneous",	"scrolllock",	    "MasterWP",	      "StatusLine"},
-	{ "scrolllock",		  "numlock",			  "Miscellaneous",  "MasterWP",	      "StatusLine"},
+  { "BSDSocket",      "Miscellaneous",  "Miscellaneous",  "ShowGUI",        "MasterWP" },
+  { "MasterWP",       "Miscellaneous",  "Miscellaneous",  "BSDSocket",      "StatusLine" },
 #endif
   
 // PanelSavestate

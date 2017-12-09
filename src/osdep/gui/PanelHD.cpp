@@ -1,7 +1,14 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 #include "UaeRadioButton.hpp"
 #include "UaeDropDown.hpp"
@@ -335,7 +342,11 @@ void InitPanelHD(const struct _ConfigCategory& category)
     listEntry[row] = new gcn::Container();
     listEntry[row]->setSize(category.panel->getWidth() - 2 * DISTANCE_BORDER, TEXTFIELD_HEIGHT + 4);
     listEntry[row]->setBaseColor(gui_baseCol);
+#ifdef USE_SDL2
+		listEntry[row]->setBorderSize(0);
+#else
     listEntry[row]->setFrameSize(0);
+#endif
     
     listCmdProps[row] = new gcn::Button("...");
     listCmdProps[row]->setBaseColor(gui_baseCol);
@@ -565,7 +576,7 @@ void RefreshPanelHD(void)
         else
           listCells[row][COL_READWRITE]->setText("yes");
         listCells[row][COL_SIZE]->setText("n/a");
-        snprintf(tmp, 32, "%d", ci->bootpri);
+				snprintf(tmp, sizeof (tmp), "%d", ci->bootpri);
         listCells[row][COL_BOOTPRI]->setText(tmp);
       }
       else
@@ -578,13 +589,13 @@ void RefreshPanelHD(void)
         else
           listCells[row][COL_READWRITE]->setText("yes");
   	    if (nosize)
-  	      snprintf (tmp, 32, "n/a");
+  	      snprintf (tmp, sizeof (tmp), "n/a");
   	    else if (mi.size >= 1024 * 1024 * 1024)
-	        snprintf (tmp, 32, "%.1fG", ((double)(uae_u32)(mi.size / (1024 * 1024))) / 1024.0);
+	        snprintf (tmp, sizeof (tmp), "%.1fG", ((double)(uae_u32)(mi.size / (1024 * 1024))) / 1024.0);
   	    else
-	        snprintf (tmp, 32, "%.1fM", ((double)(uae_u32)(mi.size / (1024))) / 1024.0);
+	        snprintf (tmp, sizeof (tmp), "%.1fM", ((double)(uae_u32)(mi.size / (1024))) / 1024.0);
         listCells[row][COL_SIZE]->setText(tmp);
-        snprintf(tmp, 32, "%d", ci->bootpri);
+        snprintf(tmp, sizeof (tmp), "%d", ci->bootpri);
         listCells[row][COL_BOOTPRI]->setText(tmp);
       }
       listCmdProps[row]->setEnabled(true);
@@ -609,7 +620,7 @@ void RefreshPanelHD(void)
   sldCDVol->setEnabled(changed_prefs.cdslots[0].inuse);
   
   sldCDVol->setValue(100 - changed_prefs.sound_volume_cd);
-  snprintf(tmp, 32, "%d %%", 100 - changed_prefs.sound_volume_cd);
+  snprintf(tmp, sizeof (tmp), "%d %%", 100 - changed_prefs.sound_volume_cd);
   lblCDVolInfo->setCaption(tmp);
 }
 

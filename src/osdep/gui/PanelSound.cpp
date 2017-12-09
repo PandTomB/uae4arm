@@ -1,7 +1,14 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 #include "UaeRadioButton.hpp"
 #include "UaeCheckBox.hpp"
@@ -468,7 +475,7 @@ bool HelpPanelSound(std::vector<std::string> &helptext)
   helptext.push_back("You can turn on sound emulation with different levels of accuracy and choose between mono and stereo.");
   helptext.push_back("");
   helptext.push_back("The different types of interpolation have different impact on the performance. Play with the settings to find the");
-  helptext.push_back("type you like most. You may need headphones the really hear the differences between the interpolations.");
+  helptext.push_back("type you like most. You may need headphones to really hear the differences between the interpolations.");
   helptext.push_back("");
   helptext.push_back("With \"Filter\", you can select the type of the Amiga audio filter.");
   helptext.push_back("");

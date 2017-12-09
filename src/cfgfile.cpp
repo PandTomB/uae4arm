@@ -287,7 +287,7 @@ static TCHAR *cfgfile_escape (const TCHAR *s, const TCHAR *escstr, bool quote)
 	return s2;
 }
 
-// escapy only , and "
+// escape only , and "
 static TCHAR *cfgfile_escape_min(const TCHAR *s)
 {
 	for (int i = 0; s[i]; i++) {
@@ -380,7 +380,7 @@ static TCHAR *getnextentry (const TCHAR **valuep, const TCHAR separator)
 
 static TCHAR *cfgfile_subst_path2 (const TCHAR *path, const TCHAR *subst, const TCHAR *file)
 {
-  /* @@@ use strcasecmp for some targets.  */
+  /* @@@ use _tcsicmp for some targets.  */
   if (_tcslen (path) > 0 && _tcsncmp (file, path, _tcslen (path)) == 0) {
   	int l;
   	TCHAR *p2, *p = xmalloc (TCHAR, _tcslen (file) + _tcslen (subst) + 2);
@@ -4385,7 +4385,7 @@ void default_prefs (struct uae_prefs *p, bool reset, int type)
   p->gfx_size.height = 240;
   p->gfx_resolution = RES_LORES;
 #endif
-	p->gfx_vresolution = VRES_DOUBLE;
+	p->gfx_vresolution = VRES_NONDOUBLE;
 
   p->immediate_blits = 0;
 	p->waiting_blits = 0;
@@ -4698,7 +4698,6 @@ static int bip_cd32 (struct uae_prefs *p, int config, int compa, int romcheck)
 	built_in_chipset_prefs (p);
 	fetch_datapath (p->flashfile, sizeof (p->flashfile) / sizeof (TCHAR));
 	_tcscat (p->flashfile, _T("cd32.nvr"));
-
 	roms[0] = 64;
 	roms[1] = -1;
 	if (!configure_rom (p, roms, 0)) {
@@ -4739,7 +4738,6 @@ static int bip_a1200 (struct uae_prefs *p, int config, int compa, int romcheck)
 	roms[1] = 15;
 	roms[2] = 31;
 	roms[3] = -1;
-
 	p->cs_rtc = 0;
 	p->cs_compatible = CP_A1200;
 	built_in_chipset_prefs (p);
@@ -4803,7 +4801,6 @@ static int bip_a500p (struct uae_prefs *p, int config, int compa, int romcheck)
 	p->chipset_mask = CSMASK_ECS_AGNUS | CSMASK_ECS_DENISE;
   return configure_rom (p, roms, romcheck);
 }
-
 static int bip_a500 (struct uae_prefs *p, int config, int compa, int romcheck)
 {
   int roms[4];

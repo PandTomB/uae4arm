@@ -1,7 +1,14 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 #include "UaeRadioButton.hpp"
 #include "UaeCheckBox.hpp"
@@ -414,7 +421,7 @@ bool HelpPanelCPU(std::vector<std::string> &helptext)
   helptext.push_back("The option \"More compatible\" is only available if 68000 or 68010 is selected and emulates simple prefetch of");
   helptext.push_back("the 68000. This may improve compatibility in few situations but is not required for most games and demos.");
   helptext.push_back("");
-  helptext.push_back("JIT enables the Just-in-time compiler. This may breaks compatibility in some games.");
+  helptext.push_back("JIT enables the Just-in-time compiler. This may break compatibility in some games.");
   helptext.push_back("");
   helptext.push_back("The available FPU models depending on the selected CPU.");
   helptext.push_back("The option \"More compatible\" activates more accurate rounding and compare of two floats.");

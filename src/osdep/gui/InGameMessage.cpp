@@ -1,7 +1,14 @@
+#ifdef USE_SDL2
+#include <guisan.hpp>
+#include <SDL_ttf.h>
+#include <guisan/sdl.hpp>
+#include <guisan/sdl/sdltruetypefont.hpp>
+#else
 #include <guichan.hpp>
 #include <SDL/SDL_ttf.h>
 #include <guichan/sdl.hpp>
 #include "sdltruetypefont.hpp"
+#endif
 #include "SelectorEntry.hpp"
 
 #include "sysconfig.h"
@@ -17,9 +24,33 @@
 
 
 extern SDL_Surface *prSDLScreen;
+#ifdef USE_SDL2
+extern SDL_Cursor* cursor;
+extern void updatedisplayarea();
+#endif
 
 
 static int msg_done = 0;
+static gcn::Gui* msg_gui;
+static gcn::SDLGraphics* msg_graphics;
+static gcn::SDLInput* msg_input;
+#ifdef USE_SDL2
+static gcn::SDLTrueTypeFont* msg_font;
+#else
+static gcn::contrib::SDLTrueTypeFont* msg_font;
+#endif
+static SDL_Event msg_event;
+
+static gcn::Color msg_baseCol;
+static gcn::Container* msg_top;
+static gcn::Window *wndMsg;
+static gcn::Button* cmdDone;
+static gcn::TextBox* txtMsg;
+
+static int msgWidth = 260;
+static int msgHeight = 100;
+int borderSize = 6;
+
 class DoneActionListener : public gcn::ActionListener
 {
   public:
@@ -30,25 +61,53 @@ class DoneActionListener : public gcn::ActionListener
 };
 static DoneActionListener* doneActionListener;
 
-
-void InGameMessage(const char *msg)
+void gui_halt()
 {
-  gcn::Gui* msg_gui;
-  gcn::SDLGraphics* msg_graphics;
-  gcn::SDLInput* msg_input;
-  gcn::contrib::SDLTrueTypeFont* msg_font;
-  gcn::Color msg_baseCol;
+  msg_top->remove(wndMsg);
 
-  gcn::Container* msg_top;
-  gcn::Window *wndMsg;
-  gcn::Button* cmdDone;
-  gcn::TextBox* txtMsg;
-    
-  int msgWidth = 260;
-  int msgHeight = 100;
+  delete txtMsg;
+  delete cmdDone;
+  delete doneActionListener;
+  delete wndMsg;
   
-  halt_draw_frame();
+  delete msg_font;
+  delete msg_top;
+  
+  delete msg_gui;
+  delete msg_input;
+  delete msg_graphics;
+}
 
+void checkInput()
+{
+  //-------------------------------------------------
+  // Check user input
+  //-------------------------------------------------
+  while(SDL_PollEvent(&msg_event))
+  {
+    if (msg_event.type == SDL_KEYDOWN)
+    {
+      switch(msg_event.key.keysym.sym)
+      {
+			  case VK_X:
+			  case VK_A:
+        case SDLK_RETURN:
+          msg_done = 1;
+          break;
+			  default: 
+				  break;
+      }
+    }
+
+    //-------------------------------------------------
+    // Send event to guichan/guisan-controls
+    //-------------------------------------------------
+    msg_input->pushInput(msg_event);
+  }
+}
+
+void gui_init(const char* msg)
+{
   msg_graphics = new gcn::SDLGraphics();
   msg_graphics->setTarget(prSDLScreen);
   msg_input = new gcn::SDLInput();
@@ -66,7 +125,11 @@ void InGameMessage(const char *msg)
   msg_gui->setTop(msg_top);
 
   TTF_Init();
+#ifdef USE_SDL2
+	msg_font = new gcn::SDLTrueTypeFont("data/FreeSans.ttf", 14);
+#else
   msg_font = new gcn::contrib::SDLTrueTypeFont("data/FreeSans.ttf", 10);
+#endif
   gcn::Widget::setGlobalFont(msg_font);
 
   doneActionListener = new DoneActionListener();
@@ -81,6 +144,7 @@ void InGameMessage(const char *msg)
 	cmdDone = new gcn::Button("Ok");
 	cmdDone->setSize(40, 20);
   cmdDone->setBaseColor(msg_baseCol + 0x202020);
+	cmdDone->setId("Done");
   cmdDone->addActionListener(doneActionListener);
   
   txtMsg = new gcn::TextBox(msg);
@@ -94,56 +158,41 @@ void InGameMessage(const char *msg)
 
   msg_top->add(wndMsg);
   cmdDone->requestFocus();
+}
+
+void InGameMessage(const char *msg)
+{
+  halt_draw_frame();
+
+	gui_init(msg);
   
   msg_done = 0;
   bool drawn = false;
   while(!msg_done)
   {
-    //-------------------------------------------------
-    // Check user input
-    //-------------------------------------------------
-    SDL_Event event;
-    while(SDL_PollEvent(&event))
-    {
-      if (event.type == SDL_KEYDOWN)
-      {
-        switch(event.key.keysym.sym)
-        {
-				  case VK_X:
-				  case VK_A:
-          case SDLK_RETURN:
-            msg_done = 1;
-            break;
-        }
-      }
-
-      //-------------------------------------------------
-      // Send event to guichan-controls
-      //-------------------------------------------------
-      msg_input->pushInput(event);
-    }
+		// Poll input
+		checkInput();
 
     // Now we let the Gui object perform its logic.
     msg_gui->logic();
     // Now we let the Gui object draw itself.
     msg_gui->draw();
     // Finally we update the screen.
+#ifdef USE_SDL2
+		if (!drawn && cursor != NULL)
+		{
+			SDL_ShowCursor(SDL_ENABLE);
+			updatedisplayarea();
+		}
+#else
     if(!drawn)
       SDL_Flip(prSDLScreen);
+#endif
     drawn = true;
   }
 
-  msg_top->remove(wndMsg);
-
-  delete txtMsg;
-  delete cmdDone;
-  delete doneActionListener;
-  delete wndMsg;
-  
-  delete msg_font;
-  delete msg_top;
-  
-  delete msg_gui;
-  delete msg_input;
-  delete msg_graphics;
+	gui_halt();
+#ifdef USE_SDL2
+	SDL_ShowCursor(SDL_DISABLE);
+#endif
 }

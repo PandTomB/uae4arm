@@ -294,14 +294,6 @@ struct uae_prefs {
   int gfx_resolution;
  	int gfx_vresolution;
 
-#ifdef RASPBERRY
-  int gfx_correct_aspect;
-  int gfx_fullscreen_ratio;
-  int kbd_led_num;
-  int kbd_led_scr;
-  int kbd_led_cap;
-#endif 
-
   bool immediate_blits;
 	int waiting_blits;
   unsigned int chipset_mask;
@@ -392,16 +384,26 @@ struct uae_prefs {
 
   /* Target specific options */
   int pandora_vertical_offset;
-  int pandora_cpu_speed;
   int pandora_hide_idle_led;
   
+#ifdef PANDORA
+  int pandora_cpu_speed;
   int pandora_tapDelay;
   int pandora_customControls;
+#endif
+    
+#ifdef RASPBERRY
+  int gfx_correct_aspect;
+  int gfx_fullscreen_ratio;
+  int kbd_led_num;
+  int kbd_led_scr;
+  int kbd_led_cap;
     
   int key_for_menu;
   int key_for_quit;
   int button_for_menu;
   int button_for_quit;
+#endif
 
   /* input */
 
