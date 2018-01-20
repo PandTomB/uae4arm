@@ -214,7 +214,7 @@ static NavigationMap navMap[] =
 #endif
 
 //PanelSound
-  { "sndDisable",     "Sound",          "Mono",           "sldStereoDelay", "sndDisEmu" },
+  { "sndDisable",     "Sound",          "Mono",           "PaulaVol", "sndDisEmu" },
   { "sndDisEmu",      "Sound",          "Stereo",         "sndDisable",     "sndEmulate" },
   { "sndEmulate",     "Sound",          "Stereo",         "sndDisEmu",      "sndEmuBest" },
   { "sndEmuBest",     "Sound",          "Stereo",         "sndEmulate",     "cboFrequency" },
@@ -224,7 +224,8 @@ static NavigationMap navMap[] =
   { "cboInterpol",    "Sound",          "Sound",          "cboFrequency",   "cboFilter" },
   { "cboFilter",      "Sound",          "Sound",          "cboInterpol",    "sldSeparation" },
   { "sldSeparation",  "",               "",               "cboFilter",      "sldStereoDelay" },
-  { "sldStereoDelay", "",               "",               "sldSeparation",  "sndDisable" },
+  { "sldStereoDelay", "",               "",               "sldSeparation",  "PaulaVol" },
+  { "PaulaVol", 			"", 							"", 							"sldStereoDelay", "sndDisable" },
   
 //  active            move left           move right          move up           move down
 // PanelInput

@@ -136,7 +136,6 @@ STATIC_INLINE int color_reg_get (struct color_entry *ce, int c)
 	else
 		return ce->color_regs_ecs[c];
 }
-
 STATIC_INLINE void color_reg_set (struct color_entry *ce, int c, int v)
 {
 	if (aga_mode)
@@ -144,7 +143,6 @@ STATIC_INLINE void color_reg_set (struct color_entry *ce, int c, int v)
 	else
 		ce->color_regs_ecs[c] = v;
 }
-
 /* ugly copy hack, is there better solution? */
 STATIC_INLINE void color_reg_cpy (struct color_entry *dst, struct color_entry *src)
 {
@@ -199,8 +197,9 @@ extern uae_u16 spixels[MAX_SPR_PIXELS * 2];
 
 /* Way too much... */
 #define MAX_REG_CHANGE ((MAXVPOS + 1) * MAXHPOS)
+#define COLOR_TABLE_SIZE (MAXVPOS + 2) * 2
 
-extern struct color_entry curr_color_tables[(MAXVPOS + 2) * 2];
+extern struct color_entry curr_color_tables[COLOR_TABLE_SIZE];
 
 extern struct sprite_entry *curr_sprite_entries;
 extern struct color_change *curr_color_changes;

@@ -18,10 +18,8 @@ void target_default_options (struct uae_prefs *p, int type)
   
 	p->picasso96_modeflags = RGBFF_CLUT | RGBFF_R5G6B5 | RGBFF_R8G8B8A8;
 	
-	p->cr[CHIPSET_REFRESH_PAL].locked = true;
 	p->cr[CHIPSET_REFRESH_PAL].vsync = 1;
 
-	p->cr[CHIPSET_REFRESH_NTSC].locked = true;
 	p->cr[CHIPSET_REFRESH_NTSC].vsync = 1;
 	
 	p->cr[0].index = 0;
@@ -32,8 +30,8 @@ void target_default_options (struct uae_prefs *p, int type)
 	p->cr[0].vsync = -1;
 	p->cr[0].rate = 60.0;
 	p->cr[0].ntsc = 1;
-	p->cr[0].locked = true;
 	p->cr[0].rtg = true;
+	p->cr[0].inuse = true;
 	_tcscpy (p->cr[0].label, _T("RTG"));
 
 #ifdef USE_SDL2

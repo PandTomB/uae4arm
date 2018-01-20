@@ -11,6 +11,7 @@ struct zfile {
     TCHAR *name;
     TCHAR *zipname;
     TCHAR *mode;
+	TCHAR *originalname;
     FILE *f; // real file handle if physical file
     uae_u8 *data; // unpacked data
     int dataseek; // use seek position even if real file
@@ -143,7 +144,5 @@ extern void archive_access_close (void *handle, unsigned int id);
 
 extern struct zfile *archive_getzfile (struct znode *zn, unsigned int id, int flags);
 extern struct zfile *archive_unpackzfile (struct zfile *zf);
-
-extern struct zfile *decompress_zfd (struct zfile*);
 
 #endif /* UAE_ZARCHIVE_H */

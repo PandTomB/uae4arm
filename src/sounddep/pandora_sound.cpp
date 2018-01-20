@@ -43,12 +43,12 @@ static int cdrdcnt = 0;
 static int have_sound = 0;
 static int lastfreq;
 
-void update_sound (float clk)
+void update_sound (double clk)
 {
-  float evtime;
+  double evtime;
   
-  evtime = clk * CYCLE_UNIT / (float)currprefs.sound_freq;
-	scaled_sample_evtime = (int)evtime;
+  evtime = clk * CYCLE_UNIT / (double)currprefs.sound_freq;
+	scaled_sample_evtime = evtime;
 }
 
 

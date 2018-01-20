@@ -15,7 +15,7 @@
 #include "traps.h"
 
 #define UAEMAJOR 3
-#define UAEMINOR 5
+#define UAEMINOR 6
 #define UAESUBREV 0
 
 typedef enum { KBD_LANG_US, KBD_LANG_DK, KBD_LANG_DE, KBD_LANG_SE, KBD_LANG_FR, KBD_LANG_IT, KBD_LANG_ES } KbdLang;
@@ -109,7 +109,6 @@ struct wh {
 #define MOUNT_CONFIG_SIZE 30
 #define UAEDEV_DIR 0
 #define UAEDEV_HDF 1
-#define UAEDEV_CD 2
 
 #define HD_LEVEL_SCSI_1 0
 #define HD_LEVEL_SCSI_2 1
@@ -141,6 +140,7 @@ struct uaedev_config_info {
   int sectors;
   int reserved;
   int blocksize;
+	uae_u64 max_lba;
 	int controller_type;
 	int controller_type_unit;
 	int controller_unit;
@@ -186,7 +186,6 @@ struct chipset_refresh
 {
 	bool inuse;
 	int index;
-	bool locked;
 	bool rtg;
 	bool defaultdata;
 	int horiz;
@@ -195,7 +194,7 @@ struct chipset_refresh
 	int resolution;
 	int ntsc;
 	int vsync;
-	float rate;
+	double rate;
 	TCHAR label[16];
 };
 
@@ -204,16 +203,13 @@ struct chipset_refresh
 
 struct apmode
 {
-	int gfx_vsync;
-	// 0 = immediate flip
-	// -1 = wait for flip, before frame ends
-	// 1 = wait for flip, after new frame has started
-	int gfx_vflip;
 	int gfx_refreshrate;
 };
 
+
 #define MAX_DUPLICATE_EXPANSION_BOARDS 1
 #define MAX_EXPANSION_BOARDS 20
+#define ROMCONFIG_CONFIGTEXT_LEN 256
 struct boardromconfig;
 struct romconfig
 {
@@ -225,7 +221,7 @@ struct romconfig
 	int device_settings;
 	int subtype;
 	void *unitdata;
-	TCHAR configtext[256];
+	TCHAR configtext[ROMCONFIG_CONFIGTEXT_LEN];
 	struct boardromconfig *back;
 };
 #define MAX_BOARD_ROMS 2
@@ -262,6 +258,7 @@ struct expansion_params
 #define Z3MAPPING_REAL 2
 
 struct uae_prefs {
+
   struct strlist *all_lines;
 
   TCHAR description[256];
@@ -282,6 +279,7 @@ struct uae_prefs {
   int sound_interpol;
   int sound_filter;
   int sound_filter_type;
+	int sound_volume_paula;
 	int sound_volume_cd;
 
   int cachesize;
@@ -298,7 +296,7 @@ struct uae_prefs {
 	int waiting_blits;
   unsigned int chipset_mask;
   bool ntscmode;
-  float chipset_refreshrate;
+  double chipset_refreshrate;
 	struct chipset_refresh cr[MAX_CHIPSET_REFRESH + 2];
 	int cr_selected;
   int collision_level;
@@ -335,13 +333,18 @@ struct uae_prefs {
 	bool cs_ciatodbug;
 	bool cs_z3autoconfig;
 	bool cs_bytecustomwritebug;
+	int cs_unmapped_space;
+	int cs_ciatype[2];
 
 	struct boardromconfig expansionboard[MAX_EXPANSION_BOARDS];
 
   TCHAR romfile[MAX_DPATH];
+	TCHAR romident[256];
   TCHAR romextfile[MAX_DPATH];
+	TCHAR romextident[256];
 	TCHAR flashfile[MAX_DPATH];
 	TCHAR cartfile[MAX_DPATH];
+	TCHAR cartident[256];
 	int cart_internal;
 	struct cdslot cdslots[MAX_TOTAL_SCSI_DEVICES];
 
@@ -446,7 +449,6 @@ extern void cfgfile_target_write_str (struct zfile *f, const TCHAR *option, cons
 extern void cfgfile_target_dwrite_str (struct zfile *f, const TCHAR *option, const TCHAR *value);
 
 extern struct uaedev_config_data *add_filesys_config (struct uae_prefs *p, int index, struct uaedev_config_info*);
-extern bool get_hd_geometry (struct uaedev_config_info *);
 extern void uci_set_defaults (struct uaedev_config_info *uci, bool rdb);
 
 extern void error_log (const TCHAR*, ...);
@@ -500,7 +502,6 @@ extern void cfgfile_compatibility_rtg(struct uae_prefs *p);
 extern void check_prefs_changed_custom (void);
 extern void check_prefs_changed_cpu (void);
 extern void check_prefs_changed_audio (void);
-extern void check_prefs_changed_cd (void);
 extern int check_prefs_changed_gfx (void);
 
 extern struct uae_prefs currprefs, changed_prefs;

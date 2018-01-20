@@ -25,21 +25,19 @@ extern bool no_gui;
 #define LED_CD_ACTIVE2 2
 #define LED_CD_AUDIO 4
 
-#define LED_NONE 0
-#define LED_POWER 1
-#define LED_DF0 2
-#define LED_DF1 3
-#define LED_DF2 4
-#define LED_DF3 5
-#define LED_DFs 6         // Define for any DF* access
-#define LED_HD 7
-#define LED_CD 8
-#define LED_FPS 9
-#define LED_CPU 10
-#define LED_SND 11
-#define LED_MD 12
-#define LED_NET 13
-#define LED_MAX 14
+#define LED_POWER 0
+#define LED_DF0 1
+#define LED_DF1 2
+#define LED_DF2 3
+#define LED_DF3 4
+#define LED_DFs 5         // Define for any DF* access
+#define LED_HD 6
+#define LED_CD 7
+#define LED_FPS 8
+#define LED_CPU 9
+#define LED_SND 10
+#define LED_MD 11
+#define LED_MAX 12
 
 struct gui_info
 {

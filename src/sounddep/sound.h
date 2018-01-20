@@ -30,10 +30,6 @@ extern void reset_sound (void);
 extern void sound_volume (int);
 extern void stop_sound(void);
 
-STATIC_INLINE void set_sound_buffers (void)
-{
-}
-
 #define check_sound_buffers() { if (sndbufpt >= finish_sndbuff) finish_sound_buffer (); }
 
 STATIC_INLINE void clear_sound_buffers (void)

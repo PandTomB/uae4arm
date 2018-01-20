@@ -47,6 +47,9 @@ static gcn::Slider* sldSeparation;
 static gcn::Label* lblStereoDelay;
 static gcn::Label* lblStereoDelayInfo;
 static gcn::Slider* sldStereoDelay;
+static gcn::Label* lblPaulaVol;
+static gcn::Label* lblPaulaVolInfo;
+static gcn::Slider* sldPaulaVol;
 
 static int curr_separation_idx;
 static int curr_stereodelay_idx;
@@ -231,6 +234,13 @@ class SoundActionListener : public gcn::ActionListener
     	  }
       }
 
+      else if (actionEvent.getSource() == sldPaulaVol)
+      {
+        int newvol = 100 - (int) sldPaulaVol->getValue();
+        if(changed_prefs.sound_volume_paula != newvol)
+          changed_prefs.sound_volume_paula = newvol;
+			}
+
       RefreshPanelSound();
     }
 };
@@ -330,6 +340,19 @@ void InitPanelSound(const struct _ConfigCategory& category)
   sldStereoDelay->addActionListener(soundActionListener);
   lblStereoDelayInfo = new gcn::Label("10");
   
+	lblPaulaVol = new gcn::Label("Paula Volume:");
+  lblPaulaVol->setSize(130, LABEL_HEIGHT);
+  lblPaulaVol->setAlignment(gcn::Graphics::RIGHT);
+  sldPaulaVol = new gcn::Slider(0, 100);
+  sldPaulaVol->setSize(160, SLIDER_HEIGHT);
+  sldPaulaVol->setBaseColor(gui_baseCol);
+	sldPaulaVol->setMarkerLength(20);
+	sldPaulaVol->setStepLength(10);
+	sldPaulaVol->setId("PaulaVol");
+  sldPaulaVol->addActionListener(soundActionListener);
+  lblPaulaVolInfo = new gcn::Label("80 %");
+  lblPaulaVolInfo->setSize(100, LABEL_HEIGHT);
+
   int posY = DISTANCE_BORDER;
   category.panel->add(grpSound, DISTANCE_BORDER, posY);
   category.panel->add(grpMode, grpSound->getX() + grpSound->getWidth() + DISTANCE_NEXT_X, posY);
@@ -350,6 +373,10 @@ void InitPanelSound(const struct _ConfigCategory& category)
   category.panel->add(lblStereoDelay, DISTANCE_BORDER, posY);
   category.panel->add(sldStereoDelay, lblStereoDelay->getX() + lblStereoDelay->getWidth() + 12, posY);
   category.panel->add(lblStereoDelayInfo, sldStereoDelay->getX() + sldStereoDelay->getWidth() + 12, posY);
+  posY += SLIDER_HEIGHT + DISTANCE_NEXT_Y;
+  category.panel->add(lblPaulaVol, DISTANCE_BORDER, posY);
+  category.panel->add(sldPaulaVol, lblPaulaVol->getX() + lblPaulaVol->getWidth() + 12, posY);
+  category.panel->add(lblPaulaVolInfo, sldPaulaVol->getX() + sldPaulaVol->getWidth() + 12, posY);
   posY += SLIDER_HEIGHT + DISTANCE_NEXT_Y;
   
   RefreshPanelSound();
@@ -378,6 +405,9 @@ void ExitPanelSound(void)
   delete lblStereoDelay;
   delete sldStereoDelay;
   delete lblStereoDelayInfo;
+  delete lblPaulaVol;
+  delete lblPaulaVolInfo;
+  delete sldPaulaVol;
   delete soundActionListener;
 }
 
@@ -466,6 +496,10 @@ void RefreshPanelSound(void)
     snprintf(tmp, 10, "%d", curr_stereodelay_idx);
     lblStereoDelayInfo->setCaption(tmp);
   }
+
+  sldPaulaVol->setValue(100 - changed_prefs.sound_volume_paula);
+  snprintf(tmp, sizeof (tmp), "%d %%", 100 - changed_prefs.sound_volume_paula);
+  lblPaulaVolInfo->setCaption(tmp);
 }
 
 

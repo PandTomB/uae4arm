@@ -19,6 +19,7 @@
 #include "config.h"
 #include "uae.h"
 #include "options.h"
+#include "custom.h"
 #include "inputdevice.h"
 #include "disk.h"
 #include "savestate.h"
@@ -26,6 +27,8 @@
 #include "zfile.h"
 #include <SDL.h>
 #include "generic_rp9.h"
+#include "machdep/rpt.h"
+
 
 #ifdef WITH_LOGGING
 extern FILE *debugfile;
@@ -61,6 +64,14 @@ extern "C" int main( int argc, char *argv[] );
 void sleep_millis (int ms)
 {
   usleep(ms * 1000);
+}
+
+int sleep_millis_main (int ms)
+{
+	unsigned long start = read_processor_time ();
+  usleep(ms * 1000);
+  idletime += read_processor_time () - start;
+  return 0;
 }
 
 
@@ -163,11 +174,6 @@ void fix_apmodes(struct uae_prefs *p)
     p->gfx_apmode[1].gfx_refreshrate = 50;
   }  
 
-  p->gfx_apmode[0].gfx_vsync = 2;
-  p->gfx_apmode[1].gfx_vsync = 2;
-  p->gfx_apmode[0].gfx_vflip = -1;
-  p->gfx_apmode[1].gfx_vflip = -1;
-  
 	fixup_prefs_dimensions (p);
 }
 
