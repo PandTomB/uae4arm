@@ -87,7 +87,7 @@ struct color_entry {
 };
 
 /* convert 24 bit AGA Amiga RGB to native color */
-#ifdef ARMV6_ASSEMBLY
+#ifdef ARMV6T2
 STATIC_INLINE uae_u32 CONVERT_RGB(uae_u32 c)
 {
   uae_u32 ret;

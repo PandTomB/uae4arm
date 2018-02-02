@@ -148,11 +148,6 @@ OBJS =	\
 	src/filesys.o \
 	src/flashrom.o \
 	src/fpp.o \
-	src/fpp_native.o \
-	src/fpp_softfloat.o \
-	src/softfloat/softfloat.o \
-	src/softfloat/softfloat_decimal.o \
-	src/softfloat/softfloat_fpsp.o \
 	src/fsdb.o \
 	src/fsdb_unix.o \
 	src/fsusage.o \
@@ -361,10 +356,7 @@ ASMS = \
 	src/zfile_archive.s \
 	src/machdep/support.s \
 	src/osdep/picasso96.s \
-	src/osdep/pandora.s \
-	src/osdep/pandora_mem.s \
 	src/osdep/sigsegv_handler.s \
-	src/sounddep/sound.s \
 	src/newcpu.s \
 	src/newcpu_common.s \
 	src/readcpu.s \

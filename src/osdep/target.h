@@ -12,6 +12,10 @@
 
 #define OPTIONSFILENAME "uaeconfig"
 
+#ifndef ARMV6T2
+#undef USE_JIT_FPU
+#endif
+
 
 STATIC_INLINE FILE *uae_tfopen(const TCHAR *path, const TCHAR *mode)
 {
@@ -27,7 +31,6 @@ extern int generic_main (int argc, char *argv[]);
 
 extern int emulating;
 
-extern uae_u8* natmem_offset;
 extern int z3base_adr;
 
 extern unsigned long time_per_frame;
