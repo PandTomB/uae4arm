@@ -23,4 +23,3 @@ public:
   void wait(int bufnum);
 	bool isplaying(int bufnum);
 };
-

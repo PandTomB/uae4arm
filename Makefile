@@ -4,7 +4,7 @@ endif
 
 ifeq ($(PLATFORM),rpi3)
   CPU_FLAGS += -march=armv8-a -mfpu=neon-fp-armv8 -mfloat-abi=hard -mtune=cortex-a53
-  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DUSE_JIT_FPU
+  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DUSE_JIT_FPU -DARM_HAS_DIV
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
   LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm

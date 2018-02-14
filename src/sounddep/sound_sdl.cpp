@@ -171,7 +171,6 @@ void stop_sound(void)
   }
 }
 
-
 void finish_sound_buffer(void)
 {
 	wrcnt++;
@@ -188,12 +187,10 @@ void finish_sound_buffer(void)
 	} 
 }
 
-
 void pause_sound_buffer(void)
 {
 	reset_sound();
 }
-
 
 void restart_sound_buffer(void)
 {
@@ -206,7 +203,6 @@ void restart_sound_buffer(void)
 	cdbufpt = render_cdbuff = cdaudio_buffer[cdwrcnt & (CDAUDIO_BUFFERS - 1)];
 	finish_cdbuff = cdbufpt + CDAUDIO_BUFFER_LEN * 2;
 }
-
 
 void finish_cdaudio_buffer(void)
 {
@@ -225,7 +221,6 @@ bool cdaudio_catchup(void)
 	return (sound_thread_active != 0);
 }
 
-
 /* Try to determine whether sound is available.  This is only for GUI purposes.  */
 int setup_sound(void)
 {
@@ -236,11 +231,9 @@ int setup_sound(void)
 	return 1;
 }
 
-
 static int open_sound(void)
 {
   config_changed = 1;
-
 	if (start_sound(currprefs.sound_freq, 16, currprefs.sound_stereo) != 0)
 		return 0;
 
@@ -255,11 +248,9 @@ static int open_sound(void)
 	return 1;
 }
 
-
 void close_sound(void)
 {
   config_changed = 1;
-
 	if (!have_sound)
 		return;
 
