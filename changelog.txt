@@ -1,3 +1,5 @@
+2018-02-16 - Performance enhancements in JIT and fix for MOVE16 in JIT
+2018-02-14 - Implemented ROXL and DIVL (32 bit) for JIT
 2018-02-08 - Bugfixes for FPU JIT
 2018-01-29 - Added JIT for FPU
 2018-01-20 - Merge with WinUAE 3.6.0
