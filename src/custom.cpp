@@ -3273,11 +3273,8 @@ static void init_hz (bool checkvposw)
 
   if (beamcon0 & 0x80) {
 		// programmable scanrates (ECS Agnus)
-    static bool warned = false;
-    if(!warned) {
-      warned = true;
-      InGameMessage("Programmable scanrates (ECS Agnus) not supported.");
-    }
+    target_startup_msg("Unsupported feature", "Programmable scanrates (ECS Agnus) not supported.");
+    uae_restart(1, NULL);
   }
 	if (maxvpos_nom >= MAXVPOS)
 		maxvpos_nom = MAXVPOS;

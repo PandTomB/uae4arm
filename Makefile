@@ -236,7 +236,6 @@ OBJS =	\
 	src/osdep/gui/UaeDropDown.o \
 	src/osdep/gui/UaeCheckBox.o \
 	src/osdep/gui/UaeListBox.o \
-	src/osdep/gui/InGameMessage.o \
 	src/osdep/gui/SelectorEntry.o \
 	src/osdep/gui/ShowHelp.o \
 	src/osdep/gui/ShowMessage.o \
