@@ -358,21 +358,21 @@ class QSCDButtonActionListener : public gcn::ActionListener
   	    //---------------------------------------
         // Eject CD from drive
   	    //---------------------------------------
-        strncpy(changed_prefs.cdslots[0].name, "", MAX_DPATH);
+        strncpy(changed_prefs.cdslots[0].name, "", MAX_DPATH - 1);
         AdjustDropDownControls();
       } else if(actionEvent.getSource() == cmdCDSelect) {
   	    char tmp[MAX_DPATH];
 
   	    if(strlen(changed_prefs.cdslots[0].name) > 0)
-  	      strncpy(tmp, changed_prefs.cdslots[0].name, MAX_DPATH);
+  	      strncpy(tmp, changed_prefs.cdslots[0].name, MAX_DPATH - 1);
   	    else
-  	      strncpy(tmp, currentDir, MAX_DPATH);
+  	      strncpy(tmp, currentDir, MAX_DPATH - 1);
 
   	    if(SelectFile("Select CD image file", tmp, cdfile_filter))
 	      {
     	    if(strncmp(changed_prefs.cdslots[0].name, tmp, MAX_DPATH))
     	    {
-      	    strncpy(changed_prefs.cdslots[0].name, tmp, sizeof(changed_prefs.cdslots[0].name));
+      	    strncpy(changed_prefs.cdslots[0].name, tmp, sizeof(changed_prefs.cdslots[0].name) - 1);
       	    changed_prefs.cdslots[0].inuse = true;
       	    changed_prefs.cdslots[0].type = SCSI_UNIT_IMAGE;
       	    AddFileToCDList(tmp, 1);
@@ -402,12 +402,12 @@ class QSCDFileActionListener : public gcn::ActionListener
   	    int idx = cboCDFile->getSelected();
 
   	    if(idx < 0) {
-          strncpy(changed_prefs.cdslots[0].name, "", MAX_DPATH);
+          strncpy(changed_prefs.cdslots[0].name, "", MAX_DPATH - 1);
           AdjustDropDownControls();
 	      } else {
     	    if(cdfileList.getElementAt(idx).compare(changed_prefs.cdslots[0].name))
 	        {
-      	    strncpy(changed_prefs.cdslots[0].name, cdfileList.getElementAt(idx).c_str(), sizeof(changed_prefs.cdslots[0].name));
+      	    strncpy(changed_prefs.cdslots[0].name, cdfileList.getElementAt(idx).c_str(), sizeof(changed_prefs.cdslots[0].name) - 1);
       	    changed_prefs.cdslots[0].inuse = true;
       	    changed_prefs.cdslots[0].type = SCSI_UNIT_IMAGE;
       	    lstMRUCDList.erase(lstMRUCDList.begin() + idx);
@@ -528,7 +528,7 @@ class QSDFxButtonActionListener : public gcn::ActionListener
           // Eject disk from drive
     	    //---------------------------------------
           disk_eject(i);
-          strncpy(changed_prefs.floppyslots[i].df, "", MAX_DPATH);
+          strncpy(changed_prefs.floppyslots[i].df, "", MAX_DPATH - 1);
           AdjustDropDownControls();
         } else if (actionEvent.getSource() == cmdDFxSelect[i]) {
     	    //---------------------------------------
@@ -537,14 +537,14 @@ class QSDFxButtonActionListener : public gcn::ActionListener
     	    char tmp[MAX_PATH];
 
     	    if(strlen(changed_prefs.floppyslots[i].df) > 0)
-    	      strncpy(tmp, changed_prefs.floppyslots[i].df, MAX_PATH);
+    	      strncpy(tmp, changed_prefs.floppyslots[i].df, MAX_PATH - 1);
     	    else
-    	      strncpy(tmp, currentDir, MAX_PATH);
+    	      strncpy(tmp, currentDir, MAX_PATH - 1);
     	    if(SelectFile("Select disk image file", tmp, diskfile_filter))
   	      {
       	    if(strncmp(changed_prefs.floppyslots[i].df, tmp, MAX_PATH))
       	    {
-        	    strncpy(changed_prefs.floppyslots[i].df, tmp, sizeof(changed_prefs.floppyslots[i].df));
+        	    strncpy(changed_prefs.floppyslots[i].df, tmp, sizeof(changed_prefs.floppyslots[i].df) - 1);
         	    disk_insert(i, tmp);
         	    AddFileToDiskList(tmp, 1);
         	    extractPath(tmp, currentDir);
@@ -578,11 +578,11 @@ class QSDiskFileActionListener : public gcn::ActionListener
 
       	    if(idx < 0) {
               disk_eject(i);
-              strncpy(changed_prefs.floppyslots[i].df, "", MAX_DPATH);
+              strncpy(changed_prefs.floppyslots[i].df, "", MAX_DPATH - 1);
               AdjustDropDownControls();
     	      } else {
         	    if(diskfileList.getElementAt(idx).compare(changed_prefs.floppyslots[i].df)) {
-          	    strncpy(changed_prefs.floppyslots[i].df, diskfileList.getElementAt(idx).c_str(), sizeof(changed_prefs.floppyslots[i].df));
+          	    strncpy(changed_prefs.floppyslots[i].df, diskfileList.getElementAt(idx).c_str(), sizeof(changed_prefs.floppyslots[i].df) - 1);
           	    disk_insert(i, changed_prefs.floppyslots[i].df);
           	    lstMRUDiskList.erase(lstMRUDiskList.begin() + idx);
           	    lstMRUDiskList.insert(lstMRUDiskList.begin(), changed_prefs.floppyslots[i].df);
@@ -651,7 +651,7 @@ void InitPanelQuickstart(const struct _ConfigCategory& category)
 
 	for(i=0; i<2; ++i)
 	{
-	  char tmp[20];
+	  char tmp[21];
 	  snprintf(tmp, 20, "DF%d:", i); 
 	  chkDFx[i] = new gcn::UaeCheckBox(tmp);
 	  chkDFx[i]->addActionListener(dfxCheckActionListener);

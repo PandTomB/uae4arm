@@ -80,10 +80,9 @@ ifeq ($(USE_SDL_VERSION),sdl2)
 MORE_CFLAGS += -Isrc/guisan/include -DUSE_SDL2
 endif
 MORE_CFLAGS += -Isrc -Isrc/osdep -Isrc/include -Isrc/archivers
-MORE_CFLAGS += -Wno-write-strings -Wno-shift-overflow -Wno-narrowing 
+MORE_CFLAGS += -Wno-write-strings -Wno-shift-overflow -Wno-narrowing
 MORE_CFLAGS += -fuse-ld=gold -fdiagnostics-color=auto
-MORE_CFLAGS += -mstructure-size-boundary=32
-MORE_CFLAGS += -falign-functions=32
+MORE_CFLAGS += -falign-functions=16
 
 LDFLAGS += -lpthread -lz -lpng -lrt -lxml2 -lFLAC -lmpg123 -ldl -lmpeg2convert -lmpeg2
 ifeq ($(USE_SDL_VERSION),sdl1)

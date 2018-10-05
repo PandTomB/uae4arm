@@ -177,7 +177,7 @@ static void ShowHelpRequested()
     // Show help for current panel
     //------------------------------------------------
     char title[128];
-    snprintf(title, 128, "Help for %s", categories[last_active_panel].category);
+    snprintf(title, 127, "Help for %s", categories[last_active_panel].category);
     ShowHelp(title, helptext);
   }
 }
@@ -238,7 +238,7 @@ namespace sdl
     // Set layer for GUI screen
     //-------------------------------------------------
 #ifdef PANDORA
-  	char tmp[20];
+  	char tmp[21];
   	snprintf(tmp, 20, "%dx%d", GUI_WIDTH, GUI_HEIGHT);
   	setenv("SDL_OMAP_LAYER_SIZE", tmp, 1);
   	snprintf(tmp, 20, "0,0,0,0");
@@ -505,8 +505,8 @@ namespace widgets
             strncat (tmp, last_loaded_config, MAX_PATH - 1);
           else
           {
-            strncat (tmp, OPTIONSFILENAME, MAX_PATH);
-            strncat (tmp, ".uae", MAX_PATH);
+            strncat (tmp, OPTIONSFILENAME, MAX_PATH - 1);
+            strncat (tmp, ".uae", MAX_PATH - 1);
           }
     			uae_restart(-1, tmp);
     			gui_running = false;
