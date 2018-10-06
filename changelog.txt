@@ -1,3 +1,4 @@
+2018-10-06 - JIT: Bugfix for issue #1, MVMEL #<data>.W,(An)+
 2018-10-05 - Minor fixes, build with GCC 8.2 ok
 2018-10-04 - JIT: Bugfix ROXR
 2018-04-01 - JIT: performance enhancements, implemented ROXR

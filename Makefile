@@ -98,13 +98,14 @@ ifndef DEBUG
   MORE_CFLAGS += -frename-registers
   MORE_CFLAGS += -funroll-loops -ftracer
 else
+  MORE_CFLAGS += -O2
   MORE_CFLAGS += -g -rdynamic -funwind-tables -mapcs-frame -DDEBUG -Wl,--export-dynamic
   ifdef TRACER
     TRACE_CFLAGS = -DTRACER -finstrument-functions -Wall -rdynamic
   endif
 endif
 
-ASFLAGS += $(CPU_FLAGS) -falign-functions=32
+ASFLAGS += $(CPU_FLAGS) -falign-functions=16
 
 CXXFLAGS += $(SDL_CFLAGS) $(CPU_FLAGS) $(DEFS) $(MORE_CFLAGS)
 
