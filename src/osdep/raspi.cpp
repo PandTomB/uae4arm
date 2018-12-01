@@ -18,16 +18,11 @@ void target_default_options (struct uae_prefs *p, int type)
   
 	p->picasso96_modeflags = RGBFF_CLUT | RGBFF_R5G6B5 | RGBFF_R8G8B8A8;
 	
-	p->cr[CHIPSET_REFRESH_PAL].vsync = 1;
-
-	p->cr[CHIPSET_REFRESH_NTSC].vsync = 1;
-	
 	p->cr[0].index = 0;
 	p->cr[0].horiz = -1;
 	p->cr[0].vert = -1;
 	p->cr[0].lace = -1;
 	p->cr[0].resolution = 0;
-	p->cr[0].vsync = -1;
 	p->cr[0].rate = 60.0;
 	p->cr[0].ntsc = 1;
 	p->cr[0].rtg = true;
@@ -44,10 +39,6 @@ void target_default_options (struct uae_prefs *p, int type)
 	p->kbd_led_num = -1; // No status on numlock
 	p->kbd_led_scr = -1; // No status on scrollock
 	p->kbd_led_cap = -1; // No status on capslock
-	p->key_for_menu = SDLK_F12;
-	p->key_for_quit = 0;
-	p->button_for_menu = -1;
-	p->button_for_quit = -1;
 }
 
 
@@ -76,7 +67,7 @@ void target_fixup_options (struct uae_prefs *p)
   }
   
 	p->picasso96_modeflags = RGBFF_CLUT | RGBFF_R5G6B5 | RGBFF_R8G8B8A8;
-  p->gfx_resolution = p->gfx_size.width > 600 ? 1 : 0;
+  p->gfx_resolution = p->gfx_monitor.gfx_size.width > 600 ? 1 : 0;
   
   if(p->cachesize > 0)
     p->fpu_no_unimplemented = 0;
@@ -97,11 +88,6 @@ void target_save_options (struct zfile *f, struct uae_prefs *p)
   cfgfile_write (f, "pandora.hide_idle_led", "%d", p->pandora_hide_idle_led);
   cfgfile_write (f, "pandora.move_y", "%d", p->pandora_vertical_offset - OFFSET_Y_ADJUST);
 
-	cfgfile_write(f, _T("key_for_menu"), _T("%d"), p->key_for_menu);
-	cfgfile_write(f, _T("key_for_quit"), _T("%d"), p->key_for_quit);
-	cfgfile_write(f, _T("button_for_menu"), _T("%d"), p->button_for_menu);
-	cfgfile_write(f, _T("button_for_quit"), _T("%d"), p->button_for_quit);
-
 	cfgfile_write(f, _T("gfx_correct_aspect"), _T("%d"), p->gfx_correct_aspect);
 	cfgfile_write(f, _T("gfx_fullscreen_ratio"), _T("%d"), p->gfx_fullscreen_ratio);
 	cfgfile_write(f, _T("kbd_led_num"), _T("%d"), p->kbd_led_num);
@@ -119,11 +105,6 @@ int target_parse_option (struct uae_prefs *p, const char *option, const char *va
     || cfgfile_intval (option, value, "kbd_led_num", &p->kbd_led_num, 1)
     || cfgfile_intval (option, value, "kbd_led_scr", &p->kbd_led_scr, 1)
     || cfgfile_intval (option, value, "kbd_led_cap", &p->kbd_led_cap, 1)
-
-	  || cfgfile_intval (option, value, "key_for_menu", &p->key_for_menu, 1)
-    || cfgfile_intval (option, value, "key_for_quit", &p->key_for_quit, 1)
-	  || cfgfile_intval (option, value, "button_for_menu", &p->button_for_menu, 1)
-    || cfgfile_intval (option, value, "button_for_quit", &p->button_for_quit, 1)
     );
   if(!result) {
     result = cfgfile_intval (option, value, "move_y", &p->pandora_vertical_offset, 1);
@@ -152,19 +133,7 @@ int handle_msgpump (void)
   			uae_quit();
   			break;
   			
-		  case SDL_JOYBUTTONDOWN:
-			  if (currprefs.button_for_menu != -1 && rEvent.jbutton.button == currprefs.button_for_menu)
-				  inputdevice_add_inputcode(AKS_ENTERGUI, 1);
-			  if (currprefs.button_for_quit != -1 && rEvent.jbutton.button == currprefs.button_for_quit)
-				  inputdevice_add_inputcode(AKS_QUIT, 1);
-			  break;
-
   		case SDL_KEYDOWN:
-			  if (currprefs.key_for_menu != 0 && rEvent.key.keysym.sym == currprefs.key_for_menu)
-				  inputdevice_add_inputcode(AKS_ENTERGUI, 1);
-			  if (currprefs.key_for_quit != 0 && rEvent.key.keysym.sym == currprefs.key_for_quit)
-				  inputdevice_add_inputcode(AKS_QUIT, 1);
-
 #ifndef USE_SDL2
 			  // Strangely in FBCON left window is seen as left alt ??
 			  if (keyboard_type == 2) // KEYCODE_FBCON
@@ -192,7 +161,7 @@ int handle_msgpump (void)
   		  switch(rEvent.key.keysym.sym)
   		  {
   		    case SDLK_LCTRL: // Select key
-  		      inputdevice_add_inputcode (AKS_ENTERGUI, 1);
+  		      inputdevice_add_inputcode (AKS_ENTERGUI, 1, NULL);
   		      break;
 
 				  case SDLK_LSHIFT: // Shift key
@@ -201,9 +170,9 @@ int handle_msgpump (void)
             
   				default:
 			      if (keyboard_type == KEYCODE_UNK)
-			        inputdevice_translatekeycode(0, rEvent.key.keysym.sym, 1);
+			        inputdevice_translatekeycode(0, rEvent.key.keysym.sym, 1, false);
 			      else
-				      inputdevice_translatekeycode(0, rEvent.key.keysym.scancode, 1);
+				      inputdevice_translatekeycode(0, rEvent.key.keysym.scancode, 1, false);
             				    				  
   				  break;
 				}
@@ -221,9 +190,9 @@ int handle_msgpump (void)
             
   				default:
   					if (keyboard_type == KEYCODE_UNK)
-	  		      inputdevice_translatekeycode(0, rEvent.key.keysym.sym, 0);
+	  		      inputdevice_translatekeycode(0, rEvent.key.keysym.sym, 0, true);
 	    			else
-	    				inputdevice_translatekeycode(0, rEvent.key.keysym.scancode, 0);
+	    				inputdevice_translatekeycode(0, rEvent.key.keysym.scancode, 0, true);
   				  break;
   	    }
   	    break;
@@ -268,7 +237,7 @@ int handle_msgpump (void)
 
 int main (int argc, char *argv[])
 {
-	printf("UAE4ARM (RaspberryPi) 3.5.0, by Dimitris (MiDWaN) Panokostas and TomB\n");
+	printf("UAE4ARM 4.0.1, by TomB\n");
 
   generic_main(argc, argv);
 }

@@ -59,8 +59,6 @@ STATIC_INLINE int coord_window_to_diw_x (int x)
   return x - DIW_DDF_OFFSET;
 }
 
-extern int framecnt;
-
 /* color values in two formats: 12 (OCS/ECS) or 24 (AGA) bit Amiga RGB (color_regs),
  * and the native color value; both for each Amiga hardware color register. 
  *
@@ -241,7 +239,6 @@ extern int coord_native_to_amiga_y (int);
 extern int coord_native_to_amiga_x (int);
 
 extern void hsync_record_line_state (int lineno);
-extern void halt_draw_frame(void);
 extern void vsync_handle_redraw (void);
 extern bool vsync_handle_check (void);
 extern void init_hardware_for_drawing_frame (void);
@@ -252,19 +249,7 @@ extern void check_prefs_picasso(void);
 
 /* Finally, stuff that shouldn't really be shared.  */
 
-#define IHF_SCROLLLOCK 0
 #define IHF_QUIT_PROGRAM 1
 #define IHF_PICASSO 2
-
-extern int inhibit_frame;
-
-STATIC_INLINE void set_inhibit_frame (int bit)
-{
-  inhibit_frame |= 1 << bit;
-}
-STATIC_INLINE void clear_inhibit_frame (int bit)
-{
-  inhibit_frame &= ~(1 << bit);
-}
 
 #endif /* UAE_DRAWING_H */

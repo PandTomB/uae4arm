@@ -10,7 +10,6 @@
 #include "sdltruetypefont.hpp"
 #endif
 #include "SelectorEntry.hpp"
-#include "UaeRadioButton.hpp"
 #include "UaeDropDown.hpp"
 #include "UaeCheckBox.hpp"
 
@@ -24,6 +23,7 @@
 #include "filesys.h"
 #include "gui.h"
 #include "gui_handling.h"
+#include "GenericListModel.h"
 
 
 #define DIALOG_WIDTH 620
@@ -74,8 +74,7 @@ static gcn::UaeDropDown* cboUnit;
 static void check_rdb(const TCHAR *filename)
 {
   bool isrdb = hardfile_testrdb(filename);
-  if(isrdb)
-  {
+  if(isrdb) {
 		txtSectors->setText("0");
 		txtSurfaces->setText("0");
 		txtReserved->setText("0");
@@ -88,51 +87,8 @@ static void check_rdb(const TCHAR *filename)
 }
 
 
-class ControllerListModel : public gcn::ListModel
-{
-  public:
-    ControllerListModel()
-    {
-    }
-    
-    int getNumberOfElements()
-    {
-      return 2;
-    }
-
-    std::string getElementAt(int i)
-    {
-      if(i < 0 || i >= 2)
-        return "---";
-      return controller[i].display;
-    }
-};
-static ControllerListModel controllerListModel;
-
-
-class UnitListModel : public gcn::ListModel
-{
-  public:
-    UnitListModel()
-    {
-    }
-    
-    int getNumberOfElements()
-    {
-      return 4;
-    }
-
-    std::string getElementAt(int i)
-    {
-      char num[8];
-      
-      if(i < 0 || i >= 4)
-        return "---";
-      snprintf(num, 7, "%d", i);
-      return num;
-    }
-};
-static UnitListModel unitListModel;
+static GenericListModel controllerListModel;
+static GenericListModel unitListModel;
 
 
 class FilesysHardfileActionListener : public gcn::ActionListener
@@ -144,8 +100,7 @@ class FilesysHardfileActionListener : public gcn::ActionListener
         char tmp[MAX_PATH];
         strncpy(tmp, txtPath->getText().c_str(), MAX_PATH - 1);
         wndEditFilesysHardfile->releaseModalFocus();
-        if(SelectFile("Select harddisk file", tmp, harddisk_filter))
-        {
+        if(SelectFile("Select harddisk file", tmp, harddisk_filter)) {
           txtPath->setText(tmp);
           fileSelected = true;
           check_rdb(tmp);
@@ -165,15 +120,12 @@ class FilesysHardfileActionListener : public gcn::ActionListener
         }
 
       } else {
-        if (actionEvent.getSource() == cmdOK)
-        {
-          if(txtDevice->getText().length() <= 0)
-          {
+        if (actionEvent.getSource() == cmdOK) {
+          if(txtDevice->getText().length() <= 0) {
             wndEditFilesysHardfile->setCaption("Please enter a device name.");
             return;
           }
-          if(!fileSelected)
-          {
+          if(!fileSelected) {
             wndEditFilesysHardfile->setCaption("Please select a filename.");
             return;
           }
@@ -199,6 +151,15 @@ static void InitEditFilesysHardfile(void)
 		  }   
 		}
 	}
+	
+	controllerListModel.clear();
+	controllerListModel.add(controller[0].display);
+	controllerListModel.add(controller[1].display);
+	unitListModel.clear();
+	unitListModel.add(_T("0"));
+	unitListModel.add(_T("1"));
+	unitListModel.add(_T("2"));
+	unitListModel.add(_T("3"));
 	
 	wndEditFilesysHardfile = new gcn::Window("Edit");
 	wndEditFilesysHardfile->setSize(DIALOG_WIDTH, DIALOG_HEIGHT);
@@ -470,9 +431,9 @@ bool EditFilesysHardfile(int unit_no)
   {
     struct uaedev_config_info *ci;
 
-    uci = &changed_prefs.mountconfig[unit_no];
+    uci = &workprefs.mountconfig[unit_no];
     ci = &uci->ci;
-    get_filesys_unitconfig(&changed_prefs, unit_no, &mi);
+    get_filesys_unitconfig(&workprefs, unit_no, &mi);
 
     strdevname.assign(ci->devname);
     txtDevice->setText(strdevname);
@@ -544,9 +505,8 @@ bool EditFilesysHardfile(int unit_no)
     ci.reserved = atoi(txtReserved->getText().c_str());
     ci.blocksize = atoi(txtBlocksize->getText().c_str());
     ci.bootpri = bp;
-    ci.physical_geometry = hardfile_testrdb(ci.rootdir);
     
-    uci = add_filesys_config(&changed_prefs, unit_no, &ci);
+    uci = add_filesys_config(&workprefs, unit_no, &ci);
     if (uci) {
   		struct hardfiledata *hfd = get_hardfile_data (uci->configoffset);
   		if(hfd)

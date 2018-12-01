@@ -46,8 +46,9 @@
 #include "savestate.h"
 #include "statusline.h"
 #include "cd32_fmv.h"
-#include "audio.h"
 #include "devices.h"
+
+struct amigadisplay adisplays;
 
 typedef enum
 {
@@ -105,21 +106,14 @@ int interlace_seen;
    foreground being at bit offset 0, the one used if pf2 is in front being at
    offset 16.  */
 
-static int dblpf_ms1[256], dblpf_ms2[256];
+static int dblpf_ms1[256], dblpf_ms2[256], dblpf_ms[256];
 static int dblpf_ind1[256], dblpf_ind2[256];
 
 static int dblpf_2nd1[256], dblpf_2nd2[256];
 
 static const int dblpfofs[] = { 0, 2, 4, 8, 16, 32, 64, 128 };
 
-static int sprite_col_nat[65536];
-static int sprite_col_at[65536];
-static int sprite_bit[65536];
-static uae_u32 clxtab[256];
-
-/* Video buffer description structure. Filled in by the graphics system
- * dependent code. */
-struct vidbuf_description gfxvidinfo;
+static int sprite_offs[256];
 
 /* OCS/ECS color lookup table. */
 xcolnr xcolors[4096];
@@ -195,25 +189,30 @@ static int bplmode, bplehb, bplham, bpldualpf, bpldualpfpri;
 static int bpldualpf2of, bplplanecnt, ecsshres;
 static int bplbypass;
 static int bplres;
-static int plf1pri, plf2pri, bplxor, bpland;
+static int plf1pri, plf2pri, bplxor, bpland, bpldelay_sh;
 static uae_u32 plf_sprite_mask;
-static uae_u32 plf_sprite_mask_n16;
 static int sbasecol[2] = { 16, 16 };
 static int hposblank;
 
-bool picasso_requested_on, picasso_requested_forced_on, picasso_on;
-
-int inhibit_frame;
-
-int framecnt = 0;
+static void set_inhibit_frame (int bit)
+{
+	struct amigadisplay *ad = &adisplays;
+  ad->inhibit_frame |= 1 << bit;
+}
+static void clear_inhibit_frame (int bit)
+{
+	struct amigadisplay *ad = &adisplays;
+  ad->inhibit_frame &= ~(1 << bit);
+}
 
 STATIC_INLINE void count_frame (void)
 {
-  framecnt++;
-  if (framecnt > currprefs.gfx_framerate)
-		framecnt = 0;
-  if (inhibit_frame)
-    framecnt = 1;
+	struct amigadisplay *ad = &adisplays;
+  ad->framecnt++;
+  if (ad->framecnt > currprefs.gfx_framerate)
+		ad->framecnt = 0;
+  if (ad->inhibit_frame)
+    ad->framecnt = 1;
 }
 
 STATIC_INLINE int xshift (int x, int shift)
@@ -243,15 +242,17 @@ STATIC_INLINE int res_shift_from_window (int x)
   return x << -res_shift;
 }
 
-STATIC_INLINE int res_shift_from_amiga (int x)
-{
-  if (res_shift >= 0)
-		return x >> res_shift;
-  return x << -res_shift;
-}
-
 static struct decision *dp_for_drawing;
 static struct draw_info *dip_for_drawing;
+
+STATIC_INLINE int get_shdelay_add(void)
+{
+	if (bplres == RES_SUPERHIRES)
+		return 0;
+	int add = bpldelay_sh;
+	add >>= RES_MAX - currprefs.gfx_resolution;
+	return add;
+}
 
 /*
  * Screen update macros/functions
@@ -294,6 +295,7 @@ static void pfield_init_linetoscr (bool border)
 	int ddf_left = dp_for_drawing->plfleft * 2 + DIW_DDF_OFFSET;
 	int ddf_right = dp_for_drawing->plfright * 2 + DIW_DDF_OFFSET;
 	int leftborderhidden;
+	int native_ddf_left2;
 	bool expanded = false;
 
 	if (border)
@@ -303,6 +305,8 @@ static void pfield_init_linetoscr (bool border)
 	native_ddf_left = coord_hw_to_window_x (ddf_left);
 	native_ddf_right = coord_hw_to_window_x (ddf_right);
 
+	// Blerkenwiegel/Scoopex workaround
+	native_ddf_left2 = native_ddf_left;
 	if (native_ddf_left < 0)
 		native_ddf_left = 0;
 
@@ -427,16 +431,26 @@ static void pfield_init_linetoscr (bool border)
 	pixels_offset = MAX_PIXELS_PER_LINE - (ddf_left << bplres);
 	ddf_left <<= bplres;
 
-  leftborderhidden = playfield_start - native_ddf_left;
+  leftborderhidden = playfield_start - native_ddf_left2;
 	src_pixel = MAX_PIXELS_PER_LINE + res_shift_from_window (leftborderhidden);
 
 	if (dip_for_drawing->nr_sprites == 0 && !expanded)
 		return;
 
+	if (dip_for_drawing->nr_sprites && aga_mode) {
+		int add = get_shdelay_add();
+		if (add) {
+			if (sprite_playfield_start > 0) {
+				sprite_playfield_start -= add;
+			} else {
+				;// this is most likely wrong: playfield_start -= add;
+			}
+		}
+	}
+
 	/* We need to clear parts of apixels.  */
 	if (linetoscr_diw_start < native_ddf_left) {
 		int size = res_shift_from_window (native_ddf_left - linetoscr_diw_start);
-		linetoscr_diw_start = native_ddf_left;
 		memset (pixdata.apixels + MAX_PIXELS_PER_LINE - size, 0, size);
 	}
 	if (linetoscr_diw_end > native_ddf_right) {
@@ -446,7 +460,6 @@ static void pfield_init_linetoscr (bool border)
 			size = MAX_PIXELS_PER_LINE - pos;
 		if (size > 0)
 		  memset (pixdata.apixels + MAX_PIXELS_PER_LINE + pos, 0, size);
-		linetoscr_diw_start = native_ddf_left;
 	}
 }
 
@@ -520,7 +533,7 @@ static void fill_line2 (int startpos, int len)
 	int *start;
 	xcolnr val;
 
-		shift = 1;
+	shift = 1;
 
 	nints = len >> (2 - shift);
 	nrem = nints & 7;
@@ -558,18 +571,19 @@ static void fill_line2 (int startpos, int len)
 
 STATIC_INLINE void fill_line_border (int lineno)
 {
+	struct vidbuf_description *vidinfo = &adisplays.gfxvidinfo;
 	int lastpos = visible_left_border;
-	int endpos = visible_left_border + gfxvidinfo.drawbuffer.outwidth;
+	int endpos = visible_left_border + vidinfo->drawbuffer.outwidth;
 
 	// full hblank
 	if (hposblank) {
 		hposblank = 3;
-		fill_line2(lastpos, gfxvidinfo.drawbuffer.outwidth);
+		fill_line2(lastpos, vidinfo->drawbuffer.outwidth);
 		return;
 	}
 	// hblank not visible
 	if (0 <= lastpos && MAX_STOP >= endpos) {
-		fill_line2(lastpos, gfxvidinfo.drawbuffer.outwidth);
+		fill_line2(lastpos, vidinfo->drawbuffer.outwidth);
 		return;
 	}
 
@@ -578,49 +592,70 @@ STATIC_INLINE void fill_line_border (int lineno)
 	}
 }
 
+static int sprite_shdelay;
 static uae_u8 render_sprites (int pos, int dualpf, uae_u8 apixel, int aga)
 {
 	struct spritepixelsbuf *spb = &spritepixels[pos];
 	unsigned int v = spb->data;
-	int *shift_lookup = bpldualpfpri ? dblpf_ms2 : dblpf_ms1;
+	int *shift_lookup = dualpf ? (bpldualpfpri ? dblpf_ms2 : dblpf_ms1) : dblpf_ms;
 	int maskshift, plfmask;
 
+	// shdelay hack, above &spritepixels[pos] is correct. 
+	pos += sprite_shdelay;
 	/* The value in the shift lookup table is _half_ the shift count we
 	need.  This is because we can't shift 32 bits at once (undefined
 	behaviour in C).  */
-
-  if(dualpf) {
-	  maskshift = shift_lookup[apixel];
-	  plfmask = (plf_sprite_mask >> maskshift) >> maskshift;
-	  v &= ~plfmask;
-  } else {
-    if(apixel)
-      v &= plf_sprite_mask_n16;
-  }
-
+  maskshift = shift_lookup[apixel];
+  plfmask = (plf_sprite_mask >> maskshift) >> maskshift;
+  v &= ~plfmask;
 	/* Extra 1 sprite pixel at DDFSTRT is only possible if at least 1 plane is active */
 	if ((bplplanecnt > 0 || pos >= sprite_playfield_start) && (v != 0)) {
-		unsigned int col;
+		unsigned int vlo, vhi, col;
+		unsigned int v1 = v & 255;
+		/* OFFS determines the sprite pair with the highest priority that has
+		any bits set.  E.g. if we have 0xFF00 in the buffer, we have sprite
+		pairs 01 and 23 cleared, and pairs 45 and 67 set, so OFFS will
+		have a value of 4.
+		2 * OFFS is the bit number in V of the sprite pair, and it also
+		happens to be the color offset for that pair. 
+		*/
+		int offs;
+		if (v1 == 0)
+			offs = 4 + sprite_offs[v >> 8];
+		else
+			offs = sprite_offs[v1];
 
-    if (spb->attach) {
-      int offs = sprite_bit[v];
-      if (spb->stdata & offs) {
-        if (aga)
-          col = sprite_col_at[v] + sbasecol[1];
-        else
-          col = sprite_col_at[v] + 16;
-        return col;
-      }
-    }
-
-		if (aga) {
-      int offs = sprite_bit[v];
-      if (offs & 0x55)
-				col = sprite_col_nat[v] + sbasecol[0];
+		/* Shift highest priority sprite pair down to bit zero.  */
+		v >>= offs * 2;
+		v &= 15;
+		if (spb->attach && (spb->stdata & (3 << offs))) {
+			col = v;
+			if (aga)
+				col += sbasecol[1];
 			else
-				col = sprite_col_nat[v] + sbasecol[1];
+				col += 16;
 		} else {
-			col = sprite_col_nat[v] + 16;
+			/* This sequence computes the correct color value.  We have to select
+			either the lower-numbered or the higher-numbered sprite in the pair.
+			We have to select the high one if the low one has all bits zero.
+			If the lower-numbered sprite has any bits nonzero, (VLO - 1) is in
+			the range of 0..2, and with the mask and shift, VHI will be zero.
+			If the lower-numbered sprite is zero, (VLO - 1) is a mask of
+			0xFFFFFFFF, and we select the bits of the higher numbered sprite
+			in VHI.
+			This is _probably_ more efficient than doing it with branches.  */
+			vlo = v & 3;
+			vhi = (v & (vlo - 1)) >> 2;
+			col = (vlo | vhi);
+			if (aga) {
+				if (vhi > 0)
+					col += sbasecol[1];
+				else
+					col += sbasecol[0];
+			} else {
+				col += 16;
+			}
+			col += offs * 2;
 		}
 
 		return col;
@@ -753,6 +788,55 @@ static int pfield_do_nothing(int a, int b, int c)
 	return a;
 }
 
+/* AGA subpixel delay hack */
+static call_linetoscr pfield_do_linetoscr_shdelay_normal;
+static call_linetoscr pfield_do_linetoscr_shdelay_sprite;
+
+static int pfield_do_linetoscr_normal_shdelay(int spix, int dpix, int dpix_end)
+{
+	struct vidbuf_description *vidinfo = &adisplays.gfxvidinfo;
+	int add = get_shdelay_add();
+	int add2 = add * vidinfo->drawbuffer.pixbytes;
+	if (add) {
+		// Clear skipped pixel(s).
+		pfield_do_linetoscr_shdelay_sprite(spix, dpix, dpix + add);
+	}
+	xlinebuffer += add2;
+	int out = pfield_do_linetoscr_shdelay_normal(spix, dpix, dpix_end);
+	xlinebuffer -= add2;
+	return out;
+}
+static int pfield_do_linetoscr_sprite_shdelay(int spix, int dpix, int dpix_end)
+{
+	struct vidbuf_description *vidinfo = &adisplays.gfxvidinfo;
+	int out = spix;
+	if (dpix < real_playfield_start && dpix_end > real_playfield_start) {
+		// Crosses real_playfield_start.
+		// Render only from dpix to real_playfield_start.
+		int len = real_playfield_start - dpix;
+		out = pfield_do_linetoscr_spriteonly(out, dpix, dpix + len);
+		dpix = real_playfield_start;
+	} else if (dpix_end <= real_playfield_start) {
+		// Does not cross real_playfield_start, nothing special needed.
+		out = pfield_do_linetoscr_spriteonly(out, dpix, dpix_end);
+		return out;
+	}
+	// Render bitplane with subpixel scroll, from real_playfield_start to end.
+	int add = get_shdelay_add();
+	int add2 = add * vidinfo->drawbuffer.pixbytes;
+	if (add) {
+		pfield_do_linetoscr_shdelay_sprite(out, dpix, dpix + add);
+	}
+	sprite_shdelay = add;
+	spritepixels += add;
+	xlinebuffer += add2;
+	out = pfield_do_linetoscr_shdelay_sprite(out, dpix, dpix_end);
+	xlinebuffer -= add2;
+	spritepixels -= add;
+	sprite_shdelay = 0;
+	return out;
+}
+
 static void pfield_set_linetoscr (void)
 {
 	p_acolors = colors_for_drawing.acolors;
@@ -783,8 +867,13 @@ static void pfield_set_linetoscr (void)
 				pfield_do_linetoscr_sprite = linetoscr_16_shrink2_aga_spr;
 				pfield_do_linetoscr_spriteonly = linetoscr_16_shrink2_aga_spronly;
 		}
+		if (get_shdelay_add()) {
+			pfield_do_linetoscr_shdelay_normal = pfield_do_linetoscr_normal;
+			pfield_do_linetoscr_shdelay_sprite = pfield_do_linetoscr_sprite;
+			pfield_do_linetoscr_normal = pfield_do_linetoscr_normal_shdelay;
+			pfield_do_linetoscr_sprite = pfield_do_linetoscr_sprite_shdelay;
+		}
 	}
-
 	if (!(currprefs.chipset_mask & CSMASK_AGA) && ecsshres) {
 		if (res_shift == 0) {
 				pfield_do_linetoscr_normal = linetoscr_16_sh;
@@ -797,7 +886,6 @@ static void pfield_set_linetoscr (void)
 				pfield_do_linetoscr_sprite = linetoscr_16_shrink2_sh_spr;
 		}
 	}
-
 	if (!(currprefs.chipset_mask & CSMASK_AGA) && !ecsshres) {
 		if (res_shift == 0) {
 				pfield_do_linetoscr_normal = linetoscr_16;
@@ -1048,52 +1136,18 @@ static void gen_pfield_tables (void)
 		
 		dblpf_ms1[i] = plane1 == 0 ? (plane2 == 0 ? 16 : 8) : 0;
 		dblpf_ms2[i] = plane2 == 0 ? (plane1 == 0 ? 16 : 0) : 8;
+		dblpf_ms[i] = i == 0 ? 16 : 8;
+
 		if (plane2 > 0)
 			plane2 += 8;
-		dblpf_ind1[i] = i >= 128 ? i & 0x7F : (plane1 == 0 ? plane2 : plane1);
-		dblpf_ind2[i] = i >= 128 ? i & 0x7F : (plane2 == 0 ? plane1 : plane2);
+		// use OCS/ECS unused plane bits 6 and 7 for 
+		// dualplayfield BPLCON2 invalid value emulation.
+		int plane1x = (i & 0x40) ? 0 : plane1;
+		int plane2x = (i & 0x80) ? 0 : plane2;
+		dblpf_ind1[i] = plane1 == 0 ? plane2x : plane1x;
+		dblpf_ind2[i] = plane2 == 0 ? plane1x : plane2x;
 
-		// Hack for OCS/ECS-only dualplayfield chipset bug.
-		// If PF2P2 is invalid (>5), playfield color becomes transparent but
-		// playfield still hides playfield under it! (if plfpri is set)
-		if (i & 64) {
-			dblpf_ind2[i] = 0;
-			dblpf_ind1[i] = 0;
-		}
-
-		clxtab[i] = ((((i & 3) && (i & 12)) << 9)
-				| (((i & 3) && (i & 48)) << 10)
-				| (((i & 3) && (i & 192)) << 11)
-				| (((i & 12) && (i & 48)) << 12)
-				| (((i & 12) && (i & 192)) << 13)
-				| (((i & 48) && (i & 192)) << 14));
-	}
-
-  for(i=0; i<65536; ++i)
-  {
-    sprite_col_nat[i] = 
-      (i & 0x0003) ? ((i >> 0) & 3) + 0 :
-      (i & 0x000C) ? ((i >> 2) & 3) + 0 :
-      (i & 0x0030) ? ((i >> 4) & 3) + 4 :
-      (i & 0x00C0) ? ((i >> 6) & 3) + 4 :
-      (i & 0x0300) ? ((i >> 8) & 3) + 8 :
-      (i & 0x0C00) ? ((i >> 10) & 3) + 8 :
-      (i & 0x3000) ? ((i >> 12) & 3) + 12 :
-      (i & 0xC000) ? ((i >> 14) & 3) + 12 : 0;
-    sprite_col_at[i] =
-      (i & 0x000F) ? ((i >> 0) & 0x000F) :
-      (i & 0x00F0) ? ((i >> 4) & 0x000F) :
-      (i & 0x0F00) ? ((i >> 8) & 0x000F) :
-      (i & 0xF000) ? ((i >> 12) & 0x000F) : 0;
-    sprite_bit[i] = 
-      (i & 0x0003) ? 0x01 : 
-      (i & 0x000C) ? 0x02 : 
-      (i & 0x0030) ? 0x04 :
-      (i & 0x00C0) ? 0x08 :
-      (i & 0x0300) ? 0x10 :
-      (i & 0x0C00) ? 0x20 :
-      (i & 0x3000) ? 0x40 :
-      (i & 0xC000) ? 0x80 : 0;
+		sprite_offs[i] = (i & 15) ? 0 : 2;
   }
 }
 
@@ -1185,29 +1239,30 @@ static void weird_bitplane_fix (int start, int end)
 
 	start >>= sh;
 	end >>= sh;
-	if (bplplanecnt == 5 && !bpldualpf && plf2pri > 5) {
-		/* emulate OCS/ECS only undocumented "SWIV" hardware feature */
-		for (int i = start; i < end; i++) {
-			if (p[i] & 16)
-				p[i] = 16;
+	if (!bpldualpf) {
+		// HAM is unaffected (probably because plane 5 is HAM control bit)
+		if (bplham)
+			return;
+		if (bplplanecnt >= 5 && plf2pri >= 5) {
+			// Emulate OCS/ECS only undocumented "SWIV" hardware feature:
+			// PF2 >= 5 and bit in plane 5 set: other planes are ignored in color selection.
+			for (int i = start; i < end; i++) {
+				if (p[i] & 0x10)
+					p[i] = 0x10;
+			}
 		}
-	} 
-	if (bpldualpf && bpldualpfpri && plf2pri > 4) {
-		/* in dualplayfield mode this feature is even more strange.. */
+	} else if (plf1pri >= 5 || plf2pri >= 5) {
+		// If PFx is invalid (>=5), matching playfield's color becomes transparent
+		// (COLOR00). Priorities keep working normally: "transparent" playfield
+		// will still hide lower priority playfield behind it.
+		// Logo in Running man / Scoopex
+		uae_u8 mask1 = 0x01 | 0x04 | 0x10;
+		uae_u8 mask2 = 0x02 | 0x08 | 0x20;
 		for (int i = start; i < end; i++) {
-			// running man / scoopex
-			if (p[i] & (2 | 8 | 32))
+			if (plf1pri >= 5 && (p[i] & mask1))
 				p[i] |= 0x40;
-		}
-	}
-	if (bpldualpf && !bpldualpfpri && plf2pri > 4) {
-		for (int i = start; i < end; i++) {
-			p[i] &= ~(2 | 8 | 32);
-		}
-	}
-	if (bpldualpf && plf1pri > 4) {
-		for (int i = start; i < end; i++) {
-			p[i] = 0x40;
+			if (plf2pri >= 5 && (p[i] & mask2))
+				p[i] |= 0x80;
 		}
 	}
 }
@@ -1474,6 +1529,7 @@ static void pfield_doline (int lineno)
 
 void init_row_map (void)
 {
+	struct vidbuf_description *vidinfo = &adisplays.gfxvidinfo;
 	static uae_u8 *oldbufmem;
 	static int oldheight, oldpitch;
   int i, j;
@@ -1482,24 +1538,25 @@ void init_row_map (void)
 		row_map = xmalloc(uae_u8*, max_uae_height + 1);
 	}
 
-	if (oldbufmem && oldbufmem == gfxvidinfo.drawbuffer.bufmem &&
-		oldheight == gfxvidinfo.drawbuffer.outheight &&
-		oldpitch == gfxvidinfo.drawbuffer.rowbytes)
+	if (oldbufmem && oldbufmem == vidinfo->drawbuffer.bufmem &&
+		oldheight == vidinfo->drawbuffer.outheight &&
+		oldpitch == vidinfo->drawbuffer.rowbytes)
 		return;
 	j = oldheight == 0 ? max_uae_height : oldheight;
-  for (i = gfxvidinfo.drawbuffer.outheight; i < max_uae_height + 1 && i < j + 1; i++) {
+  for (i = vidinfo->drawbuffer.outheight; i < max_uae_height + 1 && i < j + 1; i++) {
     row_map[i] = row_tmp;
   }
-  for (i = 0, j = 0; i < gfxvidinfo.drawbuffer.outheight; i++, j += gfxvidinfo.drawbuffer.rowbytes) {
-		row_map[i] = gfxvidinfo.drawbuffer.bufmem + j;
+  for (i = 0, j = 0; i < vidinfo->drawbuffer.outheight; i++, j += vidinfo->drawbuffer.rowbytes) {
+		row_map[i] = vidinfo->drawbuffer.bufmem + j;
   }
-	oldbufmem = gfxvidinfo.drawbuffer.bufmem;
-	oldheight = gfxvidinfo.drawbuffer.outheight;
-	oldpitch = gfxvidinfo.drawbuffer.rowbytes;
+	oldbufmem = vidinfo->drawbuffer.bufmem;
+	oldheight = vidinfo->drawbuffer.outheight;
+	oldpitch = vidinfo->drawbuffer.rowbytes;
 }
 
 static void init_aspect_maps (void)
 {
+	struct vidbuf_description *vidinfo = &adisplays.gfxvidinfo;
   int i, maxl, h;
 
 	linedbl = currprefs.gfx_vresolution;
@@ -1507,7 +1564,7 @@ static void init_aspect_maps (void)
 	min_ypos_for_screen = minfirstline << linedbl;
 	max_drawn_amiga_line = -1;
 
-  h = gfxvidinfo.drawbuffer.outheight;
+  h = vidinfo->drawbuffer.outheight;
   if (h == 0)
 	  /* Do nothing if the gfx driver hasn't initialized the screen yet */
 	  return;
@@ -1542,16 +1599,6 @@ static void init_aspect_maps (void)
   	for (j = amiga2aspect_line_map[i]; j < h && native2amiga_line_map[j] == -1; j++)
 	    native2amiga_line_map[j] = (i + currprefs.pandora_vertical_offset) >> linedbl;
   }
-}
-
-/*
- * One drawing frame has been finished. Tell the graphics code about it.
- */
-
-STATIC_INLINE void do_flush_screen ()
-{
-  unlockscr ();
-  screenlocked = false;
 }
 
 static void setbplmode(void)
@@ -1599,7 +1646,6 @@ static void pfield_expand_dp_bplcon (void)
   plf2pri = (dp_for_drawing->bplcon2 >> 3) & 7;
   plf_sprite_mask = 0xFFFF0000 << (4 * plf2pri);
   plf_sprite_mask |= (0x0000FFFF << (4 * plf1pri)) & 0xFFFF;
-  plf_sprite_mask_n16 = ~(plf_sprite_mask >> 16);
   bpldualpf = (dp_for_drawing->bplcon0 & 0x400) == 0x400;
   bpldualpfpri = (dp_for_drawing->bplcon2 & 0x40) == 0x40;
 
@@ -1619,7 +1665,11 @@ static void pfield_expand_dp_bplcon (void)
 			bpland = 31;
 		bplehb = 0;
 	}
-
+	int sh = (colors_for_drawing.extra >> CE_SHRES_DELAY) & 3;
+	if (sh != bpldelay_sh) {
+		bpldelay_sh = sh;
+		pfield_mode_changed = true;
+	}
 	if (pfield_mode_changed)
 		pfield_set_linetoscr();
 	
@@ -1746,7 +1796,7 @@ STATIC_INLINE void do_color_changes (line_draw_func worker_border, line_draw_fun
 		// playfield
 	  if (nextpos_in_range > lastpos && lastpos >= playfield_start && lastpos < playfield_end) {
 		  int t = nextpos_in_range <= playfield_end ? nextpos_in_range : playfield_end;
-			if ((plf2pri > 4 || plf1pri > 4) && !(currprefs.chipset_mask & CSMASK_AGA))
+			if ((plf2pri >= 5 || plf1pri >= 5) && !(currprefs.chipset_mask & CSMASK_AGA))
 				weird_bitplane_fix (lastpos, t);
 			if (bplxor && may_require_hard_way && worker_pfield != pfield_do_linetoscr_bordersprite_aga)
 				playfield_hard_way(worker_pfield, lastpos, t);
@@ -1772,6 +1822,11 @@ STATIC_INLINE void do_color_changes (line_draw_func worker_border, line_draw_fun
 				colors_for_drawing.extra &= ~(1 << CE_BORDERSPRITE);
 				colors_for_drawing.extra |= (value & 1) != 0 ? (1 << CE_BORDERBLANK) : 0;
 				colors_for_drawing.extra |= (value & 3) == 2 ? (1 << CE_BORDERSPRITE) : 0;
+			} else if (value & COLOR_CHANGE_SHRES_DELAY) {
+				colors_for_drawing.extra &= ~(1 << CE_SHRES_DELAY);
+				colors_for_drawing.extra &= ~(1 << (CE_SHRES_DELAY + 1));
+				colors_for_drawing.extra |= (value & 3) << CE_SHRES_DELAY;
+				pfield_expand_dp_bplcon();
       }
 	  }
 	  if (lastpos >= endpos)
@@ -1823,10 +1878,10 @@ static void pfield_draw_line (int lineno, int gfx_ypos, int follow_ypos)
     /* The problem is that we must call decode_ham() BEFORE we do the sprites. */
     if (dp_for_drawing->ham_seen) {
 			int ohposblank = hposblank;
-			uae_u8 b0 = dp_for_drawing->bplcon0;
-			uae_u8 b2 = dp_for_drawing->bplcon2;
-			uae_u8 b3 = dp_for_drawing->bplcon3;
-			uae_u8 b4 = dp_for_drawing->bplcon4;
+			uae_u16 b0 = dp_for_drawing->bplcon0;
+			uae_u16 b2 = dp_for_drawing->bplcon2;
+			uae_u16 b3 = dp_for_drawing->bplcon3;
+			uae_u16 b4 = dp_for_drawing->bplcon4;
       init_ham_decoding ();
       do_color_changes (dummy_worker, decode_ham);
 	    if (have_color_changes) {
@@ -1863,7 +1918,7 @@ static void pfield_draw_line (int lineno, int gfx_ypos, int follow_ypos)
 			do_color_changes (pfield_do_fill_line, dip_for_drawing->nr_sprites ? pfield_do_linetoscr_spr : pfield_do_linetoscr);
 
 		if (do_double) {
-			memcpy (row_map[follow_ypos], row_map[gfx_ypos], gfxvidinfo.drawbuffer.pixbytes * gfxvidinfo.drawbuffer.outwidth);
+			memcpy (row_map[follow_ypos], row_map[gfx_ypos], adisplays.gfxvidinfo.drawbuffer.pixbytes * adisplays.gfxvidinfo.drawbuffer.outwidth);
 		}
 
 		if (dip_for_drawing->nr_sprites)
@@ -1916,7 +1971,7 @@ static void pfield_draw_line (int lineno, int gfx_ypos, int follow_ypos)
 		}
 
 		if (do_double) {
-			memcpy (row_map[follow_ypos], row_map[gfx_ypos], gfxvidinfo.drawbuffer.pixbytes * gfxvidinfo.drawbuffer.outwidth);
+			memcpy (row_map[follow_ypos], row_map[gfx_ypos], adisplays.gfxvidinfo.drawbuffer.pixbytes * adisplays.gfxvidinfo.drawbuffer.outwidth);
 		}
 
 	}
@@ -1924,8 +1979,10 @@ static void pfield_draw_line (int lineno, int gfx_ypos, int follow_ypos)
 
 static void center_image (void)
 {
+	struct amigadisplay *ad = &adisplays;
+	struct vidbuf_description *vidinfo = &ad->gfxvidinfo;
 	int deltaToBorder;
-  deltaToBorder = (gfxvidinfo.drawbuffer.outwidth >> currprefs.gfx_resolution) - 320;
+  deltaToBorder = (vidinfo->drawbuffer.outwidth >> currprefs.gfx_resolution) - 320;
 	  
 	visible_left_border = 73 - (deltaToBorder >> 1);
 	visible_right_border = 393 + (deltaToBorder >> 1);
@@ -1933,11 +1990,11 @@ static void center_image (void)
   visible_right_border <<= lores_shift;
 
   linetoscr_x_adjust_pixels	= visible_left_border;
-	linetoscr_x_adjust_pixbytes = linetoscr_x_adjust_pixels * gfxvidinfo.drawbuffer.pixbytes;
+	linetoscr_x_adjust_pixbytes = linetoscr_x_adjust_pixels * vidinfo->drawbuffer.pixbytes;
 
 	int max_drawn_amiga_line_tmp = max_drawn_amiga_line;
-	if (max_drawn_amiga_line_tmp > gfxvidinfo.drawbuffer.outheight)
-		max_drawn_amiga_line_tmp = gfxvidinfo.drawbuffer.outheight;
+	if (max_drawn_amiga_line_tmp > vidinfo->drawbuffer.outheight)
+		max_drawn_amiga_line_tmp = vidinfo->drawbuffer.outheight;
 	max_drawn_amiga_line_tmp >>= linedbl;
 
 	thisframe_y_adjust = minfirstline + currprefs.pandora_vertical_offset;
@@ -1968,17 +2025,20 @@ static void init_drawing_frame (void)
 
 static void draw_status_line (int line, int statusy)
 {
+	struct vidbuf_description *vidinfo = &adisplays.gfxvidinfo;
   uae_u8 *buf;
 
   xlinebuffer = row_map[line];
   buf = xlinebuffer;
-  draw_status_line_single (buf, statusy, gfxvidinfo.drawbuffer.outwidth);
+  draw_status_line_single (buf, statusy, vidinfo->drawbuffer.outwidth);
 }
 
 static void partial_draw_frame(void)
 {
-	if (framecnt == 0) {
-  	struct vidbuffer *vb = &gfxvidinfo.drawbuffer;
+  struct amigadisplay *ad = &adisplays;
+	if (ad->framecnt == 0) {
+	  struct vidbuf_description *vidinfo = &ad->gfxvidinfo;
+  	struct vidbuffer *vb = &vidinfo->drawbuffer;
 
     if(!screenlocked) {
     	if(!lockscr())
@@ -2003,18 +2063,17 @@ static void partial_draw_frame(void)
   }
 }
 
-void halt_draw_frame(void)
+STATIC_INLINE void do_flush_screen ()
 {
-  if(screenlocked) {
-    unlockscr();
-    screenlocked = false;
-  }
+  unlockscr ();
+  screenlocked = false;
 }
 
 static void finish_drawing_frame (void)
 {
-	int i;
-	struct vidbuffer *vb = &gfxvidinfo.drawbuffer;
+	struct amigadisplay *ad = &adisplays;
+	struct vidbuf_description *vidinfo = &ad->gfxvidinfo;
+	struct vidbuffer *vb = &vidinfo->drawbuffer;
 
   if(!screenlocked) {
   	if(!lockscr())
@@ -2022,7 +2081,7 @@ static void finish_drawing_frame (void)
     screenlocked = true;
   }
 
-	for (i = next_line_to_render; i < max_ypos_thisframe; i++) {
+	for (int i = next_line_to_render; i < max_ypos_thisframe; i++) {
     int i1 = i + min_ypos_for_screen;
 		int line = i + thisframe_y_adjust_real;
     int whereline = amiga2aspect_line_map[i1];
@@ -2038,15 +2097,15 @@ static void finish_drawing_frame (void)
 	}
   
 	if (currprefs.leds_on_screen) {
-		for (i = 0; i < TD_TOTAL_HEIGHT; i++) {
-			int line = gfxvidinfo.drawbuffer.outheight - TD_TOTAL_HEIGHT + i;
+		for (int i = 0; i < TD_TOTAL_HEIGHT; i++) {
+			int line = vidinfo->drawbuffer.outheight - TD_TOTAL_HEIGHT + i;
 			draw_status_line (line, i);
 		}
 	}
 
 	if (currprefs.cs_cd32fmv) {
 		if (cd32_fmv_active) {
-			cd32_fmv_genlock(vb, &gfxvidinfo.drawbuffer);
+			cd32_fmv_genlock(vb, &vidinfo->drawbuffer);
     }
   }
 
@@ -2057,22 +2116,24 @@ static void finish_drawing_frame (void)
 void check_prefs_picasso(void)
 {
 #ifdef PICASSO96
-	if (picasso_on)
+	struct amigadisplay *ad = &adisplays;
+
+	if (ad->picasso_on)
 		picasso_refresh ();
 
-  if (picasso_requested_on == picasso_on && !picasso_requested_forced_on)
+  if (ad->picasso_requested_on == ad->picasso_on && !ad->picasso_requested_forced_on)
   	return;
 
-	picasso_requested_forced_on = false;
-  picasso_on = picasso_requested_on;
+	ad->picasso_requested_forced_on = false;
+  ad->picasso_on = ad->picasso_requested_on;
 
-  if (!picasso_on)
+  if (!ad->picasso_on)
   	clear_inhibit_frame (IHF_PICASSO);
   else
     set_inhibit_frame (IHF_PICASSO);
 
-  gfx_set_picasso_state (picasso_on);
-  picasso_enablescreen (picasso_requested_on);
+  gfx_set_picasso_state (ad->picasso_on);
+  picasso_enablescreen (ad->picasso_requested_on);
 
   notice_new_xcolors ();
   count_frame ();
@@ -2092,7 +2153,9 @@ bool vsync_handle_check (void)
 
 void vsync_handle_redraw (void)
 {
-	if (framecnt == 0) {
+	struct amigadisplay *ad = &adisplays;
+
+	if (ad->framecnt == 0) {
     if(render_tid) {
       while(render_thread_busy)
         sleep_millis(1);
@@ -2124,7 +2187,7 @@ void vsync_handle_redraw (void)
 
 	count_frame ();
 
-	if (framecnt == 0)
+	if (ad->framecnt == 0)
 		init_drawing_frame ();
 
 	gui_flicker_led (-1, 0, 0);
@@ -2132,7 +2195,9 @@ void vsync_handle_redraw (void)
 
 void hsync_record_line_state (int lineno)
 {
-  if (framecnt != 0)
+	struct amigadisplay *ad = &adisplays;
+
+  if (ad->framecnt != 0)
   	return;
 
   linestate_first_undecided = lineno + 1;
@@ -2216,6 +2281,9 @@ static void *render_thread (void *unused)
 
 void drawing_init (void)
 {
+	struct amigadisplay *ad = &adisplays;
+	struct vidbuf_description *vidinfo = &ad->gfxvidinfo;
+
   gen_pfield_tables();
 
 	gen_direct_drawing_table();
@@ -2233,14 +2301,14 @@ void drawing_init (void)
 
 #ifdef PICASSO96
   if (!isrestore ()) {
-    picasso_on = 0;
-    picasso_requested_on = 0;
+    ad->picasso_on = 0;
+    ad->picasso_requested_on = 0;
     gfx_set_picasso_state (0);
   }
 #endif
-  xlinebuffer = gfxvidinfo.drawbuffer.bufmem;
+  xlinebuffer = vidinfo->drawbuffer.bufmem;
 
-  inhibit_frame = 0;
+  ad->inhibit_frame = 0;
 
   reset_drawing ();
 }

@@ -85,7 +85,7 @@ STATIC_INLINE void setclr (unsigned int *p, unsigned int val)
 
 STATIC_INLINE void ICR (uae_u32 data)
 {
-	INTREQ_0 (0x8000 | data);
+	safe_interrupt_set((data & 0x2000) != 0);
 }
 
 STATIC_INLINE void ICRA(uae_u32 data)
@@ -618,7 +618,7 @@ static uae_u8 ReadCIAA (unsigned int addr, uae_u32 *flags)
 	  return v;
 	}
   case 1:
-    tmp = (ciaaprb & ciaadrb) | (ciaadrb ^ 0xff);
+		tmp = handle_parport_joystick (0, ciaaprb, ciaadrb);
 	  if (ciaacrb & 2) {
 	    int pb7 = 0;
 	    if (ciaacrb & 4)
@@ -697,7 +697,8 @@ static uae_u8 ReadCIAB (unsigned int addr, uae_u32 *flags)
 
   switch (reg) {
   case 0:
-		tmp = ((ciabpra & ciabdra) | (ciabdra ^ 0xff)) & 0x7;
+		tmp = 0;
+		tmp |= handle_parport_joystick (1, ciabpra, ciabdra);
 
 		if (currprefs.cs_ciatype[1]) {
 			tmp &= ~ciabdra;
@@ -1087,7 +1088,7 @@ addrbank cia_bank = {
 	cia_lget, cia_wget, cia_bget,
 	cia_lput, cia_wput, cia_bput,
 	default_xlate, default_check, NULL, NULL, _T("CIA"),
-	cia_lgeti, cia_wgeti,
+	cia_wgeti,
 	ABFLAG_IO | ABFLAG_CIA, S_READ, S_WRITE, NULL, 0x3f01, 0xbfc000
 };
 
@@ -1113,7 +1114,7 @@ static void cia_wait_pre (void)
   }
 }
 
-static void cia_wait_post (uae_u32 value)
+static void cia_wait_post (void)
 {
 	if (currprefs.cachesize) {
 		do_cycles (8 * CYCLE_UNIT / 2);
@@ -1188,7 +1189,7 @@ static uae_u32 REGPARAM2 cia_bget (uaecptr addr)
 		if (!issinglecia ()) {
       cia_wait_pre ();
 			v = (addr & 1) ? ReadCIAA (r, &flags) : ReadCIAB (r, &flags);
-    	cia_wait_post (v);
+    	cia_wait_post ();
     }
 	  break;
   case 1:
@@ -1198,7 +1199,7 @@ static uae_u32 REGPARAM2 cia_bget (uaecptr addr)
 		} else {
 			v = (addr & 1) ? dummy_get_safe(addr, 1, false, 0) : ReadCIAB (r, &flags);
 		}
-  	cia_wait_post (v);
+  	cia_wait_post ();
 	  break;
   case 2:
     cia_wait_pre ();
@@ -1206,13 +1207,13 @@ static uae_u32 REGPARAM2 cia_bget (uaecptr addr)
 			v = (addr & 1) ? ReadCIAA (r, &flags) : regs.irc >> 8;
 		else
 			v = (addr & 1) ? ReadCIAA (r, &flags) : dummy_get_safe(addr, 1, false, 0);
-  	cia_wait_post (v);
+  	cia_wait_post ();
 	  break;
 	case 3:
 		if (currprefs.cpu_model == 68000 && currprefs.cpu_compatible) {
       cia_wait_pre ();
       v = (addr & 1) ? regs.irc : regs.irc >> 8;
-    	cia_wait_post (v);
+    	cia_wait_post ();
 		}
   	break;
   }
@@ -1243,24 +1244,24 @@ static uae_u32 REGPARAM2 cia_wget (uaecptr addr)
 		{
       cia_wait_pre ();
 			v = (ReadCIAB (r, &flags) << 8) | ReadCIAA (r, &flags);
-    	cia_wait_post (v);
+    	cia_wait_post ();
 		}
 	  break;
   case 1:
     cia_wait_pre ();
 		v = (ReadCIAB (r, &flags) << 8) | dummy_get_safe(addr, 1, false, 0);
-  	cia_wait_post (v);
+  	cia_wait_post ();
 	  break;
   case 2:
     cia_wait_pre ();
 		v = (dummy_get_safe(addr, 1, false, 0) << 8) | ReadCIAA (r, &flags);
-  	cia_wait_post (v);
+  	cia_wait_post ();
     break;
 	case 3:
   	if (currprefs.cpu_model == 68000 && currprefs.cpu_compatible) {
       cia_wait_pre ();
 	    v = regs.irc;
-    	cia_wait_post (v);
+    	cia_wait_post ();
     }
   	break;
   }
@@ -1286,12 +1287,6 @@ static uae_u32 REGPARAM2 cia_wgeti (uaecptr addr)
   	return dummy_wgeti(addr);
   return cia_wget(addr);
 }
-static uae_u32 REGPARAM2 cia_lgeti (uaecptr addr)
-{
-  if (currprefs.cpu_model >= 68020)
-  	return dummy_lgeti(addr);
-  return cia_lget(addr);
-}
 
 static void REGPARAM2 cia_bput (uaecptr addr, uae_u32 value)
 {
@@ -1313,7 +1308,7 @@ static void REGPARAM2 cia_bput (uaecptr addr, uae_u32 value)
 			WriteCIAB (r, value, &flags);
     if ((cs & 1) == 0)
     	WriteCIAA (r, value);
-    cia_wait_post (value);
+    cia_wait_post ();
 #ifdef ACTION_REPLAY
 		if (flags) {
 			action_replay_cia_access((flags & 2) != 0);
@@ -1342,7 +1337,7 @@ static void REGPARAM2 cia_wput (uaecptr addr, uae_u32 value)
 			WriteCIAB (r, value >> 8, &flags);
     if ((cs & 1) == 0)
     	WriteCIAA (r, value & 0xff);
-    cia_wait_post (value);
+    cia_wait_post ();
 #ifdef ACTION_REPLAY
 		if (flags) {
 			action_replay_cia_access((flags & 2) != 0);
@@ -1370,7 +1365,7 @@ addrbank clock_bank = {
   clock_lget, clock_wget, clock_bget,
   clock_lput, clock_wput, clock_bput,
 	default_xlate, default_check, NULL, NULL, _T("Battery backed up clock (none)"),
-	dummy_lgeti, dummy_wgeti,
+	dummy_wgeti,
 	ABFLAG_IO, S_READ, S_WRITE, NULL, 0x3f, 0xd80000
 };
 

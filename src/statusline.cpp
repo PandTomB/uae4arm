@@ -59,6 +59,7 @@ static void write_tdnumber (uae_u8 *buf, int x, int y, int num)
 
 void draw_status_line_single (uae_u8 *buf, int y, int totalwidth)
 {
+	struct amigadisplay *ad = &adisplays;
   int x, i, j, led, on;
   int on_rgb, off_rgb, c;
 
@@ -69,10 +70,10 @@ void draw_status_line_single (uae_u8 *buf, int y, int totalwidth)
   if(currprefs.pandora_hide_idle_led)
     x += TD_WIDTH;
     
-  if(picasso_on)
+  if(ad->picasso_on)
     memset (buf + (x - 4) * 2, 0, (prSDLScreen->w - x + 4) * 2);
   else
-    memset (buf + (x - 4) * gfxvidinfo.drawbuffer.pixbytes, 0, (gfxvidinfo.drawbuffer.outwidth - x + 4) * gfxvidinfo.drawbuffer.pixbytes);
+    memset (buf + (x - 4) * adisplays.gfxvidinfo.drawbuffer.pixbytes, 0, (adisplays.gfxvidinfo.drawbuffer.outwidth - x + 4) * adisplays.gfxvidinfo.drawbuffer.pixbytes);
 
 	for (led = (currprefs.pandora_hide_idle_led == 0) ? -2 : -1; led < (currprefs.nr_floppies+1); led++) {
 		int num1 = -1, num2 = -1, num3 = -1;

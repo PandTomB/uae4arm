@@ -10,8 +10,6 @@
 #include "sdltruetypefont.hpp"
 #endif
 #include "SelectorEntry.hpp"
-#include "UaeRadioButton.hpp"
-#include "UaeDropDown.hpp"
 #include "UaeCheckBox.hpp"
 
 #include "sysconfig.h"
@@ -55,30 +53,23 @@ class CreateFilesysHardfileActionListener : public gcn::ActionListener
   public:
     void action(const gcn::ActionEvent& actionEvent)
     {
-      if(actionEvent.getSource() == cmdPath)
-      {
+      if(actionEvent.getSource() == cmdPath) {
         char tmp[MAX_PATH];
         strncpy(tmp, txtPath->getText().c_str(), MAX_PATH - 1);
         wndCreateFilesysHardfile->releaseModalFocus();
-        if(SelectFile("Create harddisk file", tmp, harddisk_filter, true))
-        {
+        if(SelectFile("Create harddisk file", tmp, harddisk_filter, true)) {
           txtPath->setText(tmp);
           fileSelected = true;
         }
         wndCreateFilesysHardfile->requestModalFocus();
         cmdPath->requestFocus();
-      }
-      else
-      {
-        if (actionEvent.getSource() == cmdOK)
-        {
-          if(txtDevice->getText().length() <= 0)
-          {
+      } else {
+        if (actionEvent.getSource() == cmdOK) {
+          if(txtDevice->getText().length() <= 0) {
             wndCreateFilesysHardfile->setCaption("Please enter a device name.");
             return;
           }
-          if(!fileSelected)
-          {
+          if(!fileSelected) {
             wndCreateFilesysHardfile->setCaption("Please select a new filename.");
             return;
           }
@@ -335,7 +326,7 @@ bool CreateFilesysHardfile(void)
     ci.surfaces = (size / 1024) + 1;
     ci.bootpri = bp;
     
-    uci = add_filesys_config(&changed_prefs, -1, &ci);
+    uci = add_filesys_config(&workprefs, -1, &ci);
     if (uci) {
   		struct hardfiledata *hfd = get_hardfile_data (uci->configoffset);
       hardfile_media_change (hfd, &ci, true, false);

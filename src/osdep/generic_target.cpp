@@ -66,12 +66,11 @@ void sleep_millis (int ms)
   usleep(ms * 1000);
 }
 
-int sleep_millis_main (int ms)
+void sleep_millis_main (int ms)
 {
 	unsigned long start = read_processor_time ();
   usleep(ms * 1000);
   idletime += read_processor_time () - start;
-  return 0;
 }
 
 
@@ -261,7 +260,7 @@ int target_cfgfile_load (struct uae_prefs *p, const char *filename, int type, in
 
   write_log(_T("target_cfgfile_load(): load file %s\n"), filename);
   
-  discard_prefs(p, type);
+  discard_prefs(p, 0);
   default_prefs(p, true, 0);
   
 	const char *ptr = strstr((char *)filename, ".rp9");
@@ -277,8 +276,8 @@ int target_cfgfile_load (struct uae_prefs *p, const char *filename, int type, in
   	ptr = strstr((char *)filename, ".uae");
     if(ptr > 0)
     {
-      int type = CONFIG_TYPE_HARDWARE | CONFIG_TYPE_HOST;
-      result = cfgfile_load(p, filename, &type, 0, 1);
+      int type = 0;
+      result = cfgfile_load(p, filename, &type, isdefault ? 0 : 1);
     }
     if(result)
       extractFileName(filename, last_loaded_config);
@@ -288,15 +287,13 @@ int target_cfgfile_load (struct uae_prefs *p, const char *filename, int type, in
   {
     for(i=0; i < p->nr_floppies; ++i)
     {
-      if(!DISK_validate_filename(p, p->floppyslots[i].df, 0, NULL, NULL, NULL))
+      if(!DISK_validate_filename(p, p->floppyslots[i].df, NULL, 0, NULL, NULL, NULL))
         p->floppyslots[i].df[0] = 0;
       disk_insert(i, p->floppyslots[i].df);
       if(strlen(p->floppyslots[i].df) > 0)
         AddFileToDiskList(p->floppyslots[i].df, 1);
     }
 
-    if(!isdefault)
-      inputdevice_updateconfig (NULL, p);
 #ifdef WITH_LOGGING
     p->leds_on_screen = true;
 #endif
@@ -548,6 +545,14 @@ void loadAdfDir(void)
 }
 
 
+void target_getdate(int *y, int *m, int *d)
+{
+	*y = GETBDY(UAE4ARMDATE);
+	*m = GETBDM(UAE4ARMDATE);
+	*d = GETBDD(UAE4ARMDATE);
+}
+
+
 void target_addtorecent (const TCHAR *name, int t)
 {
 }
@@ -586,9 +591,17 @@ static void target_shutdown(void)
 	system("sudo poweroff");
 }
 
+
+bool target_isrelativemode(void)
+{
+	return true;
+}
+
+
 int generic_main (int argc, char *argv[])
 {
   struct sigaction action;
+  int ret;
   
 	max_uae_width = 768;
 	max_uae_height = 625;
@@ -636,8 +649,33 @@ int generic_main (int argc, char *argv[])
   alloc_AmigaMem();
   RescanROMs();
 
+#ifdef USE_SDL2
+  ret = SDL_Init(SDL_INIT_EVERYTHING);
+#else
+#ifdef PANDORA
+  ret = SDL_Init(SDL_INIT_NOPARACHUTE | SDL_INIT_VIDEO);
+#else 
+	ret = SDL_Init(SDL_INIT_NOPARACHUTE | SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK);
+#endif
+#endif
+  if (ret < 0)
+	{
+		printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+		abort();
+	};
+
+	keyboard_settrans();
   real_main (argc, argv);
   
+  input_closeall();
+
+#if defined(RASPBERRY) && !defined(USE_SDL2)
+  graphics_thread_leave();
+#else
+	SDL_VideoQuit();
+#endif
+	SDL_Quit();
+    
   ClearAvailableROMList();
   romlist_clear();
   free_keyring();

@@ -10,8 +10,6 @@
 #include "sdltruetypefont.hpp"
 #endif
 #include "SelectorEntry.hpp"
-#include "UaeRadioButton.hpp"
-#include "UaeDropDown.hpp"
 #include "UaeCheckBox.hpp"
 
 #include "sysconfig.h"
@@ -38,27 +36,43 @@ static gcn::UaeCheckBox* chkBSDSocket;
 static gcn::UaeCheckBox* chkMasterWP;
 
 
+static void RefreshPanelMisc(void)
+{
+  chkStatusLine->setSelected(workprefs.leds_on_screen);
+  chkHideIdleLed->setSelected(workprefs.pandora_hide_idle_led);
+  chkShowGUI->setSelected(workprefs.start_gui);
+
+#ifdef PANDORA
+  TCHAR tmp[20];
+  sldPandoraSpeed->setValue(workprefs.pandora_cpu_speed);
+  snprintf(tmp, 20, "%d MHz", workprefs.pandora_cpu_speed);
+  lblPandoraSpeedInfo->setCaption(tmp);
+#endif
+  
+  chkBSDSocket->setSelected(workprefs.socket_emu);
+  chkMasterWP->setSelected(workprefs.floppy_read_only);
+}
+
+
 class MiscActionListener : public gcn::ActionListener
 {
   public:
     void action(const gcn::ActionEvent& actionEvent)
     {
       if (actionEvent.getSource() == chkStatusLine)
-        changed_prefs.leds_on_screen = chkStatusLine->isSelected();
+        workprefs.leds_on_screen = chkStatusLine->isSelected();
       
       else if (actionEvent.getSource() == chkHideIdleLed)
-        changed_prefs.pandora_hide_idle_led = chkHideIdleLed->isSelected();
+        workprefs.pandora_hide_idle_led = chkHideIdleLed->isSelected();
 
       else if (actionEvent.getSource() == chkShowGUI)
-        changed_prefs.start_gui = chkShowGUI->isSelected();
+        workprefs.start_gui = chkShowGUI->isSelected();
 
       else if (actionEvent.getSource() == chkBSDSocket)
-        changed_prefs.socket_emu = chkBSDSocket->isSelected();
+        workprefs.socket_emu = chkBSDSocket->isSelected();
         
       else if (actionEvent.getSource() == chkMasterWP) {
-        changed_prefs.floppy_read_only = chkMasterWP->isSelected();
-        RefreshPanelQuickstart();
-        RefreshPanelFloppy();
+        workprefs.floppy_read_only = chkMasterWP->isSelected();
       }
 
 #ifdef PANDORA
@@ -66,9 +80,9 @@ class MiscActionListener : public gcn::ActionListener
       {
         int newspeed = (int) sldPandoraSpeed->getValue();
         newspeed = newspeed - (newspeed % 20);
-        if(changed_prefs.pandora_cpu_speed != newspeed)
+        if(workprefs.pandora_cpu_speed != newspeed)
         {
-          changed_prefs.pandora_cpu_speed = newspeed;
+          workprefs.pandora_cpu_speed = newspeed;
           RefreshPanelMisc();
         }
       }
@@ -138,8 +152,10 @@ void InitPanelMisc(const struct _ConfigCategory& category)
 }
 
 
-void ExitPanelMisc(void)
+void ExitPanelMisc(const struct _ConfigCategory& category)
 {
+  category.panel->clear();
+  
   delete chkStatusLine;
   delete chkHideIdleLed;
   delete chkShowGUI;
@@ -152,23 +168,6 @@ void ExitPanelMisc(void)
   delete chkMasterWP;
 
   delete miscActionListener;
-}
-
-
-void RefreshPanelMisc(void)
-{
-  chkStatusLine->setSelected(changed_prefs.leds_on_screen);
-  chkHideIdleLed->setSelected(changed_prefs.pandora_hide_idle_led);
-  chkShowGUI->setSelected(changed_prefs.start_gui);
-
-#ifdef PANDORA
-  sldPandoraSpeed->setValue(changed_prefs.pandora_cpu_speed);
-  snprintf(tmp, 20, "%d MHz", changed_prefs.pandora_cpu_speed);
-  lblPandoraSpeedInfo->setCaption(tmp);
-#endif
-  
-  chkBSDSocket->setSelected(changed_prefs.socket_emu);
-  chkMasterWP->setSelected(changed_prefs.floppy_read_only);
 }
 
 

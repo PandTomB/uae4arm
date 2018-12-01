@@ -44,6 +44,7 @@
 #endif
 
 int emulating = 0;
+struct uae_prefs workprefs;
 
 struct gui_msg {
   int num;
@@ -341,7 +342,11 @@ void ReadConfigFileList(void)
     strncat(tmp->FullPath, files[i].c_str(), MAX_DPATH - 1);
     strncpy(tmp->Name, files[i].c_str(), MAX_DPATH - 1);
     removeFileExtension(tmp->Name);
-    cfgfile_get_description(tmp->FullPath, tmp->Description);
+		struct uae_prefs *p = cfgfile_open(tmp->FullPath, NULL);
+		if (p) {
+			cfgfile_get_description(p, NULL, tmp->Description, NULL);
+			cfgfile_close(p);
+		}
     ConfigFilesList.push_back(tmp);
   }
 }
@@ -357,16 +362,38 @@ ConfigFileInfo* SearchConfigInList(const char *name)
 }
 
 
-static void prefs_to_gui()
+static void clearallkeys (void)
 {
+	inputdevice_updateconfig (&changed_prefs, &currprefs);
+}
+
+
+static void setmouseactive(int active)
+{
+	if (active) {
+		inputdevice_acquire(TRUE);
+	} else {
+		inputdevice_acquire (FALSE);
+		inputdevice_releasebuttons();
+	}
+}
+
+
+static void prefs_to_gui(struct uae_prefs *p)
+{
+	default_prefs(&workprefs, false, 0);
+	copy_prefs(p, &workprefs);
   /* filesys hack */
   changed_prefs.mountitems = currprefs.mountitems;
   memcpy(&changed_prefs.mountconfig, &currprefs.mountconfig, MOUNT_CONFIG_SIZE * sizeof (struct uaedev_config_info));
+	set_config_changed ();
 }
 
 
 static void gui_to_prefs (void)
 {
+	/* Always copy our prefs to changed_prefs, ... */
+	copy_prefs(&workprefs, &changed_prefs);
   /* filesys hack */
   currprefs.mountitems = changed_prefs.mountitems;
   memcpy(&currprefs.mountconfig, &changed_prefs.mountconfig, MOUNT_CONFIG_SIZE * sizeof (struct uaedev_config_info));
@@ -374,24 +401,18 @@ static void gui_to_prefs (void)
 }
 
 
-static void after_leave_gui(void)
+static void get_settings(void)
 {
-  // Check if we have to set or clear autofire
-  int new_af = (changed_prefs.input_autofire_linecnt == 0) ? 0 : 1;
-  int update = 0;
-  int num;
-  
-  for(num = 0; num < 2; ++num) {
-    if(changed_prefs.jports[num].id == JSEM_JOYS && changed_prefs.jports[num].autofire != new_af) {
-      changed_prefs.jports[num].autofire = new_af;
-      update = 1;
-    }
-  }
-  if(update)
-    inputdevice_updateconfig(NULL, &changed_prefs);
+	memset (&workprefs, 0, sizeof (struct uae_prefs));
+  prefs_to_gui(&changed_prefs);
 
-  inputdevice_copyconfig (&changed_prefs, &currprefs);
-  inputdevice_config_change_test();
+  run_gui();
+  gui_to_prefs();
+
+	if(quit_program)
+		screen_is_picasso = 0;
+
+  update_display(&changed_prefs);
 }
 
 
@@ -405,18 +426,19 @@ int gui_init (void)
     RescanROMs();
 
   graphics_subshutdown();
-  prefs_to_gui();
-  run_gui();
-  gui_to_prefs();
+
+	prefs_to_gui(&changed_prefs);
+	inputdevice_updateconfig(NULL, &workprefs);
+
+  get_settings();
+  
   if(quit_program < 0)
     quit_program = -quit_program;
   if(quit_program == UAE_QUIT)
     ret = -2; // Quit without start of emulator
 
-  update_display(&changed_prefs);
+	inputdevice_acquire (TRUE);
 
-  after_leave_gui();
-    
 	emulating=1;
   return ret;
 }
@@ -443,7 +465,6 @@ void gui_purge_events(void)
 		counter++;
 		SDL_Delay(10);
 	}
-	keybuf_init();
 }
 
 
@@ -492,32 +513,35 @@ void gui_display (int shortcut)
 	if (quit_program != 0)
 		return;
 	emulating=1;
-	pause_sound();
+
   blkdev_entergui();
+	pause_sound();
 
-  if(lstAvailableROMs.size() == 0)
-    RescanROMs();
+	inputdevice_unacquire ();
+	//wait_keyrelease(); ToDo: implement in host spezific xy_input.cpp
+	clearallkeys ();
+	setmouseactive(0);
+
   graphics_subshutdown();
-  prefs_to_gui();
-  run_gui();
-  gui_to_prefs();
-	if(quit_program)
-		screen_is_picasso = 0;
 
-  update_display(&changed_prefs);
+  get_settings();
 
 	/* Clear menu garbage at the bottom of the screen */
 	black_screen_now();
-	reset_sound();
-	resume_sound();
-  blkdev_exitgui();
-
-  after_leave_gui();
-
   gui_update ();
-
   gui_purge_events();
   fpscounter_reset();
+
+	reset_sound();
+  inputdevice_copyconfig (&changed_prefs, &currprefs);
+  inputdevice_config_change_test();
+	clearallkeys ();
+
+  blkdev_exitgui();
+	resume_sound();
+
+	inputdevice_acquire (TRUE);
+	setmouseactive(1);
 }
 
   

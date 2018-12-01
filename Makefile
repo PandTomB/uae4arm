@@ -6,7 +6,7 @@ ifeq ($(PLATFORM),rpi3)
   CPU_FLAGS += -march=armv8-a -mfpu=neon-fp-armv8 -mfloat-abi=hard -mtune=cortex-a53
   MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DUSE_JIT_FPU -DARM_HAS_DIV
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
-  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -L/opt/vc/lib
+  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11 -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
   ifeq ($(USE_SDL_VERSION),)
     USE_SDL_VERSION = sdl1
@@ -15,7 +15,7 @@ else ifeq ($(PLATFORM),rpi2)
 	CPU_FLAGS += -march=armv7-a -mfpu=neon -mfloat-abi=hard -mtune=cortex-a8
 	MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
-  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -L/opt/vc/lib
+  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11 -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
   ifeq ($(USE_SDL_VERSION),)
     USE_SDL_VERSION = sdl1
@@ -24,14 +24,14 @@ else ifeq ($(PLATFORM),rpi1)
 	CPU_FLAGS += -march=armv6zk -mfpu=vfp -mfloat-abi=hard
   MORE_CFLAGS += -DRASPBERRY
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
-  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -L/opt/vc/lib
+  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11 -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
   ifeq ($(USE_SDL_VERSION),)
     USE_SDL_VERSION = sdl1
   endif
 else ifeq ($(PLATFORM),Pandora)
   CPU_FLAGS += -march=armv7-a -mfpu=neon -mfloat-abi=softfp -mtune=cortex-a8
-  MORE_CFLAGS += $(CFLAGS) -DARMV6T2 -DUSE_ARMNEON -DPANDORA -msoft-float
+  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DPANDORA -DUSE_JIT_FPU -msoft-float
   PROFILER_PATH = /media/MAINSD/pandora/test
   ifeq ($(USE_SDL_VERSION),)
     USE_SDL_VERSION = sdl1
@@ -137,7 +137,6 @@ OBJS =	\
 	src/cia.o \
 	src/crc32.o \
 	src/custom.o \
-	src/def_icons.o \
 	src/devices.o \
 	src/disk.o \
 	src/diskutil.o \
@@ -273,9 +272,14 @@ OBJS += src/sounddep/pandora_sound.o
 OBJS += src/osdep/gui/PanelInputPandora.o
 else
 OBJS += src/osdep/raspi.o
+ifeq ($(USE_SDL_VERSION),sdl2)
+OBJS += src/osdep/raspi_gfxsdl2.o
+else
 OBJS += src/osdep/raspi_gfx.o
+endif
 OBJS += src/osdep/raspi_input.o
 OBJS += src/sounddep/sound_sdl.o
+OBJS += src/osdep/gui/PanelGamePortRaspi.o
 OBJS += src/osdep/gui/PanelInputRaspi.o
 endif
 

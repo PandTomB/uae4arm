@@ -24,9 +24,6 @@
 
 #include <zlib.h>
 
-#define unpack_log write_log
-#undef unpack_log
-#define unpack_log(fmt, ...)
 
 static time_t fromdostime (uae_u32 dd)
 {
@@ -329,7 +326,7 @@ struct zvolume *archive_directory_tar (struct zfile *z)
 	return zv;
 }
 
-struct zfile *archive_access_tar (struct znode *zn)
+static struct zfile *archive_access_tar (struct znode *zn)
 {
 	return zfile_fopen_parent (zn->volume->archive, zn->fullname, zn->offset, zn->size);
 }
@@ -442,22 +439,16 @@ static struct zfile *archive_do_zip (struct znode *zn, struct zfile *z, int flag
 	if (z) {
 		int err = -1;
 		if (!(flags & FILE_DELAYEDOPEN) || z->size <= PEEK_BYTES) {
-			unpack_log (_T("ZIP: unpacking %s, flags=%d\n"), name, flags);
 			err = unzReadCurrentFile (uz, z->data, z->datasize);
-			unpack_log (_T("ZIP: unpacked, code=%d\n"), err);
 		} else {
 			z->archiveparent = zfile_dup (zn->volume->archive);
 			if (z->archiveparent) {
-				unpack_log (_T("ZIP: delayed open '%s'\n"), name);
 				xfree (z->archiveparent->name);
 				z->archiveparent->name = my_strdup (tmp);
 				z->datasize = PEEK_BYTES;
 				err = unzReadCurrentFile (uz, z->data, z->datasize);
-				unpack_log (_T("ZIP: unpacked, code=%d\n"), err);
 			} else {
-				unpack_log (_T("ZIP: unpacking %s (failed DELAYEDOPEN)\n"), name);
 				err = unzReadCurrentFile (uz, z->data, z->datasize);
-				unpack_log (_T("ZIP: unpacked, code=%d\n"), err);
 			}
 		}
 	}
@@ -988,7 +979,7 @@ struct zvolume *archive_directory_arcacc (struct zfile *z, unsigned int id)
 
 static struct zfile *archive_access_arcacc (struct znode *zn)
 {
-	struct zfile *zf;
+	struct zfile *zf = NULL;
 	struct zfile *z = zn->volume->archive;
 	int status, id_r, id_w;
 	aaHandle ah;
@@ -1181,27 +1172,6 @@ static uae_u32 gwx (uae_u8 *p)
 static const int secs_per_day = 24 * 60 * 60;
 static const int diff = (8 * 365 + 2) * (24 * 60 * 60);
 static const int diff2 = (-8 * 365 - 2) * (24 * 60 * 60);
-
-static time_t put_time (long days, long mins, long ticks)
-{
-	time_t t;
-
-	if (days < 0)
-		days = 0;
-	if (days > 9900 * 365)
-		days = 9900 * 365; // in future far enough?
-	if (mins < 0 || mins >= 24 * 60)
-		mins = 0;
-	if (ticks < 0 || ticks >= 60 * 50)
-		ticks = 0;
-
-	t = ticks / 50;
-	t += mins * 60;
-	t += ((uae_u64)days) * secs_per_day;
-	t += diff;
-
-	return t;
-}
 
 static int adf_read_block (struct adfhandle *adf, int block)
 {
@@ -2125,7 +2095,6 @@ struct zfile *archive_unpackzfile (struct zfile *zf)
 	struct zfile *zout = NULL;
 	if (!zf->archiveparent)
 		return NULL;
-	unpack_log (_T("delayed unpack '%s'\n"), zf->name);
 	zf->datasize = zf->size;
 	switch (zf->archiveid)
 	{

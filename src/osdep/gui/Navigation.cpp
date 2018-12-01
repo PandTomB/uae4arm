@@ -40,13 +40,15 @@ static NavigationMap navMap[] =
   { "Floppy drives",    "cmdSel0",        "DF0:",           "RAM",              "Hard drives / CD" },
   { "Hard drives / CD", "cmdCreateHDF",   "cmdAddDir",      "Floppy drives",    "Display" },
   { "Display",          "sldWidth",       "sldWidth",       "Hard drives / CD", "Sound" },
-  { "Sound",            "sndDisable",     "sndDisable",     "Display",          "Input" },
-  { "Input",            "cboPort0",       "cboPort0",       "Sound",            "Miscellaneous" },
+  { "Sound",            "sndDisable",     "sndDisable",     "Display",          "Game ports" },
+  { "Game ports",       "cboAutofire0",   "cboPort0",       "Sound",            "Input" },
+  { "Input",            "cboDevice",      "cboDevice",      "Game ports",       "Miscellaneous" },
   { "Miscellaneous",    "StatusLine",     "StatusLine",     "Input",            "Savestates" },
   { "Savestates",       "State0",         "State0",         "Miscellaneous",    "Reset" },
   { "Reset",            "Start",          "Quit",           "Savestates",       "Paths" },
-  { "Quit",             "Reset",          "Help",          "Savestates",       "Paths" },
-  { "Help",             "Quit",           "Start",          "Savestates",       "Paths" },
+  { "Quit",             "Reset",          "Shutdown",       "Savestates",       "Paths" },
+  { "Shutdown",         "Quit",           "Help",           "Savestates",       "Paths" },
+  { "Help",             "Shutdown",       "Start",          "Savestates",       "Paths" },
   { "Start",            "Help",           "Reset",          "Savestates",       "Paths" },
 
 // PanelPaths
@@ -228,11 +230,11 @@ static NavigationMap navMap[] =
   { "PaulaVol", 			"", 							"", 							"sldStereoDelay", "sndDisable" },
   
 //  active            move left           move right          move up           move down
-// PanelInput
+// PanelGamePort
 #ifdef PANDORA
-  { "cboPort0",       "Input",          "Input",          "cboLeft",        "cboPort1" },
-  { "cboPort1",       "Input",          "cboAutofire",    "cboPort0",       "MouseSpeed" },
-  { "cboAutofire",    "cboPort1",       "Input",          "cboPort0",       "cboTapDelay" },
+  { "cboPort0",       "Game ports",     "Game ports",     "cboLeft",        "cboPort1" },
+  { "cboPort1",       "Game ports",     "cboAutofire",    "cboPort0",       "MouseSpeed" },
+  { "cboAutofire",    "cboPort1",       "Game ports",     "cboPort0",       "cboTapDelay" },
   { "MouseSpeed",     "",               "",               "cboPort1",       "MouseHack" },
   { "MouseHack",      "Input",          "cboTapDelay",    "MouseSpeed",     "CustomCtrl" },
   { "cboTapDelay",    "MouseHack",      "Input",          "cboAutofire",    "cboB" },
@@ -248,20 +250,25 @@ static NavigationMap navMap[] =
   { "cboLeft",        "Input",          "cboRight",       "cboUp",          "cboPort0" },
   { "cboRight",       "cboLeft",        "Input",          "cboDown",        "cboPort0" },
 #else /* RASPBERRY */
-  { "cboPort0",       "Input",          "Input",          "cboLeft",        "cboPort1" },
-  { "cboPort1",       "Input",          "Input",          "cboPort0",       "cboAutofire" },
-  { "cboAutofire",    "Input",          "Input",          "cboPort1",       "MouseSpeed" },
-  { "MouseSpeed",     "",               "",               "cboAutofire",    "numlock" },
-
-	{ "numlock",		    "Miscellaneous",	"scrolllock",	    "MouseSpeed",	    "KeyForMenu"},
-	{ "scrolllock",		  "numlock",			  "Miscellaneous",  "MouseSpeed",	    "KeyForQuit"},
-
-	{ "KeyForMenu",		  "Miscellaneous",	"KeyForQuit",	    "numlock",	      "ButtonForMenu"},
-	{ "KeyForQuit",		  "KeyForMenu",			"Miscellaneous",  "scrolllock",	    "ButtonForQuit"},
-	{ "ButtonForMenu",	"Miscellaneous",	"ButtonForQuit",	"KeyForMenu",	    "cboPort0"},
-	{ "ButtonForQuit",	"ButtonForMenu",	"Miscellaneous",  "KeyForQuit",	    "cboPort0"},
+  { "cboPort0",       "Game ports",     "cboPortMode0",   "MouseSpeed",     "cboPort1" },
+  { "cboPort1",       "Game ports",     "cboPortMode1",   "cboPort0",       "MouseSpeed" },
+  { "cboPortMode0",   "cboPort0",       "cboAutofire0",   "MouseSpeed",     "cboPortMode1" },
+  { "cboPortMode1",   "cboPort1",       "cboAutofire1",   "cboPortMode0",   "MouseSpeed" },
+  { "cboAutofire0",   "cboPortMode0",   "Game ports",     "AutofireRate",   "cboAutofire1" },
+  { "cboAutofire1",   "cboPortMode1",   "Game ports",     "cboAutofire0",   "AutofireRate" },
+  { "MouseSpeed",     "",               "",               "cboPort1",       "cboPort0" },
+  { "AutofireRate",   "",               "",               "cboAutofire1",   "cboAutofire0" },
+//	{ "numlock",		    "Miscellaneous",	"scrolllock",	    "MouseSpeed",	    "KeyForMenu"},
+//	{ "scrolllock",		  "numlock",			  "Miscellaneous",  "MouseSpeed",	    "KeyForQuit"},
 #endif
 
+//  active            move left           move right          move up           move down
+// PanelInput
+  { "cboDevice",      "Input"           "cboWidget",      "",               "" },
+  { "cboWidget",      "cboDevice",      "cboAmigaAction", "",               ""  },
+  { "cboAmigaAction", "cboWidget",      "Autofire",       "",               "" },
+  { "Autofire",       "cboAmigaAction", "Input",          "cboWidget",      "cboDevice" },
+  
 // PanelMisc
 #ifdef PANDORA
   { "StatusLine",     "Miscellaneous",  "Miscellaneous",  "MasterWP",       "HideIdle" },

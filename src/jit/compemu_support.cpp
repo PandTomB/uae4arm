@@ -48,8 +48,8 @@
 
 #if DEBUG
 #define PROFILE_COMPILE_TIME		1
-#define PROFILE_UNTRANSLATED_INSNS	1
 #endif
+//#define PROFILE_UNTRANSLATED_INSNS	1
 
 #ifndef UNUSED
 #define UNUSED(x)	((void)x)
@@ -1905,7 +1905,6 @@ static void calc_checksum(blockinfo* bi, uae_u32* c1, uae_u32* c2)
 	*c2 = k2;
 }
 
-
 int check_for_cache_miss(void)
 {
   blockinfo* bi = get_blockinfo_addr(regs.pc_p);
@@ -2206,7 +2205,9 @@ void build_comp(void)
   	if (compfunctbl[opcode])
 	    count++;
   }
+#ifdef JIT_DEBUG
 	jit_log("Supposedly %d compileable opcodes!",count);
+#endif
 
   /* Initialise state */
   create_popalls();

@@ -80,7 +80,6 @@ int fsdb_fill_file_attrs (a_inode *base, a_inode *aino)
     if (stat (aino->nname, &statbuf) == -1)
 	return 0;
     aino->dir = S_ISDIR (statbuf.st_mode) ? 1 : 0;
-    
     aino->amigaos_mode = ((S_IXUSR & statbuf.st_mode ? 0 : A_FIBF_EXECUTE)
     			  | (S_IWUSR & statbuf.st_mode ? 0 : A_FIBF_WRITE)
     			  | (S_IRUSR & statbuf.st_mode ? 0 : A_FIBF_READ));
@@ -99,9 +98,6 @@ int fsdb_set_file_attrs (a_inode *aino)
   struct stat statbuf;
   int mode;
   uae_u32 mask = aino->amigaos_mode;
-
-	if (aino->vfso)
-		return 1;
 
     if (stat (aino->nname, &statbuf) == -1)
 	return ERROR_OBJECT_NOT_AROUND;
@@ -138,8 +134,6 @@ int fsdb_mode_representable_p (const a_inode *aino, int amigaos_mode)
   if (0 && aino->dir)
   	return amigaos_mode == 0;
     
-	if (aino->vfso)
-		return 1;
   if (mask & A_FIBF_SCRIPT) /* script */
     return 0;
   if ((mask & 15) == 15) /* xxxxRWED == OK */
@@ -181,7 +175,7 @@ TCHAR *fsdb_create_unique_nname (a_inode *base, const TCHAR *suggestion)
 	  /* tmpnam isn't reentrant and I don't really want to hack configure
 	   * right now to see whether tmpnam_r is available...  */
 	  for (i = 0; i < 8; i++) {
-      tmp[i+8] = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"[rand () % 63];
+      tmp[i+8] = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"[uaerand () % 63];
 	  }
   }
 }

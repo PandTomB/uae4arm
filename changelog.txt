@@ -1,3 +1,7 @@
+2018-12-01 - Start merge with WinUAE 4.0.1
+           - Rewrite of vsync (SDL1)
+           - Now using input mapping like WinUAE. No more target specific options for input.
+           - Removed some unused stuff.
 2018-10-06 - JIT: Bugfix for issue #1, MVMEL #<data>.W,(An)+
 2018-10-05 - Minor fixes, build with GCC 8.2 ok
 2018-10-04 - JIT: Bugfix ROXR
