@@ -134,13 +134,13 @@ static NavigationMap navMap[] =
   { "ExtROM",         "cboExtROM",      "ROM",            "MainROM",        "CartROM" },
   { "cboCartROM",     "ROM",            "CartROM",        "cboExtROM",      "cboUAEROM" },
   { "CartROM",        "cboCartROM",     "ROM",            "ExtROM",         "cboUAEROM" },
-  { "cboUAEROM"       "ROM",            "ROM",            "cboCartROM",     "cboMainROM" },
+  { "cboUAEROM",      "ROM",            "ROM",            "cboCartROM",     "cboMainROM" },
 #else
   { "cboMainROM",     "ROM",            "MainROM",        "cboUAEROM",      "cboExtROM" },
   { "MainROM",        "cboMainROM",     "ROM",            "ExtROM",         "ExtROM" },
   { "cboExtROM",      "ROM",            "ExtROM",         "cboMainROM",     "cboUAEROM" },
   { "ExtROM",         "cboExtROM",      "ROM",            "MainROM",        "cboUAEROM" },
-  { "cboUAEROM"       "ROM",            "ROM",            "cboExtROM",      "cboMainROM" },
+  { "cboUAEROM",      "ROM",            "ROM",            "cboExtROM",      "cboMainROM" },
 #endif
 
 //PanelRAM
@@ -262,9 +262,9 @@ static NavigationMap navMap[] =
 
 //  active            move left           move right          move up           move down
 // PanelInput
-  { "cboDevice",      "Input"           "cboWidget",      "",               "" },
-  { "cboWidget",      "cboDevice",      "cboAmigaAction", "",               ""  },
-  { "cboAmigaAction", "cboWidget",      "Autofire",       "",               "" },
+  { "cboDevice",      "Input",          "cboWidget",      "cboAmigaAction", "cboWidget" },
+  { "cboWidget",      "cboDevice",      "cboAmigaAction", "cboDevice",      "cboAmigaAction" },
+  { "cboAmigaAction", "cboWidget",      "Autofire",       "cboWidget",      "cboDevice" },
   { "Autofire",       "cboAmigaAction", "Input",          "cboWidget",      "cboDevice" },
   
 // PanelMisc
