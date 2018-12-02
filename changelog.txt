@@ -1,3 +1,4 @@
+2018-12-02 - Added some options in GUI and small fixes
 2018-12-01 - Start merge with WinUAE 4.0.1
            - Rewrite of vsync (SDL1)
            - Now using input mapping like WinUAE. No more target specific options for input.

@@ -37,7 +37,7 @@ static gcn::UaeListBox* lstConfigs;
 static gcn::ScrollArea* scrAreaConfigs;
 
 
-static GenericListModel configsList;
+static gcn::GenericListModel configsList;
 
 
 static void InitConfigsList(void)

@@ -4418,7 +4418,8 @@ static void buildin_default_prefs (struct uae_prefs *p)
 	p->immediate_blits = 0;
 	p->waiting_blits = 0;
 	p->collision_level = 2;
-  p->produce_sound = 2;
+	if (p->produce_sound < 2)
+		p->produce_sound = 2;
 	p->cachesize = 0;
 	p->socket_emu = 0;
 	p->sound_volume_cd = 0;

@@ -89,14 +89,15 @@ static NavigationMap navMap[] =
 
 //  active            move left         move right        move up           move down
 // PanelCPU
-  { "68000",          "CPU and FPU",    "FPUnone",        "JIT",            "68010" },
+  { "68000",          "CPU and FPU",    "FPUnone",        "Cachemem",       "68010" },
   { "68010",          "CPU and FPU",    "68881",          "68000",          "68020" },
   { "68020",          "CPU and FPU",    "68882",          "68010",          "68030" },
   { "68030",          "CPU and FPU",    "CPU internal",   "68020",          "68040" },
   { "68040",          "CPU and FPU",    "FPUstrict",      "68030",          "CPU24Bit" },
   { "CPU24Bit",       "CPU and FPU",    "FPUJIT",         "68040",          "CPUComp" },
   { "CPUComp",        "CPU and FPU",    "FPUJIT",         "CPU24Bit",       "JIT" },
-  { "JIT",            "CPU and FPU",    "FPUJIT",         "CPUComp",        "68000" },
+  { "JIT",            "CPU and FPU",    "FPUJIT",         "CPUComp",        "Cachemem" },
+  { "Cachemem",       "",               "",               "JIT",            "68000" },
   { "FPUnone",        "68000",          "7 Mhz",          "FPUJIT",         "68881" },
   { "68881",          "68010",          "14 Mhz",         "FPUnone",        "68882" },
   { "68882",          "68020",          "25 Mhz",         "68881",          "CPU internal" },
@@ -127,17 +128,19 @@ static NavigationMap navMap[] =
 //  active            move left         move right        move up           move down
 // PanelROM
 #ifdef ACTION_REPLAY
-  { "cboMainROM",     "ROM",            "MainROM",        "cboCartROM",     "cboExtROM" },
+  { "cboMainROM",     "ROM",            "MainROM",        "cboUAEROM",      "cboExtROM" },
   { "MainROM",        "cboMainROM",     "ROM",            "CartROM",        "ExtROM" },
   { "cboExtROM",      "ROM",            "ExtROM",         "cboMainROM",     "cboCartROM" },
   { "ExtROM",         "cboExtROM",      "ROM",            "MainROM",        "CartROM" },
-  { "cboCartROM",     "ROM",            "CartROM",        "cboExtROM",      "cboMainROM" },
-  { "CartROM",        "cboCartROM",     "ROM",            "ExtROM",         "MainROM" },
+  { "cboCartROM",     "ROM",            "CartROM",        "cboExtROM",      "cboUAEROM" },
+  { "CartROM",        "cboCartROM",     "ROM",            "ExtROM",         "cboUAEROM" },
+  { "cboUAEROM"       "ROM",            "ROM",            "cboCartROM",     "cboMainROM" },
 #else
-  { "cboMainROM",     "ROM",            "MainROM",        "cboExtROM",      "cboExtROM" },
+  { "cboMainROM",     "ROM",            "MainROM",        "cboUAEROM",      "cboExtROM" },
   { "MainROM",        "cboMainROM",     "ROM",            "ExtROM",         "ExtROM" },
-  { "cboExtROM",      "ROM",            "ExtROM",         "cboMainROM",     "cboMainROM" },
-  { "ExtROM",         "cboExtROM",      "ROM",            "MainROM",        "MainROM" },
+  { "cboExtROM",      "ROM",            "ExtROM",         "cboMainROM",     "cboUAEROM" },
+  { "ExtROM",         "cboExtROM",      "ROM",            "MainROM",        "cboUAEROM" },
+  { "cboUAEROM"       "ROM",            "ROM",            "cboExtROM",      "cboMainROM" },
 #endif
 
 //PanelRAM
@@ -232,31 +235,26 @@ static NavigationMap navMap[] =
 //  active            move left           move right          move up           move down
 // PanelGamePort
 #ifdef PANDORA
-  { "cboPort0",       "Game ports",     "Game ports",     "cboLeft",        "cboPort1" },
-  { "cboPort1",       "Game ports",     "cboAutofire",    "cboPort0",       "MouseSpeed" },
-  { "cboAutofire",    "cboPort1",       "Game ports",     "cboPort0",       "cboTapDelay" },
+  { "cboPort0",       "Game ports",     "cboPortMode0",   "MouseHack",      "cboPort1" },
+  { "cboPort1",       "Game ports",     "cboPortMode1",   "cboPort0",       "MouseSpeed" },
+  { "cboPortMode0",   "cboPort0",       "cboAutofire0",   "MouseHack",      "cboPortMode1" },
+  { "cboPortMode1",   "cboPort1",       "cboAutofire1",   "cboPortMode0",   "MouseSpeed" },
+  { "cboAutofire0",   "cboPortMode0",   "Game ports",     "cboTapDelay",    "cboAutofire1" },
+  { "cboAutofire1",   "cboPortMode1",   "Game ports",     "cboAutofire0",   "AutofireRate" },
   { "MouseSpeed",     "",               "",               "cboPort1",       "MouseHack" },
-  { "MouseHack",      "Input",          "cboTapDelay",    "MouseSpeed",     "CustomCtrl" },
-  { "cboTapDelay",    "MouseHack",      "Input",          "cboAutofire",    "cboB" },
-  { "CustomCtrl",     "Input",          "Input",          "MouseHack",      "cboA" },
-  { "cboA",           "Input",          "cboB",           "CustomCtrl",     "cboX" },
-  { "cboB",           "cboA",           "Input",          "cboTapDelay",    "cboY" },
-  { "cboX",           "Input",          "cboY",           "cboA",           "cboL" },
-  { "cboY",           "cboX",           "Input",          "cboB",           "cboR" },
-  { "cboL",           "Input",          "cboR",           "cboX",           "cboUp" },
-  { "cboR",           "cboL",           "Input",          "cboY",           "cboDown" },
-  { "cboUp",          "Input",          "cboDown",        "cboL",           "cboLeft" },
-  { "cboDown",        "cboUp",          "Input",          "cboR",           "cboRight" },
-  { "cboLeft",        "Input",          "cboRight",       "cboUp",          "cboPort0" },
-  { "cboRight",       "cboLeft",        "Input",          "cboDown",        "cboPort0" },
+  { "AutofireRate",   "",               "",               "cboAutofire1",   "cboTapDelay" },
+  { "MouseHack",      "Game ports",     "cboTapDelay",    "MouseSpeed",     "cboPort0" },
+  { "cboTapDelay",    "MouseHack",      "Game ports",     "AutofireRate",   "cboAutofire0" },
 #else /* RASPBERRY */
   { "cboPort0",       "Game ports",     "cboPortMode0",   "MouseSpeed",     "cboPort1" },
-  { "cboPort1",       "Game ports",     "cboPortMode1",   "cboPort0",       "MouseSpeed" },
+  { "cboPort1",       "Game ports",     "cboPortMode1",   "cboPort0",       "cboPort2" },
+  { "cboPort2",       "Game ports",     "Game ports",     "cboPort1",       "cboPort3" },
+  { "cboPort3",       "Game ports",     "Game ports",     "cboPort2",       "MouseSpeed" },
   { "cboPortMode0",   "cboPort0",       "cboAutofire0",   "MouseSpeed",     "cboPortMode1" },
   { "cboPortMode1",   "cboPort1",       "cboAutofire1",   "cboPortMode0",   "MouseSpeed" },
   { "cboAutofire0",   "cboPortMode0",   "Game ports",     "AutofireRate",   "cboAutofire1" },
   { "cboAutofire1",   "cboPortMode1",   "Game ports",     "cboAutofire0",   "AutofireRate" },
-  { "MouseSpeed",     "",               "",               "cboPort1",       "cboPort0" },
+  { "MouseSpeed",     "",               "",               "cboPort3",       "cboPort0" },
   { "AutofireRate",   "",               "",               "cboAutofire1",   "cboAutofire0" },
 //	{ "numlock",		    "Miscellaneous",	"scrolllock",	    "MouseSpeed",	    "KeyForMenu"},
 //	{ "scrolllock",		  "numlock",			  "Miscellaneous",  "MouseSpeed",	    "KeyForQuit"},

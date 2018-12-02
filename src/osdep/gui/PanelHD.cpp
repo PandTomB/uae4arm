@@ -84,7 +84,7 @@ static int GetHDType(int index)
 }
 
 
-static GenericListModel cdfileList;
+static gcn::GenericListModel cdfileList;
 
 
 static void AdjustDropDownControls(void)

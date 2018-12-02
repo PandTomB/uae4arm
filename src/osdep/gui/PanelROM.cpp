@@ -21,6 +21,7 @@
 #include "uae.h"
 #include "gui.h"
 #include "gui_handling.h"
+#include "GenericListModel.h"
 
 static gcn::Label *lblMainROM;
 static gcn::UaeDropDown* cboMainROM;
@@ -33,6 +34,8 @@ static gcn::Label *lblCartROM;
 static gcn::UaeDropDown* cboCartROM;
 static gcn::Button *cmdCartROM;
 #endif
+static gcn::Label *lblUAEROM;
+static gcn::UaeDropDown* cboUAEROM;
 
 
 class ROMListModel : public gcn::ListModel
@@ -98,6 +101,9 @@ static ROMListModel *extROMList;
 static ROMListModel *cartROMList;
 #endif
 
+static const TCHAR* uaeList[] = { _T("ROM disabled"), _T("Original UAE (FS + F0 ROM)"), _T("New UAE (64k + F0 ROM)") };
+static gcn::GenericListModel uaeROMList(uaeList, 3);
+
 
 void RefreshPanelROM(void)
 {
@@ -111,6 +117,13 @@ void RefreshPanelROM(void)
   idx = cartROMList->InitROMList(workprefs.cartfile);
   cboCartROM->setSelected(idx);
 #endif
+
+	if (workprefs.boot_rom == 1) {
+		cboUAEROM->setSelected(0);
+	} else {
+		cboUAEROM->setSelected(workprefs.uaeboard + 1);
+	}
+	cboUAEROM->setEnabled(!emulating);
 }
 
 
@@ -192,6 +205,17 @@ class ROMActionListener : public gcn::ActionListener
         }
         cmdCartROM->requestFocus();
 #endif
+
+      } else if (actionEvent.getSource() == cboUAEROM) {
+        int v = cboUAEROM->getSelected();
+      	if (v > 0) {
+      		workprefs.uaeboard = v - 1;
+      		workprefs.boot_rom = 0;
+      	} else {
+      		workprefs.uaeboard = 0;
+      		workprefs.boot_rom = 1; // disabled
+      	}
+
       }
     }
 };
@@ -247,6 +271,14 @@ void InitPanelROM(const struct _ConfigCategory& category)
   cmdCartROM->setBaseColor(gui_baseCol);
   cmdCartROM->addActionListener(romActionListener);
 #endif
+
+  lblUAEROM = new gcn::Label("Advanced UAE expansion board/Boot ROM:");
+  lblUAEROM->setSize(400, LABEL_HEIGHT);
+	cboUAEROM = new gcn::UaeDropDown(&uaeROMList);
+  cboUAEROM->setSize(400, DROPDOWN_HEIGHT);
+  cboUAEROM->setBaseColor(gui_baseCol);
+  cboUAEROM->setId("cboUAEROM");
+  cboUAEROM->addActionListener(romActionListener);
   
   int posY = DISTANCE_BORDER;
   category.panel->add(lblMainROM, DISTANCE_BORDER, posY);
@@ -268,6 +300,11 @@ void InitPanelROM(const struct _ConfigCategory& category)
   category.panel->add(cmdCartROM, DISTANCE_BORDER + cboCartROM->getWidth() + DISTANCE_NEXT_X, posY);
   posY += cboCartROM->getHeight() + DISTANCE_NEXT_Y;
 #endif
+
+  category.panel->add(lblUAEROM, DISTANCE_BORDER, posY);
+  posY += lblUAEROM->getHeight() + 4;
+  category.panel->add(cboUAEROM, DISTANCE_BORDER, posY);
+  posY += cboUAEROM->getHeight() + DISTANCE_NEXT_Y;
   
   RefreshPanelROM();
 }
@@ -293,6 +330,9 @@ void ExitPanelROM(const struct _ConfigCategory& category)
   delete cmdCartROM;
   delete cartROMList;
 #endif
+
+  delete lblUAEROM;
+  delete cboUAEROM;
   
   delete romActionListener;
 }

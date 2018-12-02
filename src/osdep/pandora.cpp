@@ -10,6 +10,7 @@
 #include "savestate.h"
 #include "gfxboard.h"
 
+extern bool input_initialize_alldevices (void);
 
 static int delayed_mousebutton = 0;
 static int doStylusRightClick = 0;
@@ -253,9 +254,6 @@ static bool handle_internal_functions(int sdlkeycode, int sdlmodifier)
   {
     // Left shoulder
     switch(sdlmodifier) {
-      //case SDLK_c:  // Left shoulder + c -> toggle "Custom control"
-      //  return true;
-        
       case SDLK_d:  // Left shoulder + d -> toggle "Status line"
         changed_prefs.leds_on_screen = !changed_prefs.leds_on_screen;
         return true;
@@ -426,9 +424,6 @@ static int translate_pandora_keys(int sdlkeycode, int *sdlmodifier)
 }
 
 
-extern int pandora_nubsmouse (void);
-extern int pandora_sdlkbd (void);
-
 int handle_msgpump (void)
 {
 	int got = 0;
@@ -437,8 +432,8 @@ int handle_msgpump (void)
   int modifier;
   int handled = 0;
   int i;
-  int sdlmouse = pandora_nubsmouse();
-  int sdlkbd = pandora_sdlkbd();
+  int sdlmouse = get_sdlmouse();
+  int sdlkbd = get_sdlkbd();
 
   if(delayed_mousebutton) {
     --delayed_mousebutton;
@@ -459,7 +454,7 @@ int handle_msgpump (void)
   		  if (handle_internal_functions(rEvent.key.keysym.sym, rEvent.key.keysym.mod))
   		    continue;
         
-  		  if (!pandora_sdlkbd)
+  		  if (sdlkbd < 0)
   		    continue;
   		  
   		  switch(rEvent.key.keysym.sym)
@@ -486,7 +481,7 @@ int handle_msgpump (void)
   				      inputdevice_do_keyboard(AK_LSH, 0);
 				      inputdevice_do_keyboard(keycode, 1);
   				  } else {
-			        inputdevice_translatekeycode(0, rEvent.key.keysym.sym, 1, false);
+			        inputdevice_translatekeycode(sdlkbd, rEvent.key.keysym.sym, 1, false);
 				    }
             				    				  
   				  break;
@@ -494,7 +489,7 @@ int handle_msgpump (void)
         break;
         
   	  case SDL_KEYUP:
-  		  if (!pandora_sdlkbd)
+  		  if (sdlkbd < 0)
   		    continue;
 
   	    switch(rEvent.key.keysym.sym) {
@@ -521,10 +516,7 @@ int handle_msgpump (void)
 				      if(modifier == KMOD_SHIFT)
   				      inputdevice_do_keyboard(AK_LSH, 0);
             } else {
-    					if (keyboard_type == KEYCODE_UNK)
-		  		      inputdevice_translatekeycode(0, rEvent.key.keysym.sym, 0, true);
-		    			else
-		    				inputdevice_translatekeycode(0, rEvent.key.keysym.scancode, 0, true);
+	  		      inputdevice_translatekeycode(sdlkbd, rEvent.key.keysym.sym, 0, true);
 				    }
   				  break;
   	    }
@@ -586,6 +578,11 @@ int handle_msgpump (void)
 int main (int argc, char *argv[])
 {
   defaultCpuSpeed = getDefaultCpuSpeed();
+  
+  if(!input_initialize_alldevices()) {
+		printf("Failed to initialize input devices.\n");
+		abort();
+	};
   
   generic_main(argc, argv);
   

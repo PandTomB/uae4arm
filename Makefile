@@ -231,6 +231,7 @@ OBJS =	\
 	src/osdep/generic_rp9.o \
 	src/osdep/generic_mem.o \
 	src/osdep/sigsegv_handler.o \
+	src/osdep/gui/GenericListModel.o \
 	src/osdep/gui/UaeRadioButton.o \
 	src/osdep/gui/UaeDropDown.o \
 	src/osdep/gui/UaeCheckBox.o \
@@ -252,6 +253,7 @@ OBJS =	\
 	src/osdep/gui/PanelRAM.o \
 	src/osdep/gui/PanelFloppy.o \
 	src/osdep/gui/PanelHD.o \
+	src/osdep/gui/PanelInput.o \
 	src/osdep/gui/PanelDisplay.o \
 	src/osdep/gui/PanelSound.o \
 	src/osdep/gui/PanelMisc.o \
@@ -269,7 +271,7 @@ OBJS += src/osdep/pandora.o
 OBJS += src/osdep/pandora_gfx.o
 OBJS += src/osdep/pandora_input.o
 OBJS += src/sounddep/pandora_sound.o
-OBJS += src/osdep/gui/PanelInputPandora.o
+OBJS += src/osdep/gui/PanelGamePortPandora.o
 else
 OBJS += src/osdep/raspi.o
 ifeq ($(USE_SDL_VERSION),sdl2)
@@ -280,7 +282,6 @@ endif
 OBJS += src/osdep/raspi_input.o
 OBJS += src/sounddep/sound_sdl.o
 OBJS += src/osdep/gui/PanelGamePortRaspi.o
-OBJS += src/osdep/gui/PanelInputRaspi.o
 endif
 
 ifeq ($(PLATFORM),rpi1)

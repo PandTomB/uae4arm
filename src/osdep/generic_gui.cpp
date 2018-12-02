@@ -283,16 +283,15 @@ void RescanROMs(void)
   }
   
 	int id = 1;
-	for (;;) {
+	for (int id = 1; id < 300; ++id) {
 		struct romdata *rd = getromdatabyid (id);
 		if (!rd)
-			break;
+			continue;
 		if (rd->crc32 == 0xffffffff && strncmp(rd->model, "AROS", 4) == 0)
 			addrom (rd, ":AROS");
     if (rd->crc32 == 0xffffffff && rd->id == 63) {
       addrom (rd, ":HRTMon");
     }
-		id++;
 	}
 }
 

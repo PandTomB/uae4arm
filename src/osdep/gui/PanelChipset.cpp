@@ -66,7 +66,7 @@ static struct chipset chipsets [] = {
 static const int numChipsets = 8;
 
 
-static GenericListModel chipsetList;
+static gcn::GenericListModel chipsetList;
 static bool bIgnoreListChange = true;
 
 

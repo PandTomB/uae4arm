@@ -71,6 +71,9 @@ void keyboard_settrans (void);
 #define REMAP_CD32_RWD            -13
 
 extern void input_closeall(void);
+extern int get_sdlkbd (void);
+extern int get_sdlmouse (void);
+
 #if defined(RASPBERRY) && !defined(USE_SDL2)
 extern void graphics_thread_leave(void);
 #endif

@@ -22,7 +22,7 @@ struct pidata {
 	TCHAR *name;
 	TCHAR *configname;
 
-	int sdlinput;
+	int eventinput;
 	uae_s16 axles;
 	uae_s16 buttons, buttons_real;
 
@@ -37,10 +37,9 @@ static struct pidata pi_mouse[MAX_INPUT_DEVICES];
 static struct pidata pi_keyboard[MAX_INPUT_DEVICES];
 static struct pidata pi_joystick[MAX_INPUT_DEVICES];
 static int num_mouse, num_keyboard, num_joystick;
-static int nubsmouse, nubsmousenumber;
+static int sdlmouse, sdlmousenumber;
 static int sdlkbd, sdlkbdnumber;
 
-/*
 static const int sdlkeyboard_keys[MAX_BUTTONS] = {
 	SDLK_0, SDLK_1,	SDLK_2,	SDLK_3,	SDLK_4,	SDLK_5,	SDLK_6,	SDLK_7,	SDLK_8,	SDLK_9, SDLK_BACKSPACE,         // 10
  	SDLK_F1, SDLK_F2, SDLK_F3, SDLK_F4, SDLK_F5, SDLK_F6, SDLK_F7, SDLK_F8, SDLK_F9, SDLK_F10, SDLK_INSERT, // 21
@@ -67,7 +66,7 @@ static const TCHAR *sdlkeyboard_labels[MAX_BUTTONS] = {
   NULL
 };
 
-static int sdlkeyboard_keys_inv[SDLK_LAST];
+int sdlkeyboard_keys_inv[SDLK_LAST];
 
 static void build_inv_keytab(void)
 {
@@ -90,17 +89,15 @@ static void setkblabels (struct pidata *pid)
 		pid->buttons++;
 	}
 }
-*/
 
-
-int pandora_nubsmouse (void)
+int get_sdlmouse (void)
 {
-	if (nubsmouse)
-		return nubsmousenumber;
+	if (sdlmouse)
+		return sdlmousenumber;
 	return -1;
 }
 
-int pandora_sdlkbd (void)
+int get_sdlkbd (void)
 {
 	if (sdlkbd)
 		return sdlkbdnumber;
@@ -215,9 +212,6 @@ static bool pi_initialized = false;
 
 void input_closeall(void)
 {
-  if(!pi_initialized)
-    return;
-
 	for (int i = 0; i < MAX_INPUT_DEVICES; i++) {
 		pi_dev_free (&pi_joystick[i]);
 		pi_dev_free (&pi_mouse[i]);
@@ -226,19 +220,16 @@ void input_closeall(void)
 	num_mouse = 0;
 	num_keyboard = 0;
 	num_joystick = 0;
-  nubsmouse = 0;
-  nubsmousenumber = 0;
+  sdlmouse = 0;
+  sdlmousenumber = 0;
   sdlkbd = 0;
   sdlkbdnumber = 0;
 
   pi_initialized = false;
 }
 
-static bool input_initialize_alldevices (void)
+bool input_initialize_alldevices (void)
 {
-  if(pi_initialized)
-    return true;
-  
   struct pidata *pid;
 
   memset(pi_mouse, 0, sizeof(pi_mouse));
@@ -247,12 +238,14 @@ static bool input_initialize_alldevices (void)
 
   input_closeall();
   
+  build_inv_keytab();
+  
   pid = pi_mouse;
   
   pid->type = PID_MOUSE;
   pid->name = my_strdup (_T("Nubs as mouse"));
   pid->configname = my_strdup (_T("MOUSE0"));
-  pid->sdlinput = 1;
+  pid->eventinput = 1;
   init_mouse_widgets(pid, 2, 2);
 	pid++;
 	num_mouse++;
@@ -260,7 +253,7 @@ static bool input_initialize_alldevices (void)
   pid->type = PID_MOUSE;
   pid->name = my_strdup (_T("dPad as mouse"));
   pid->configname = my_strdup (_T("MOUSE1"));
-  pid->sdlinput = 0;
+  pid->eventinput = 0;
   init_mouse_widgets(pid, 2, 2);
 	pid++;
 	num_mouse++;
@@ -269,7 +262,7 @@ static bool input_initialize_alldevices (void)
   pid->type = PID_JOYSTICK;
   pid->name = my_strdup(_T("dPad as joystick"));
   pid->configname = my_strdup (_T("JOY0"));
-  pid->sdlinput = 0;
+  pid->eventinput = 0;
   init_joy_widgets(pid, 2, 7);
 	pid++;
 	num_joystick++;
@@ -278,10 +271,11 @@ static bool input_initialize_alldevices (void)
   pid->type = PID_KEYBOARD;
   pid->name = my_strdup(_T("Keyboard"));
   pid->configname = my_strdup (_T("KBD0"));
-  pid->sdlinput = 1;
-  pid->buttons_real = pid->buttons = MAX_BUTTONS;
+  pid->eventinput = 1;
+  pid->buttons = 0;
   pid->axles = 0;
   setkblabels(pid);
+  pid->buttons_real = pid->buttons;
 	pid++;
 	num_keyboard++;
 
@@ -348,14 +342,12 @@ static int get_mouse_widget_type (int mouse, int num, TCHAR *name, uae_u32 *code
 
 static int init_mouse (void) 
 {
-  input_initialize_alldevices();
-
 	for (int i = 0; i < num_mouse; i++) {
 		struct pidata *pid = &pi_mouse[i];
     pid->acquired = 0;
 	}
-  nubsmouse = 0;
-  nubsmousenumber = 0;
+  sdlmouse = 0;
+  sdlmousenumber = 0;
 	
   return 1;
 }
@@ -366,8 +358,8 @@ static void close_mouse (void)
 		struct pidata *pid = &pi_mouse[i];
     pid->acquired = 0;
 	}
-  nubsmouse = 0;
-  nubsmousenumber = 0;
+  sdlmouse = 0;
+  sdlmousenumber = 0;
 }
 
 static int acquire_mouse (int num, int flags) 
@@ -379,9 +371,9 @@ static int acquire_mouse (int num, int flags)
 
 	pid->acquired = 1;
 
-	if (pid->sdlinput) {
-		nubsmouse++;
-		nubsmousenumber = num;
+	if (pid->eventinput) {
+		sdlmouse++;
+		sdlmousenumber = num;
 	}
 	return pid->acquired > 0 ? 1 : 0;
 }
@@ -394,8 +386,8 @@ static void unacquire_mouse (int num)
 	struct pidata *pid = &pi_mouse[num];
 
 	if (pid->acquired > 0) {
-		if (pid->sdlinput) {
-			nubsmouse--;
+		if (pid->eventinput) {
+			sdlmouse--;
 		}
 		pid->acquired = 0;
 	}
@@ -422,7 +414,7 @@ static void read_mouse (void)
 		struct pidata *pid = &pi_mouse[i];
 		if (!pid->acquired)
 			continue;
-		if (pid->sdlinput)
+		if (pid->eventinput)
 		  continue; // input handling for this type in handle_msgpump() 
 
 		if(keystate == NULL)
@@ -448,7 +440,7 @@ static int get_mouse_flags (int num)
 {
   if(num >= num_mouse)
     return 1;
-  if(pi_mouse[num].sdlinput)
+  if(pi_mouse[num].eventinput)
     return 1;
   return 0;
 }
@@ -496,16 +488,13 @@ static int get_kb_widget_type (int kb, int num, TCHAR *name, uae_u32 *code)
 			name[0] = 0;
 	}
 	if (code) {
-		//*code = pi_keyboard[kb].buttonmappings[num];
-		*code = num;
+		*code = pi_keyboard[kb].button_keycode[num];
 	}
 	return IDEV_WIDGET_KEY;
 }
 
 static int init_kb (void)
 {
-  input_initialize_alldevices();
-
 	for (int i = 0; i < num_keyboard; i++) {
 		struct pidata *pid = &pi_keyboard[i];
     pid->acquired = 0;
@@ -535,7 +524,7 @@ static int acquire_kb (int num, int flags)
 
 	pid->acquired = 1;
 
-	if (pid->sdlinput) {
+	if (pid->eventinput) {
 		sdlkbd++;
 		sdlkbdnumber = num;
 	}
@@ -552,7 +541,7 @@ static void unacquire_kb (int num)
 	struct pidata *pid = &pi_keyboard[num];
 
   if (pid->acquired) {
-  	if (pid->sdlinput) {
+  	if (pid->eventinput) {
   		sdlkbd--;
   	}
   	pid->acquired = 0;
@@ -561,7 +550,7 @@ static void unacquire_kb (int num)
 
 static void read_kb (void)
 {
-  // All keyboards for Pandora are with flag sdlinput set.
+  // All keyboards for Pandora are with flag eventinput set.
   // input handling for this type in handle_msgpump() 
 }
 
@@ -569,7 +558,7 @@ static int get_kb_flags (int num)
 {
   if(num >= num_keyboard)
     return 1;
-  if(pi_keyboard[num].sdlinput)
+  if(pi_keyboard[num].eventinput)
     return 1;
   return 0;
 }
@@ -662,8 +651,6 @@ static void read_joystick (void)
 
 static int init_joystick (void)
 {
-  input_initialize_alldevices();
-
 	for (int i = 0; i < num_joystick; i++) {
 		struct pidata *pid = &pi_joystick[i];
     pid->acquired = 0;

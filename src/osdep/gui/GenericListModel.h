@@ -1,51 +1,48 @@
+#ifndef GCN_GENLISTMODEL_H
+#define GCN_GENLISTMODEL_H
+
+#include <list>
+#include <vector>
+
+#ifdef USE_SDL2
+#include <guisan/listmodel.hpp>
+#include <guisan/platform.hpp>
+#include <guisan/widget.hpp>
+#include <guisan/widgets/listbox.hpp>
+#else
+#include "guichan/listmodel.hpp"
+#include "guichan/platform.hpp"
+#include "guichan/widget.hpp"
+#include "guichan/widgets/listbox.hpp"
+#endif
 
 
-class GenericListModel : public gcn::ListModel
+namespace gcn
 {
-private:
-  std::vector<std::string> values;
+
+  class GCN_CORE_DECLSPEC GenericListModel : public gcn::ListModel
+  {
+  private:
+    std::vector<std::string> values;
+    
+  public:
+    GenericListModel();
+    
+    GenericListModel(const char *entries[], int count);
   
-public:
-  GenericListModel()
-  {
-  }
+    GenericListModel(std::vector<std::string> list);
   
-  GenericListModel(const TCHAR *entries[], int count)
-  {
-    for(int i=0; i<count; ++i)
-      values.push_back(entries[i]);
-  }
-
-  GenericListModel(std::vector<std::string> list)
-  {
-    values = list;
-  }
-
-  int getNumberOfElements(void)
-  {
-    return values.size();
-  }
-
-  std::string getElementAt(int i)
-  {
-    if(i < 0 || i >= values.size())
-      return "";
-    return values[i];
-  }
-
-  void clear(void)
-  {
-    values.clear();
-  }
+    int getNumberOfElements(void);
   
-  void add(const TCHAR * newvalue)
-  {
-    values.push_back(newvalue);
-  }
-
-  void add(std::string newvalue)
-  {
-    values.push_back(newvalue);
-  }
+    std::string getElementAt(int i);
   
-};
+    void clear(void);
+    
+    void add(const char * newvalue);
+  
+    void add(std::string newvalue);
+    
+  };
+}
+
+#endif // GCN_GENLISTMODEL_H

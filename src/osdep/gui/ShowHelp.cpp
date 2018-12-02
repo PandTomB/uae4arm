@@ -33,7 +33,7 @@ static gcn::ListBox* lstHelp;
 static gcn::ScrollArea* scrAreaHelp;
 
 
-static GenericListModel *helpList;
+static gcn::GenericListModel *helpList;
 
 
 class ShowHelpActionListener : public gcn::ActionListener
@@ -57,7 +57,7 @@ static void InitShowHelp(const std::vector<std::string>& helptext)
 
   showHelpActionListener = new ShowHelpActionListener();
 
-  helpList = new GenericListModel(helptext);
+  helpList = new gcn::GenericListModel(helptext);
 
   lstHelp = new gcn::ListBox(helpList);
   lstHelp->setSize(DIALOG_WIDTH - 2 * DISTANCE_BORDER - 4, DIALOG_HEIGHT - 3 * DISTANCE_BORDER - BUTTON_HEIGHT - DISTANCE_NEXT_Y - 10);

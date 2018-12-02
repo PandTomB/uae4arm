@@ -35,6 +35,8 @@ static const int mousespeed_values[] = { 2, 5, 10, 20, 40 };
 
 static gcn::Label *lblPort0;
 static gcn::Label *lblPort1;
+static gcn::Label *lblPort2;
+static gcn::Label *lblPort3;
 
 static gcn::Label* lblMouseSpeed;
 static gcn::Label* lblMouseSpeedInfo;
@@ -51,94 +53,53 @@ static gcn::Label *lblCapLock;
 static gcn::UaeDropDown* cboKBDLed_cap;
 
 static const char *inputport_list[12] = { "<none>", "Keyboard Layout A", "Keyboard Layout B", "Keyboard Layout C", NULL };
-static GenericListModel ctrlPortList;
+static gcn::GenericListModel ctrlPortList;
 
 static const char *inputmode_list[] = { "Default", "Mouse", "Joystick", "CD32 pad" };
 static const int inputmode_val[] = { JSEM_MODE_DEFAULT, JSEM_MODE_MOUSE, JSEM_MODE_JOYSTICK, JSEM_MODE_JOYSTICK_CD32 };
-static GenericListModel ctrlPortModeList(inputmode_list, 4);
+static gcn::GenericListModel ctrlPortModeList(inputmode_list, 4);
 
 const char *autofireValues[] = { "No autofire", "Autofire", "Autofire (toggle)", "Autofire (always)" };
-static GenericListModel autofireList(autofireValues, 4);
+static gcn::GenericListModel autofireList(autofireValues, 4);
 
-static gcn::UaeDropDown* cboPorts[4] = { NULL, NULL, NULL, NULL };
-static gcn::UaeDropDown* cboPortModes[4] = { NULL, NULL, NULL, NULL };
-static gcn::UaeDropDown* cboAutofires[4] = { NULL, NULL, NULL, NULL };
+static gcn::UaeDropDown* cboPorts[MAX_JPORTS] = { NULL, NULL, NULL, NULL };
+static gcn::UaeDropDown* cboPortModes[MAX_JPORTS] = { NULL, NULL, NULL, NULL };
+static gcn::UaeDropDown* cboAutofires[MAX_JPORTS] = { NULL, NULL, NULL, NULL };
 
 
 static const char *listValues[] = { "none", "POWER", "DF0", "DF1", "DF2", "DF3", "DF*", "HD", "CD" };
-static GenericListModel KBDLedList(listValues, 9);
-
-static const int ControlKey_SDLKeyValues[] = { 0, SDLK_F11, SDLK_F12 };
-static const char *ControlKeyValues[] = { "------------------", "F11", "F12" };
-static GenericListModel ControlKeyList(ControlKeyValues, 3);
-
-static int GetControlKeyIndex(int key)
-{
-	int ControlKey_SDLKeyValues_Length = sizeof(ControlKey_SDLKeyValues) / sizeof(int);
-	for (int i = 0; i < (ControlKey_SDLKeyValues_Length + 1); ++i) {
-		if (ControlKey_SDLKeyValues[i] == key)
-			return i;
-	}
-	return 0; // Default: no key
-}
-
-static const int ControlButton_SDLButtonValues[] = { -1, 0, 1, 2, 3 };
-static const char *ControlButtonValues[] = { "------------------", "JoyButton0", "JoyButton1", "JoyButton2", "JoyButton3" };
-static GenericListModel ControlButtonList(ControlButtonValues, 5);
-
-static int GetControlButtonIndex(int button)
-{
-	int ControlButton_SDLButtonValues_Length = sizeof(ControlButton_SDLButtonValues) / sizeof(int);
-	for (int i = 0; i < (ControlButton_SDLButtonValues_Length + 1); ++i) {
-		if (ControlButton_SDLButtonValues[i] == button)
-			return i;
-	}
-	return 0; // Default: no key
-}
-
+static gcn::GenericListModel KBDLedList(listValues, 9);
 
 static void RefreshPanelGamePort(void)
 {
-  int i, idx;
+  int i, idx, port;
   TCHAR tmp[100];
 
-  // Set current device in port 0
-  idx = inputdevice_getjoyportdevice (0, workprefs.jports[0].id);
-	if (idx >= 0)
-		idx += 1;
-	else
-    idx = 0;
-	if (idx >= total_devices)
-		idx = 0;
-  cboPorts[0]->setSelected(idx); 
+  for(port = 0; port < MAX_JPORTS; ++port) {
+    // Set current device in port
+    idx = inputdevice_getjoyportdevice (0, workprefs.jports[port].id);
+  	if (idx >= 0)
+  		idx += 1;
+  	else
+      idx = 0;
+  	if (idx >= total_devices)
+  		idx = 0;
+    cboPorts[port]->setSelected(idx); 
+    
+    if(port >= 2)
+      continue;
 
-  for(i = 0; i < 4; ++i) {
-    if(workprefs.jports[0].mode == inputmode_val[i]) {
-      cboPortModes[0]->setSelected(i);
-      break;
+    for(i = 0; i < 4; ++i) {
+      if(workprefs.jports[port].mode == inputmode_val[i]) {
+        cboPortModes[0]->setSelected(i);
+        break;
+      }
     }
+
+    cboAutofires[port]->setSelected(workprefs.jports[port].autofire);
   }
+
   
-  // Set current device in port 1
-  idx = inputdevice_getjoyportdevice (1, workprefs.jports[1].id);
-	if (idx >= 0)
-		idx += 1;
-	else
-    idx = 0;
-	if (idx >= total_devices)
-		idx = 0;
-  cboPorts[1]->setSelected(idx); 
-
-  for(i = 0; i < 4; ++i) {
-    if(workprefs.jports[1].mode == inputmode_val[i]) {
-      cboPortModes[1]->setSelected(i);
-      break;
-    }
-  }
-
-  cboAutofires[0]->setSelected(workprefs.jports[0].autofire);
-  cboAutofires[1]->setSelected(workprefs.jports[1].autofire);
-
   for(i = 0; i < 5; ++i) {
     if(workprefs.input_joymouse_multiplier == mousespeed_values[i]) {
       sldMouseSpeed->setValue(i);
@@ -174,9 +135,6 @@ static void values_from_dialog(int changedport, bool reset)
     inputdevice_compa_clear (&workprefs, changedport);
 
 	for (i = 0; i < MAX_JPORTS; i++) {
-	  if (i >= 2)
-	    continue; // parallel port not yet available
-	  
 		int prevport = workprefs.jports[i].id;
 		int max = JSEM_LASTKBD + inputdevice_get_device_total (IDTYPE_JOYSTICK);
 		if (i < 2)
@@ -194,13 +152,16 @@ static void values_from_dialog(int changedport, bool reset)
 			workprefs.jports[i].id = JSEM_JOYS + id - JSEM_LASTKBD;
 		}
 
+		if (workprefs.jports[i].id != prevport)
+			changed = 1;
+
+	  if (i >= 2)
+	    continue;
+
 		if(cboPortModes[i] != NULL)
 		  workprefs.jports[i].mode = inputmode_val[cboPortModes[i]->getSelected()];
 		if(cboAutofires[i] != NULL)
 		  workprefs.jports[i].autofire = cboAutofires[i]->getSelected();
-
-		if (workprefs.jports[i].id != prevport)
-			changed = 1;
 	}
 
   if (changed)
@@ -227,6 +188,14 @@ class GamePortActionListener : public gcn::ActionListener
         values_from_dialog(1, true);
       }
       
+      else if (actionEvent.getSource() == cboPorts[2]) {
+        values_from_dialog(2, true);
+      }
+
+      else if (actionEvent.getSource() == cboPorts[3]) {
+        values_from_dialog(3, true);
+      }
+
       else if (actionEvent.getSource() == cboAutofires[0]) {
         values_from_dialog(0, false);
       }
@@ -272,49 +241,67 @@ void InitPanelGamePort(const struct _ConfigCategory& category)
   gameportActionListener = new GamePortActionListener();
 
   lblPort0 = new gcn::Label("Port 1:");
-  lblPort0->setSize(100, LABEL_HEIGHT);
+  lblPort0->setSize(95, LABEL_HEIGHT);
   lblPort0->setAlignment(gcn::Graphics::RIGHT);
 	cboPorts[0] = new gcn::UaeDropDown(&ctrlPortList);
-  cboPorts[0]->setSize(160, DROPDOWN_HEIGHT);
+  cboPorts[0]->setSize(230, DROPDOWN_HEIGHT);
   cboPorts[0]->setBaseColor(gui_baseCol);
   cboPorts[0]->setId("cboPort0");
   cboPorts[0]->addActionListener(gameportActionListener);
 
   lblPort1 = new gcn::Label("Port 2:");
-  lblPort1->setSize(100, LABEL_HEIGHT);
+  lblPort1->setSize(95, LABEL_HEIGHT);
   lblPort1->setAlignment(gcn::Graphics::RIGHT);
 	cboPorts[1] = new gcn::UaeDropDown(&ctrlPortList);
-  cboPorts[1]->setSize(160, DROPDOWN_HEIGHT);
+  cboPorts[1]->setSize(230, DROPDOWN_HEIGHT);
   cboPorts[1]->setBaseColor(gui_baseCol);
   cboPorts[1]->setId("cboPort1");
   cboPorts[1]->addActionListener(gameportActionListener);
 
+  lblPort2 = new gcn::Label("paral. Port 1:");
+  lblPort2->setSize(95, LABEL_HEIGHT);
+  lblPort2->setAlignment(gcn::Graphics::RIGHT);
+	cboPorts[2] = new gcn::UaeDropDown(&ctrlPortList);
+  cboPorts[2]->setSize(230, DROPDOWN_HEIGHT);
+  cboPorts[2]->setBaseColor(gui_baseCol);
+  cboPorts[2]->setId("cboPort2");
+  cboPorts[2]->addActionListener(gameportActionListener);
+
+  lblPort3 = new gcn::Label("paral. Port 2:");
+  lblPort3->setSize(95, LABEL_HEIGHT);
+  lblPort3->setAlignment(gcn::Graphics::RIGHT);
+	cboPorts[3] = new gcn::UaeDropDown(&ctrlPortList);
+  cboPorts[3]->setSize(230, DROPDOWN_HEIGHT);
+  cboPorts[3]->setBaseColor(gui_baseCol);
+  cboPorts[3]->setId("cboPort3");
+  cboPorts[3]->addActionListener(gameportActionListener);
+
 	cboPortModes[0] = new gcn::UaeDropDown(&ctrlPortModeList);
-  cboPortModes[0]->setSize(80, DROPDOWN_HEIGHT);
+  cboPortModes[0]->setSize(90, DROPDOWN_HEIGHT);
   cboPortModes[0]->setBaseColor(gui_baseCol);
   cboPortModes[0]->setId("cboPortMode0");
   cboPortModes[0]->addActionListener(gameportActionListener);
 
 	cboPortModes[1] = new gcn::UaeDropDown(&ctrlPortModeList);
-  cboPortModes[1]->setSize(80, DROPDOWN_HEIGHT);
+  cboPortModes[1]->setSize(90, DROPDOWN_HEIGHT);
   cboPortModes[1]->setBaseColor(gui_baseCol);
   cboPortModes[1]->setId("cboPortMode1");
   cboPortModes[1]->addActionListener(gameportActionListener);
 
 	cboAutofires[0] = new gcn::UaeDropDown(&autofireList);
-  cboAutofires[0]->setSize(120, DROPDOWN_HEIGHT);
+  cboAutofires[0]->setSize(130, DROPDOWN_HEIGHT);
   cboAutofires[0]->setBaseColor(gui_baseCol);
   cboAutofires[0]->setId("cboAutofire0");
   cboAutofires[0]->addActionListener(gameportActionListener);
 
 	cboAutofires[1] = new gcn::UaeDropDown(&autofireList);
-  cboAutofires[1]->setSize(120, DROPDOWN_HEIGHT);
+  cboAutofires[1]->setSize(130, DROPDOWN_HEIGHT);
   cboAutofires[1]->setBaseColor(gui_baseCol);
   cboAutofires[1]->setId("cboAutofire1");
   cboAutofires[1]->addActionListener(gameportActionListener);
 
 	lblMouseSpeed = new gcn::Label("Mouse Speed:");
-  lblMouseSpeed->setSize(100, LABEL_HEIGHT);
+  lblMouseSpeed->setSize(95, LABEL_HEIGHT);
   lblMouseSpeed->setAlignment(gcn::Graphics::RIGHT);
   sldMouseSpeed = new gcn::Slider(0, 4);
   sldMouseSpeed->setSize(110, SLIDER_HEIGHT);
@@ -367,14 +354,21 @@ void InitPanelGamePort(const struct _ConfigCategory& category)
   int posY = DISTANCE_BORDER;
   category.panel->add(lblPort0, DISTANCE_BORDER, posY);
   category.panel->add(cboPorts[0], DISTANCE_BORDER + lblPort0->getWidth() + 8, posY);
-  category.panel->add(cboPortModes[0], 300, posY);
-  category.panel->add(cboAutofires[0], 390, posY);
+  category.panel->add(cboPortModes[0], cboPorts[0]->getX() + cboPorts[0]->getWidth() + 8, posY);
+  category.panel->add(cboAutofires[0], cboPortModes[0]->getX() + cboPortModes[0]->getWidth() + 8, posY);
   posY += cboPorts[0]->getHeight() + DISTANCE_NEXT_Y;
   category.panel->add(lblPort1, DISTANCE_BORDER, posY);
   category.panel->add(cboPorts[1], DISTANCE_BORDER + lblPort1->getWidth() + 8, posY);
-  category.panel->add(cboPortModes[1], 300, posY);
-  category.panel->add(cboAutofires[1], 390, posY);
+  category.panel->add(cboPortModes[1], cboPorts[1]->getX() + cboPorts[1]->getWidth() + 8, posY);
+  category.panel->add(cboAutofires[1], cboPortModes[1]->getX() + cboPortModes[1]->getWidth() + 8, posY);
   posY += cboPorts[1]->getHeight() + DISTANCE_NEXT_Y;
+
+  category.panel->add(lblPort2, DISTANCE_BORDER, posY);
+  category.panel->add(cboPorts[2], DISTANCE_BORDER + lblPort2->getWidth() + 8, posY);
+  posY += cboPorts[2]->getHeight() + DISTANCE_NEXT_Y;
+  category.panel->add(lblPort3, DISTANCE_BORDER, posY);
+  category.panel->add(cboPorts[3], DISTANCE_BORDER + lblPort3->getWidth() + 8, posY);
+  posY += cboPorts[3]->getHeight() + DISTANCE_NEXT_Y;
 
   category.panel->add(lblMouseSpeed, DISTANCE_BORDER, posY);
   category.panel->add(sldMouseSpeed, DISTANCE_BORDER + lblMouseSpeed->getWidth() + 9, posY);
@@ -404,6 +398,10 @@ void ExitPanelGamePort(const struct _ConfigCategory& category)
   delete cboPorts[0];
   delete lblPort1;
   delete cboPorts[1];
+  delete lblPort2;
+  delete cboPorts[2];
+  delete lblPort3;
+  delete cboPorts[3];
   
   delete cboPortModes[0];  
   delete cboPortModes[1];

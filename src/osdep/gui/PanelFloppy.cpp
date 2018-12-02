@@ -49,8 +49,8 @@ static bool bLoadConfigForDisk = false;
 static bool bIgnoreListChange = false;
 
 
-static GenericListModel driveTypeList;
-static GenericListModel diskfileList;
+static gcn::GenericListModel driveTypeList;
+static gcn::GenericListModel diskfileList;
 
 
 static bool LoadConfigByName(const char *name)

@@ -61,14 +61,14 @@ static void setkblabels (struct pidata *pid)
 	}
 }
 
-int is_sdlmouse (void)
+int get_sdlmouse (void)
 {
 	if (sdlmouse)
 		return sdlmousenumber;
 	return -1;
 }
 
-int is_sdlkbd (void)
+int get_sdlkbd (void)
 {
 	if (sdlkbd)
 		return sdlkbdnumber;
@@ -178,8 +178,6 @@ static bool input_initialize_alldevices (void)
   memset(pi_mouse, 0, sizeof(pi_mouse));
   memset(pi_joystick, 0, sizeof(pi_joystick));
   memset(pi_keyboard, 0, sizeof(pi_keyboard));
-
-  //build_inv_keytab();
 
   input_closeall();
   

@@ -93,10 +93,10 @@ static WidgetListModel *afList;
 
 
 static const char *device_list[12] = { NULL };
-static GenericListModel *ctrlDeviceList;
+static gcn::GenericListModel *ctrlDeviceList;
 
 static const char *amigalist[1] = { "<none>" };
-static GenericListModel *ctrlAmigaList;
+static gcn::GenericListModel *ctrlAmigaList;
 
 
 static void init_amiga_list()
@@ -232,7 +232,7 @@ void InitPanelInput(const struct _ConfigCategory& category)
 	for (j = 0; j < inputdevice_get_device_total (IDTYPE_KEYBOARD) && total_devices < 12; j++, total_devices++)
 		device_list[total_devices] = inputdevice_get_device_name (IDTYPE_KEYBOARD, j);
 
-  ctrlDeviceList = new GenericListModel(device_list, total_devices);
+  ctrlDeviceList = new gcn::GenericListModel(device_list, total_devices);
   if((current_device_idx < 0 || current_device_idx >= total_devices) && total_devices > 0)
     current_device_idx = 0;
 
@@ -281,7 +281,7 @@ void InitPanelInput(const struct _ConfigCategory& category)
   scrAreaList->setScrollbarWidth(20);
   scrAreaList->setBaseColor(gui_baseCol + 0x202020);
   
-  ctrlAmigaList = new GenericListModel(amigalist, 1);
+  ctrlAmigaList = new gcn::GenericListModel(amigalist, 1);
   lblAmiga = new gcn::Label("Target:");
   lblAmiga->setSize(60, LABEL_HEIGHT);
   lblAmiga->setAlignment(gcn::Graphics::RIGHT);

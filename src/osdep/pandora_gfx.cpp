@@ -316,8 +316,11 @@ int check_prefs_changed_gfx (void)
 	currprefs.filesys_limit = changed_prefs.filesys_limit;
 	currprefs.harddrive_read_only = changed_prefs.harddrive_read_only;
   
-  if(changed)
+  if(changed) {
+    inputdevice_unacquire();
 		init_custom ();
+		inputdevice_acquire(TRUE);
+  }
 
   return changed;
 }
@@ -439,31 +442,6 @@ static void graphics_subinit (void)
 	}
 }
 
-STATIC_INLINE int bitsInMask (unsigned long mask)
-{
-	/* count bits in mask */
-	int n = 0;
-	while (mask)
-	{
-		n += mask & 1;
-		mask >>= 1;
-	}
-	return n;
-}
-
-
-STATIC_INLINE int maskShift (unsigned long mask)
-{
-	/* determine how far mask is shifted */
-	int n = 0;
-	while (!(mask & 1))
-	{
-		n++;
-		mask >>= 1;
-	}
-	return n;
-}
-
 
 static int init_colors (void)
 {
@@ -471,12 +449,12 @@ static int init_colors (void)
   int red_shift, green_shift, blue_shift;
 
 	/* Truecolor: */
-	red_bits = bitsInMask(prSDLScreen->format->Rmask);
-	green_bits = bitsInMask(prSDLScreen->format->Gmask);
-	blue_bits = bitsInMask(prSDLScreen->format->Bmask);
-	red_shift = maskShift(prSDLScreen->format->Rmask);
-	green_shift = maskShift(prSDLScreen->format->Gmask);
-	blue_shift = maskShift(prSDLScreen->format->Bmask);
+	red_bits = bits_in_mask(prSDLScreen->format->Rmask);
+	green_bits = bits_in_mask(prSDLScreen->format->Gmask);
+	blue_bits = bits_in_mask(prSDLScreen->format->Bmask);
+	red_shift = mask_shift(prSDLScreen->format->Rmask);
+	green_shift = mask_shift(prSDLScreen->format->Gmask);
+	blue_shift = mask_shift(prSDLScreen->format->Bmask);
 	alloc_colors64k (red_bits, green_bits, blue_bits, red_shift, green_shift, blue_shift);
 	notice_new_xcolors();
 
@@ -499,7 +477,7 @@ static int get_display_depth (void)
 	   * could actually be 15 bits deep. We'll count the bits
 	   * ourselves */
 	  if (depth == 16)
-	    depth = bitsInMask (vid_info->vfmt->Rmask) + bitsInMask (vid_info->vfmt->Gmask) + bitsInMask (vid_info->vfmt->Bmask);
+	    depth = bits_in_mask (vid_info->vfmt->Rmask) + bits_in_mask (vid_info->vfmt->Gmask) + bits_in_mask (vid_info->vfmt->Bmask);
   }
   return depth;
 }
@@ -521,11 +499,15 @@ int GetSurfacePixelFormat(void)
 
 int graphics_init (bool mousecapture)
 {
+	inputdevice_unacquire();
+
 	graphics_subinit ();
 
   if (!init_colors ())
 		return 0;
     
+	inputdevice_acquire(TRUE);
+
   return 1;
 }
 

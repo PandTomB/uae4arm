@@ -56,15 +56,15 @@ static int curr_stereodelay_idx;
 
 
 static const TCHAR* freqList[] = { _T("11025"), _T("22050"), _T("32000"), _T("44100") };
-static GenericListModel frequencyTypeList(freqList, 4);
+static gcn::GenericListModel frequencyTypeList(freqList, 4);
 
 
 static const TCHAR* interpolList[] = { _T("Disabled"), _T("Anti"), _T("Sinc"), _T("RH"), _T("Crux") };
-static GenericListModel interpolationTypeList(interpolList, 5);
+static gcn::GenericListModel interpolationTypeList(interpolList, 5);
 
 
 static const TCHAR* filterList[] = { _T("Always off"), _T("Emulated (A500)"), _T("Emulated (A1200)"), _T("Always on (A500)"), _T("Always on (A1200)") };
-static GenericListModel filterTypeList(filterList, 5);
+static gcn::GenericListModel filterTypeList(filterList, 5);
 
 
 static void RefreshPanelSound(void)

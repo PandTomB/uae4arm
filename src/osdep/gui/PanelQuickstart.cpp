@@ -50,12 +50,11 @@ static gcn::UaeCheckBox* chkQuickstartMode;
 
 
 struct amigamodels {
-	int compalevels;
 	char name[32];
 	char configs[8][128];
 };
 static struct amigamodels amodels[] = {
-	{ 4, "Amiga 500", { 
+	{ "Amiga 500", { 
 	     "1.3 ROM, OCS, 512 KB Chip + 512 KB Slow RAM (most common)", 
 	     "1.3 ROM, ECS Agnus, 512 KB Chip RAM + 512 KB Slow RAM",
 	     "1.3 ROM, ECS Agnus, 1 MB Chip RAM",
@@ -63,29 +62,29 @@ static struct amigamodels amodels[] = {
 	     "1.2 ROM, OCS Agnus, 512 KB Chip RAM",
 	     "1.2 ROM, OCS Agnus, 512 KB Chip RAM + 512 KB Slow RAM",
 	     "\0" } },
-	{ 4, "Amiga 500+", { 
+	{ "Amiga 500+", { 
 	     "Basic non-expanded configuration",
 	     "2 MB Chip RAM expanded configuration",
 	     "4 MB Fast RAM expanded configuration",
 	     "\0" } },
-	{ 4, "Amiga 600", { 
+	{ "Amiga 600", { 
 	     "Basic non-expanded configuration",
 	     "2 MB Chip RAM expanded configuration",
 	     "4 MB Fast RAM expanded configuration",
 	     "\0" } },
-	{ 4, "Amiga 1200", {
+	{ "Amiga 1200", {
 	      "Basic non-expanded configuration",
 	      "4 MB Fast RAM expanded configuration",
 	      "\0" } },
-	{ 1, "Amiga 4000", {
+	{ "Amiga 4000", {
        "68030, 3.1 ROM, 2MB Chip + 8MB Fast",
        "68040, 3.1 ROM, 2MB Chip + 8MB Fast",
        "\0" } },
-	{ 3, "CD32", { 
+	{ "CD32", { 
 	     "CD32", 
 	     "CD32 with Full Motion Video cartridge",
 	     "\0" } },
-	{ -1 }
+	{ "\0" }
 };
 
 static const int numModels = 6;
@@ -97,10 +96,10 @@ static const char *diskfile_filter[] = { ".adf", ".adz", ".fdi", ".zip", ".dms",
 static const char *cdfile_filter[] = { ".cue", ".ccd", ".iso", "\0" };
 
 
-static GenericListModel amigaModelList;
-static GenericListModel amigaConfigList;
-static GenericListModel diskfileList;
-static GenericListModel cdfileList;
+static gcn::GenericListModel amigaModelList;
+static gcn::GenericListModel amigaConfigList;
+static gcn::GenericListModel diskfileList;
+static gcn::GenericListModel cdfileList;
 
 
 static void AdjustDropDownControls(void);

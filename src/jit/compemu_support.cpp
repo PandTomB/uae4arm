@@ -395,35 +395,6 @@ STATIC_INLINE void block_need_recompile(blockinfo * bi)
   bi->status = BI_NEED_RECOMP;
 }
 
-STATIC_INLINE void mark_callers_recompile(blockinfo * bi)
-{
-  dependency *x = bi->deplist;
-
-  while (x)	{
-  	dependency *next = x->next;	/* This disappears when we mark for
-								 * recompilation and thus remove the
-								 * blocks from the lists */
-  	if (x->jmp_off) {
-  	  blockinfo *cbi = x->source;
-
-  	  if (cbi->status == BI_ACTIVE || cbi->status == BI_NEED_CHECK) {
-  		  block_need_recompile(cbi);
-  		  mark_callers_recompile(cbi);
-  	  }
-  	  else if (cbi->status == BI_COMPILING) {
-    		redo_current_block = 1;
-  	  }
-  	  else if (cbi->status == BI_NEED_RECOMP) {
-    		/* nothing */
-  	  }
-  	  else {
-    		jit_log2("Status %d in mark_callers", cbi->status); // FIXME?
-  	  }
-  	}
-  	x = next;
-  }
-}
-
 STATIC_INLINE blockinfo* get_blockinfo_addr_new(void* addr)
 {
   blockinfo* bi = get_blockinfo_addr(addr);

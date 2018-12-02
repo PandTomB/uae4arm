@@ -24,6 +24,9 @@
 #include "gui_handling.h"
 
 
+static const char *CacheSize_list[] = { "-", "1 MB", "2 MB", "4 MB", "8 MB", "16 MB" };
+static const int CacheSize_values[] = { 0, 1024, 2048, 4096, 8192, 16384 };
+
 static gcn::Window *grpCPU;
 static gcn::UaeRadioButton* optCPU68000;
 static gcn::UaeRadioButton* optCPU68010;
@@ -45,6 +48,9 @@ static gcn::UaeRadioButton* opt7Mhz;
 static gcn::UaeRadioButton* opt14Mhz;
 static gcn::UaeRadioButton* opt28Mhz;
 static gcn::UaeRadioButton* optFastest;
+static gcn::Label* lblCachemem;
+static gcn::Label* lblCachesize;
+static gcn::Slider* sldCachemem;
 
 
 static void RefreshPanelCPU(void)
@@ -102,6 +108,15 @@ static void RefreshPanelCPU(void)
     opt28Mhz->setSelected(true);
   else if (workprefs.m68k_speed == -1)
     optFastest->setSelected(true);
+    
+  for(int i = 0; i < 6; ++i) {
+    if(workprefs.cachesize == CacheSize_values[i]) {
+      sldCachemem->setValue(i);
+      lblCachesize->setCaption(CacheSize_list[i]);
+      break;
+    }
+  }
+  sldCachemem->setEnabled(workprefs.cachesize > 0);
 }
 
 
@@ -193,6 +208,9 @@ class CPUActionListener : public gcn::ActionListener
 	    } else if (actionEvent.getSource() == chkFPUstrict) {
         workprefs.fpu_strict = chkFPUstrict->isSelected();
 
+	    } else if (actionEvent.getSource() == sldCachemem) {
+    		workprefs.cachesize = CacheSize_values[(int)(sldCachemem->getValue())];
+
       }
       
 	    RefreshPanelCPU();
@@ -227,6 +245,16 @@ void InitPanelCPU(const struct _ConfigCategory& category)
 	chkJIT = new gcn::UaeCheckBox("JIT", true);
 	chkJIT->setId("JIT");
   chkJIT->addActionListener(cpuActionListener);
+
+	lblCachemem = new gcn::Label("Cache:");
+  sldCachemem = new gcn::Slider(0, 5);
+  sldCachemem->setSize(100, SLIDER_HEIGHT);
+  sldCachemem->setBaseColor(gui_baseCol);
+	sldCachemem->setMarkerLength(20);
+	sldCachemem->setStepLength(1);
+	sldCachemem->setId("Cachemem");
+  sldCachemem->addActionListener(cpuActionListener);
+  lblCachesize = new gcn::Label("None  ");
 	
 	grpCPU = new gcn::Window("CPU");
 	grpCPU->setPosition(DISTANCE_BORDER, DISTANCE_BORDER);
@@ -238,8 +266,11 @@ void InitPanelCPU(const struct _ConfigCategory& category)
 	grpCPU->add(chk24Bit, 5, 170);
 	grpCPU->add(chkCPUCompatible, 5, 200);
 	grpCPU->add(chkJIT, 5, 230);
+	grpCPU->add(lblCachemem, 5, 260);
+	grpCPU->add(sldCachemem, 6, 290);
+	grpCPU->add(lblCachesize, 110, 290);
 	grpCPU->setMovable(false);
-	grpCPU->setSize(160, 275);
+	grpCPU->setSize(160, 335);
   grpCPU->setBaseColor(gui_baseCol);
   
   category.panel->add(grpCPU);
@@ -319,6 +350,9 @@ void ExitPanelCPU(const struct _ConfigCategory& category)
   delete chk24Bit;
   delete chkCPUCompatible;
   delete chkJIT;
+  delete lblCachemem;
+  delete sldCachemem;
+  delete lblCachesize;
   delete grpCPU;
   
   delete optFPUnone;

@@ -87,8 +87,8 @@ static void check_rdb(const TCHAR *filename)
 }
 
 
-static GenericListModel controllerListModel;
-static GenericListModel unitListModel;
+static gcn::GenericListModel controllerListModel;
+static gcn::GenericListModel unitListModel;
 
 
 class FilesysHardfileActionListener : public gcn::ActionListener

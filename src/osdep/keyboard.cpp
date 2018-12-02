@@ -16,6 +16,8 @@
 
 char keyboard_type = 0;
 
+#ifndef PANDORA
+
 static struct uae_input_device_kbr_default keytrans_amiga_x11[256];
 
 static int kb_np_x11[] = { SDLK_KP4, -1, SDLK_KP6, -1, SDLK_KP8, -1, SDLK_KP2, -1, SDLK_KP0, SDLK_KP5, -1, SDLK_KP_PERIOD, -1, SDLK_KP_ENTER, -1, -1 };
@@ -159,6 +161,8 @@ static struct uae_input_device_kbr_default keytrans_amiga_fbcon[] = {
 	{ -1, 0 }
 };
 
+#endif // PANDORA
+
 static struct uae_input_device_kbr_default keytrans_amiga[] = {
 
 	{ SDLK_F1, INPUTEVENT_KEY_F1 },
@@ -243,19 +247,6 @@ static struct uae_input_device_kbr_default *keytrans[] = {
 	keytrans_amiga
 };
 
-static struct uae_input_device_kbr_default *keytrans_x11[] = {
-	keytrans_amiga_x11,
-	keytrans_amiga_x11,
-	keytrans_amiga_x11
-};
-
-static struct uae_input_device_kbr_default *keytrans_fbcon[] = {
-	keytrans_amiga_fbcon,
-	keytrans_amiga_fbcon,
-	keytrans_amiga_fbcon
-};
-
-
 static int kb_np[] = { SDLK_KP4, -1, SDLK_KP6, -1, SDLK_KP8, -1, SDLK_KP2, -1, SDLK_KP0, SDLK_KP5, -1, SDLK_KP_PERIOD, -1, SDLK_KP_ENTER, -1, -1 };
 static int kb_ck[] = { SDLK_LEFT, -1, SDLK_RIGHT, -1, SDLK_UP, -1, SDLK_DOWN, -1, SDLK_RCTRL, -1, SDLK_RSHIFT, -1, -1 };
 static int kb_se[] = { SDLK_a, -1, SDLK_d, -1, SDLK_w, -1, SDLK_s, -1, SDLK_LMETA, -1, SDLK_LSHIFT, -1, -1 };
@@ -270,6 +261,21 @@ static int kb_cd32_se[] = { SDLK_a, -1, SDLK_d, -1, SDLK_w, -1, SDLK_s, -1, SDLK
 static int *kbmaps[] = {
 	kb_np, kb_ck, kb_se, kb_np3, kb_ck3, kb_se3,
 	kb_cd32_np, kb_cd32_ck, kb_cd32_se
+};
+
+
+#ifndef PANDORA
+
+static struct uae_input_device_kbr_default *keytrans_x11[] = {
+	keytrans_amiga_x11,
+	keytrans_amiga_x11,
+	keytrans_amiga_x11
+};
+
+static struct uae_input_device_kbr_default *keytrans_fbcon[] = {
+	keytrans_amiga_fbcon,
+	keytrans_amiga_fbcon,
+	keytrans_amiga_fbcon
 };
 
 
@@ -490,29 +496,26 @@ static void ParseX11Keymap(void)
   keytrans_amiga_x11[keyIdx].node[0].evt = 0;
 }
 
+#endif // PANDORA
+
 
 void keyboard_settrans (void)
 {
-#ifdef USE_SDL2
-		keyboard_type = KEYCODE_UNK;
-		inputdevice_setkeytranslation(keytrans, kbmaps);
-#else
+#if !defined(USE_SDL2) && !defined(PANDORA)
 	char vid_drv_name[32];
 	// get display type...
 	SDL_VideoDriverName(vid_drv_name, sizeof(vid_drv_name));
-	if (strcmp(vid_drv_name, "x11") == 0)
-	{
+	if (strcmp(vid_drv_name, "x11") == 0)	{
 	  ParseX11Keymap();
 		keyboard_type = KEYCODE_X11;
 		inputdevice_setkeytranslation(keytrans_x11, kbmaps_x11);
-	}	else  if (strcmp(vid_drv_name, "fbcon") == 0)
-	{
+	}	else  if (strcmp(vid_drv_name, "fbcon") == 0) {
 		keyboard_type = KEYCODE_FBCON;
 		inputdevice_setkeytranslation(keytrans_fbcon, kbmaps);
-	}	else
+	}	else 
+#endif
 	{
 		keyboard_type = KEYCODE_UNK;
 		inputdevice_setkeytranslation(keytrans, kbmaps);
 	}
-#endif
 }

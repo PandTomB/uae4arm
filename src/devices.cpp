@@ -149,6 +149,7 @@ void do_leave_program (void)
 	gayle_free ();
 	device_func_free();
   memory_cleanup ();
+	free_shm ();
   cfgfile_addcfgparam (0);
   machdep_free ();
 	rtarea_free();

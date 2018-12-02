@@ -19,6 +19,7 @@ extern int special_mem;
 #define S_WRITE 2
 
 bool init_shm (void);
+void free_shm (void);
 
 #define Z3BASE_UAE 0x10000000
 #define Z3BASE_REAL 0x40000000
