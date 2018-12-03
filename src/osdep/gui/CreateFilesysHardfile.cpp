@@ -325,6 +325,13 @@ bool CreateFilesysHardfile(void)
     ci.type = UAEDEV_HDF;
     ci.surfaces = (size / 1024) + 1;
     ci.bootpri = bp;
+
+	  ci.controller_type = 0;
+	  ci.controller_type_unit = 0;
+	  ci.controller_unit = 0;
+	  ci.controller_media_type = 0;
+   	ci.unit_feature_level = 1;
+	  ci.readonly = 0;
     
     uci = add_filesys_config(&workprefs, -1, &ci);
     if (uci) {
