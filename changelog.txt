@@ -1,3 +1,4 @@
+2018-12-07 - Fixed capslock sync, updated statusline
 2018-12-03 - JIT: Bugfix CMPA.W (fixes OS3.9 installer)
            - Fix for add folder as HD
 2018-12-02 - Added some options in GUI and small fixes

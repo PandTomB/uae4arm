@@ -1486,6 +1486,7 @@ void restore_cia_start (void)
 {
 	/* Fixes very old statefiles without keyboard state */
 	kbstate = 3;
+	setcapslockstate (0);
 	kblostsynccnt = 0;
 }
 
@@ -1649,6 +1650,7 @@ uae_u8 *save_keyboard (int *len, uae_u8 *dstptr)
 		dstbak = dst = dstptr;
 	else
 		dstbak = dst = xmalloc (uae_u8, 4 + 4 + 1 + 1 + 1 + 1 + 1 + 2);
+	save_u32 (getcapslockstate () ? 1 : 0);
 	save_u32 (1);
 	save_u8 (kbstate);
 	save_u8 (0);
@@ -1662,6 +1664,7 @@ uae_u8 *save_keyboard (int *len, uae_u8 *dstptr)
 
 uae_u8 *restore_keyboard (uae_u8 *src)
 {
+	setcapslockstate (restore_u32 () & 1);
 	uae_u32 v = restore_u32 ();
 	kbstate = restore_u8 ();
 	restore_u8 ();

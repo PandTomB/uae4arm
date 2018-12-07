@@ -489,12 +489,14 @@ int check_prefs_changed_gfx(void)
 		changed = 1;
 	}
 	if (currprefs.leds_on_screen != changed_prefs.leds_on_screen ||
-	    currprefs.pandora_hide_idle_led != changed_prefs.pandora_hide_idle_led ||
-	    currprefs.pandora_vertical_offset != changed_prefs.pandora_vertical_offset)	
+	    currprefs.leds_on_screen_mask[0] != changed_prefs.leds_on_screen_mask[0] ||
+	    currprefs.leds_on_screen_mask[1] != changed_prefs.leds_on_screen_mask[1] ||
+	    currprefs.gfx_monitor.gfx_size.y != changed_prefs.gfx_monitor.gfx_size.y)	
 	{
 		currprefs.leds_on_screen = changed_prefs.leds_on_screen;
-		currprefs.pandora_hide_idle_led = changed_prefs.pandora_hide_idle_led;
-		currprefs.pandora_vertical_offset = changed_prefs.pandora_vertical_offset;
+		currprefs.leds_on_screen_mask[0] = changed_prefs.leds_on_screen_mask[0];
+		currprefs.leds_on_screen_mask[1] = changed_prefs.leds_on_screen_mask[1];
+		currprefs.gfx_monitor.gfx_size.y = changed_prefs.gfx_monitor.gfx_size.y;
 		changed = 1;
 	}
 	if (currprefs.chipset_refreshrate != changed_prefs.chipset_refreshrate) {

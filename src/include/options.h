@@ -120,6 +120,7 @@ struct floppyslot
 };
 
 struct wh {
+	int x, y;
   int width, height;
 };
 
@@ -311,6 +312,7 @@ struct uae_prefs {
 	int cr_selected;
   int collision_level;
   int leds_on_screen;
+	int leds_on_screen_mask[2];
   int fast_copper;
   int floppy_speed;
   int floppy_write_length;
@@ -392,8 +394,6 @@ struct uae_prefs {
 	bool harddrive_read_only;
 
   /* Target specific options */
-  int pandora_vertical_offset;
-  int pandora_hide_idle_led;
   
 #ifdef PANDORA
   int pandora_cpu_speed;

@@ -1597,7 +1597,7 @@ static void init_aspect_maps (void)
 		if (amiga2aspect_line_map[i] == -1)
 			continue;
   	for (j = amiga2aspect_line_map[i]; j < h && native2amiga_line_map[j] == -1; j++)
-	    native2amiga_line_map[j] = (i + currprefs.pandora_vertical_offset) >> linedbl;
+	    native2amiga_line_map[j] = (i + currprefs.gfx_monitor.gfx_size.y) >> linedbl;
   }
 }
 
@@ -1997,7 +1997,7 @@ static void center_image (void)
 		max_drawn_amiga_line_tmp = vidinfo->drawbuffer.outheight;
 	max_drawn_amiga_line_tmp >>= linedbl;
 
-	thisframe_y_adjust = minfirstline + currprefs.pandora_vertical_offset;
+	thisframe_y_adjust = minfirstline + currprefs.gfx_monitor.gfx_size.y;
 
 	/* Make sure the value makes sense */
 	if (thisframe_y_adjust + max_drawn_amiga_line_tmp > maxvpos + maxvpos / 2)
@@ -2096,7 +2096,7 @@ static void finish_drawing_frame (void)
 		pfield_draw_line (line, whereline, wherenext);
 	}
   
-	if (currprefs.leds_on_screen) {
+	if (currprefs.leds_on_screen & STATUSLINE_CHIPSET) {
 		for (int i = 0; i < TD_TOTAL_HEIGHT; i++) {
 			int line = vidinfo->drawbuffer.outheight - TD_TOTAL_HEIGHT + i;
 			draw_status_line (line, i);

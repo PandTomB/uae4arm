@@ -28,6 +28,7 @@
 #include "fsdb.h"
 #include "disk.h"
 #include "blkdev.h"
+#include "statusline.h"
 #include "calc.h"
 #include "gfxboard.h"
 #include "native2amiga_api.h"
@@ -62,6 +63,7 @@ static const TCHAR *soundmode2[] = { _T("none"), _T("interrupts"), _T("good"), _
 static const TCHAR *stereomode[] = { _T("mono"), _T("stereo"),  0 };
 static const TCHAR *interpolmode[] = { _T("none"), _T("anti"), _T("sinc"), _T("rh"), _T("crux"), 0 };
 static const TCHAR *collmode[] = { _T("none"), _T("sprites"), _T("playfields"), _T("full"), 0 };
+static const TCHAR *kbleds[] = { _T("none"), _T("POWER"), _T("DF0"), _T("DF1"), _T("DF2"), _T("DF3"), _T("HD"), _T("CD"), _T("DFx"), 0 };
 static const TCHAR *soundfiltermode1[] = { _T("off"), _T("emulated"), _T("on"), 0 };
 static const TCHAR *soundfiltermode2[] = { _T("standard"), _T("enhanced"), 0 };
 static const TCHAR *lorestype1[] = { _T("lores"), _T("hires"), _T("superhires"), 0 };
@@ -83,6 +85,8 @@ static const TCHAR *joyaf[] = { _T("none"), _T("normal"), _T("toggle"), _T("alwa
 static const TCHAR *cdmodes[] = { _T("disabled"), _T(""), _T("image"), 0 };
 static const TCHAR *waitblits[] = { _T("disabled"), _T("automatic"), _T("noidleonly"), _T("always"), 0 };
 static const TCHAR *autoext2[] = { _T("disabled"), _T("copy"), _T("replace"), 0 };
+static const TCHAR *leds[] = { _T("power"), _T("df0"), _T("df1"), _T("df2"), _T("df3"), _T("hd"), _T("cd"), _T("fps"), _T("cpu"), _T("snd"), _T("md"), 0 };
+static const int leds_order[] = { 3, 6, 7, 8, 9, 4, 5, 2, 1, 0, 9 };
 static const TCHAR *unmapped[] = { _T("floating"), _T("zero"), _T("one"), 0 };
 static const TCHAR *ciatype[] = { _T("default"), _T("391078-01"), 0 };
 
@@ -875,6 +879,30 @@ static void write_compatibility_cpu(struct zfile *f, struct uae_prefs *p)
   cfgfile_write (f, _T("cpu_type"), tmp);
 }
 
+static void write_leds (struct zfile *f, const TCHAR *name, int mask)
+{
+	TCHAR tmp[MAX_DPATH];
+	tmp[0] = 0;
+	for (int i = 0; leds[i]; i++) {
+		bool got = false;
+		for (int j = 0; leds[j]; j++) {
+			if (leds_order[j] == i) {
+				if (mask & (1 << j)) {
+					if (got)
+						_tcscat (tmp, _T(":"));
+					_tcscat (tmp, leds[j]);
+					got = true;
+				}
+			}
+		}
+		if (leds[i + 1] && got)
+			_tcscat (tmp, _T(","));
+	}
+	while (tmp[0] && tmp[_tcslen (tmp) - 1] == ',')
+		tmp[_tcslen (tmp) - 1] = 0;
+	cfgfile_dwrite_str (f, name, tmp);
+}
+
 static void write_resolution (struct zfile *f, const TCHAR *ws, const TCHAR *hs, struct wh *wh)
 {
 	cfgfile_write (f, ws, _T("%d"), wh->width);
@@ -1120,6 +1148,8 @@ void cfgfile_save_options (struct zfile *f, struct uae_prefs *p, int type)
 
   cfgfile_write (f, _T("gfx_framerate"), _T("%d"), p->gfx_framerate);
   write_resolution (f, _T("gfx_width"), _T("gfx_height"), &p->gfx_monitor.gfx_size); /* compatibility with old versions */
+	cfgfile_write (f, _T("gfx_top_windowed"), _T("%d"), p->gfx_monitor.gfx_size.y);
+	cfgfile_write(f, _T("gfx_left_windowed"), _T("%d"), p->gfx_monitor.gfx_size.x);
 	cfgfile_write (f, _T("gfx_refreshrate"), _T("%d"), p->gfx_apmode[0].gfx_refreshrate);
 	cfgfile_dwrite (f, _T("gfx_refreshrate_rtg"), _T("%d"), p->gfx_apmode[1].gfx_refreshrate);
 
@@ -1132,7 +1162,11 @@ void cfgfile_save_options (struct zfile *f, struct uae_prefs *p, int type)
   cfgfile_write_bool (f, _T("fast_copper"), p->fast_copper);
   cfgfile_write_bool (f, _T("ntsc"), p->ntscmode);
 
-  cfgfile_dwrite_bool (f, _T("show_leds"), p->leds_on_screen);
+	cfgfile_dwrite_bool (f, _T("show_leds"), !!(p->leds_on_screen & STATUSLINE_CHIPSET));
+	cfgfile_dwrite_bool (f, _T("show_leds_rtg"), !!(p->leds_on_screen & STATUSLINE_RTG));
+	write_leds(f, _T("show_leds_enabled"), p->leds_on_screen_mask[0]);
+	write_leds(f, _T("show_leds_enabled_rtg"), p->leds_on_screen_mask[1]);
+
   if (p->chipset_mask & CSMASK_AGA)
   	cfgfile_write (f, _T("chipset"), _T("aga"));
   else if ((p->chipset_mask & CSMASK_ECS_AGNUS) && (p->chipset_mask & CSMASK_ECS_DENISE))
@@ -1759,6 +1793,8 @@ static int cfgfile_parse_host (struct uae_prefs *p, TCHAR *option, TCHAR *value)
 	  || cfgfile_intval (option, value, _T("sound_stereo_mixing_delay"), &p->sound_mixed_stereo_delay, 1)
 
 	  || cfgfile_intval (option, value, _T("gfx_framerate"), &p->gfx_framerate, 1)
+		|| cfgfile_intval(option, value, _T("gfx_top_windowed"), &p->gfx_monitor.gfx_size.y, 1)
+		|| cfgfile_intval(option, value, _T("gfx_left_windowed"), &p->gfx_monitor.gfx_size.x, 1)
 		|| cfgfile_intval (option, value, _T("gfx_refreshrate"), &p->gfx_apmode[APMODE_NATIVE].gfx_refreshrate, 1)
 		|| cfgfile_intval (option, value, _T("gfx_refreshrate_rtg"), &p->gfx_apmode[APMODE_RTG].gfx_refreshrate, 1)
 
@@ -1816,9 +1852,44 @@ static int cfgfile_parse_host (struct uae_prefs *p, TCHAR *option, TCHAR *value)
 	}
 
   if(cfgfile_yesno (option, value, _T("show_leds"), &vb)) {
-    p->leds_on_screen = vb;
+		if (vb)
+			p->leds_on_screen |= STATUSLINE_CHIPSET;
+		else
+			p->leds_on_screen &= ~STATUSLINE_CHIPSET;
 		return 1;
   }
+	if (cfgfile_yesno (option, value, _T("show_leds_rtg"), &vb)) {
+		if (vb)
+			p->leds_on_screen |= STATUSLINE_RTG;
+		else
+			p->leds_on_screen &= ~STATUSLINE_RTG;
+		return 1;
+	}
+	if (_tcscmp (option, _T("show_leds_enabled")) == 0 || _tcscmp (option, _T("show_leds_enabled_rtg")) == 0) {
+		TCHAR tmp[MAX_DPATH];
+		int idx = _tcscmp (option, _T("show_leds_enabled")) == 0 ? 0 : 1;
+		p->leds_on_screen_mask[idx] = 0;
+		_tcscpy (tmp, value);
+		_tcscat (tmp, _T(","));
+		TCHAR *s = tmp;
+		for (;;) {
+			TCHAR *s2 = s;
+			TCHAR *s3 = _tcschr (s, ':');
+			s = _tcschr (s, ',');
+			if (!s)
+				break;
+			if (s3 && s3 < s)
+				s = s3;
+			*s = 0;
+			for (int i = 0; leds[i]; i++) {
+				if (!_tcsicmp (s2, leds[i])) {
+					p->leds_on_screen_mask[idx] |= 1 << i;
+				}
+			}
+			s++;
+		}
+		return 1;
+	}
 
   if (_tcscmp (option, _T("gfx_width")) == 0 || _tcscmp (option, _T("gfx_height")) == 0) {
 	  cfgfile_intval (option, value, _T("gfx_width"), &p->gfx_monitor.gfx_size.width, 1);
@@ -4261,6 +4332,7 @@ void default_prefs (struct uae_prefs *p, bool reset, int type)
   p->chipset_refreshrate = 50;
   p->collision_level = 2;
   p->leds_on_screen = 0;
+	p->leds_on_screen_mask[0] = p->leds_on_screen_mask[1] = 0x01fe;
 	p->boot_rom = 0;
 #ifdef PANDORA
   p->fast_copper = 1;

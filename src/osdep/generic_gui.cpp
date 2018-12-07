@@ -436,6 +436,7 @@ int gui_init (void)
   if(quit_program == UAE_QUIT)
     ret = -2; // Quit without start of emulator
 
+	getcapslock();
 	inputdevice_acquire (TRUE);
 
 	emulating=1;
@@ -539,6 +540,7 @@ void gui_display (int shortcut)
   blkdev_exitgui();
 	resume_sound();
 
+  getcapslock();
 	inputdevice_acquire (TRUE);
 	setmouseactive(1);
 }
@@ -562,14 +564,14 @@ void gui_led(int led, int on, int brightness)
 	// Handle floppy led status
 	if (led == LED_DF0 || led == LED_DF1 || led == LED_DF2 || led == LED_DF3)
 	{ 
-		if (currprefs.kbd_led_num == led || currprefs.kbd_led_num == LED_DFs)
+		if (currprefs.kbd_led_num == led)
 		{  
 			if (on) 
 			  kbd_led_status |= LED_NUM;
 			else 
 			  kbd_led_status &= ~LED_NUM;
 		}
-		if (currprefs.kbd_led_scr == led || currprefs.kbd_led_scr == LED_DFs)
+		if (currprefs.kbd_led_scr == led)
 		{  
 			if (on) 
 			  kbd_led_status |= LED_SCR;
@@ -601,32 +603,59 @@ void gui_led(int led, int on, int brightness)
 #endif
 }
 
+
+static void gui_flicker_led2 (int led, int unitnum, int status)
+{
+	static int resetcounter[LED_MAX];
+	uae_s8 old;
+	uae_s8 *p;
+
+	if (led == LED_HD)
+		p = &gui_data.hd;
+	else if (led == LED_CD)
+		p = &gui_data.cd;
+	else
+		return;
+	old = *p;
+	if (status < 0) {
+#ifdef RASPBERRY
+		if (old < 0) {
+			gui_led (led, -1, -1);
+		} else {
+			gui_led (led, 0, -1);
+		}
+#endif
+		return;
+	}
+	if (status == 0 && old < 0) {
+		*p = 0;
+		resetcounter[led] = 0;
+#ifdef RASPBERRY
+		gui_led (led, 0, -1);
+#endif
+		return;
+	}
+	if (status == 0) {
+		resetcounter[led]--;
+		if (resetcounter[led] > 0)
+			return;
+	}
+	*p = status;
+	resetcounter[led] = 4;
+#ifdef RASPBERRY
+	if (old != *p)
+		gui_led (led, *p, -1);
+#endif
+}
+
 void gui_flicker_led (int led, int unitnum, int status)
 {
-  static int hd_resetcounter;
-
-  switch(led)
-  {
-    case -1: // Reset HD and CD
-      gui_data.hd = 0;
-      break;
-      
-    case LED_POWER:
-      break;
-
-    case LED_HD:
-      if (status == 0) {
-  	    hd_resetcounter--;
-  	    if (hd_resetcounter > 0)
-  	      return;
-      }
-      gui_data.hd = status;
-      hd_resetcounter = 2;
-      break;
-  }
-#ifdef RASPBERRY
-	gui_led(led, status, 0);
-#endif
+	if (led < 0) {
+		gui_flicker_led2(LED_HD, 0, 0);
+		gui_flicker_led2(LED_CD, 0, 0);
+	} else {
+		gui_flicker_led2(led, unitnum, status);
+	}
 }
 
 

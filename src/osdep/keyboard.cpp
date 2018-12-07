@@ -16,6 +16,9 @@
 
 char keyboard_type = 0;
 
+static int capslock_key = -1;
+
+
 #ifndef PANDORA
 
 static struct uae_input_device_kbr_default keytrans_amiga_x11[256];
@@ -299,7 +302,7 @@ static struct map_x11_to_event map_x11_to_event[] {
   { "escape",     INPUTEVENT_KEY_ESC },
   { "tab",        INPUTEVENT_KEY_TAB },
   { "control_l",  INPUTEVENT_KEY_CTRL, 0, INPUTEVENT_SPC_QUALIFIER_CONTROL },
-  { "caps_lock",  INPUTEVENT_KEY_CAPS_LOCK, ID_FLAG_TOGGLE },
+  { "caps_lock",  INPUTEVENT_KEY_CAPS_LOCK, 0 },
   { "shift_l",    INPUTEVENT_KEY_SHIFT_LEFT, 0, INPUTEVENT_SPC_QUALIFIER_SHIFT },
   { "less",       INPUTEVENT_KEY_LTGT },
   { "alt_l",      INPUTEVENT_KEY_ALT_LEFT, 0, INPUTEVENT_SPC_QUALIFIER_ALT },
@@ -410,7 +413,6 @@ static void ParseX11Keymap(void)
     KeySym *origkeymap;
     
     XDisplayKeycodes (dpy, &min_keycode, &max_keycode);
-    //printf("min = %d, max = %d\n", min_keycode, max_keycode);
     origkeymap = XGetKeyboardMapping (dpy, min_keycode, (max_keycode - min_keycode + 1), &keysyms_per_keycode);
     if (origkeymap != NULL) {
   	  //printf ("    KeyCode\tKey\n");
@@ -473,6 +475,10 @@ static void ParseX11Keymap(void)
                   case INPUTEVENT_KEY_NP_DIV: kb_cd32_np_x11[17] = kb_cd32_ck_x11[16] = kb_cd32_se_x11[16] = i; break;
                   case INPUTEVENT_KEY_NP_SUB: kb_cd32_np_x11[19] = kb_cd32_ck_x11[18] = kb_cd32_se_x11[18] = i; break;
                   case INPUTEVENT_KEY_NP_MUL: kb_cd32_np_x11[21] = kb_cd32_ck_x11[20] = kb_cd32_se_x11[20] = i; break;
+                    
+                  case INPUTEVENT_KEY_CAPS_LOCK:
+                    capslock_key = i;
+                    break;
                 }
                 
            	    ++keyIdx;
@@ -499,6 +505,35 @@ static void ParseX11Keymap(void)
 #endif // PANDORA
 
 
+int getcapslockstate (void)
+{
+  Uint8 *keystate = SDL_GetKeyState(NULL);
+  return keystate[SDLK_CAPSLOCK] ? 1 : 0;
+}
+void setcapslockstate (int state)
+{
+  Uint8 *keystate = SDL_GetKeyState(NULL);
+  int currstate = keystate[SDLK_CAPSLOCK] ? 1 : 0;
+  if(currstate != state)
+  {
+    if(currstate)
+      inputdevice_translatekeycode (0, capslock_key, 1, false);
+    else
+      inputdevice_translatekeycode (0, capslock_key, 0, true);
+  }
+}
+
+
+void getcapslock (void)
+{
+  Uint8 *keystate = SDL_GetKeyState(NULL);
+  if(keystate[SDLK_CAPSLOCK])
+    inputdevice_translatekeycode (0, capslock_key, 1, false);
+  else
+    inputdevice_translatekeycode (0, capslock_key, 0, true);
+}
+
+
 void keyboard_settrans (void)
 {
 #if !defined(USE_SDL2) && !defined(PANDORA)
@@ -511,11 +546,13 @@ void keyboard_settrans (void)
 		inputdevice_setkeytranslation(keytrans_x11, kbmaps_x11);
 	}	else  if (strcmp(vid_drv_name, "fbcon") == 0) {
 		keyboard_type = KEYCODE_FBCON;
+		capslock_key = 66 - 8;
 		inputdevice_setkeytranslation(keytrans_fbcon, kbmaps);
 	}	else 
 #endif
 	{
 		keyboard_type = KEYCODE_UNK;
+		capslock_key = SDLK_CAPSLOCK;
 		inputdevice_setkeytranslation(keytrans, kbmaps);
 	}
 }

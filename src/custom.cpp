@@ -235,6 +235,7 @@ enum copper_states {
 struct copper {
   /* The current instruction words.  */
   unsigned int i1, i2;
+	unsigned int saved_i1, saved_i2;
   enum copper_states state, state_prev;
   /* Instruction pointer.  */
   uaecptr ip;
@@ -564,7 +565,7 @@ static void add_modulo (int hpos, int nr)
 	reset_moddelays ();
 }
 
-STATIC_INLINE void add_modulos(void)
+static void add_modulos (void)
 {
   int m1, m2;
  
@@ -764,7 +765,7 @@ STATIC_INLINE int islinetoggle (void)
 }
 
 /* Expand bplcon0/bplcon1 into the toscr_xxx variables.  */
-STATIC_INLINE void compute_toscr_delay (int bplcon1)
+static void compute_toscr_delay (int bplcon1)
 {
   int delay1 = (bplcon1 & 0x0f) | ((bplcon1 & 0x0c00) >> 6);
   int delay2 = ((bplcon1 >> 4) & 0x0f) | (((bplcon1 >> 4) & 0x0c00) >> 6);
@@ -903,7 +904,7 @@ STATIC_INLINE void clear_fetchbuffer (uae_u32 *ptr, int nwords)
 	memset (ptr, 0, nwords * 4);
 }
 
-STATIC_INLINE void update_toscr_planes (int fm)
+static void update_toscr_planes (int fm)
 {
 	// This must be called just before new bitplane block starts,
 	// not when depth value changes. Depth can change early and can leave
@@ -1227,7 +1228,7 @@ static void toscr_right_edge (int nbits, int fm)
 	}
 }
 
-STATIC_INLINE void toscr_1 (int nbits, int fm)
+static void toscr_1 (int nbits, int fm)
 {
 	if (delay_cycles + nbits >= delay_lastcycle[0]) {
 		toscr_right_edge (nbits, fm);
@@ -1293,7 +1294,7 @@ static void toscr_fm0 (int nbits) { toscr_0 (nbits, 0); }
 static void toscr_fm1 (int nbits) { toscr_0 (nbits, 1); }
 static void toscr_fm2 (int nbits) { toscr_0 (nbits, 2); }
 
-STATIC_INLINE int flush_plane_data (int fm)
+static int flush_plane_data (int fm)
 {
 	int i = 0;
 
@@ -1734,7 +1735,7 @@ static void do_long_fetch (int hpos, int nwords, int dma, int fm)
 		fetch_state = fetch_was_plane0;
 }
 
-STATIC_INLINE void finish_last_fetch (int pos, int fm, bool reallylast)
+static void finish_last_fetch (int pos, int fm, bool reallylast)
 {
   if (thisline_decision.plfleft < 0)
     return;
@@ -1862,7 +1863,7 @@ static void do_overrun_fetch(int until, int fm)
 
 
 /* make sure fetch that goes beyond maxhpos is finished */
-STATIC_INLINE void finish_final_fetch (void)
+static void finish_final_fetch (void)
 {
 	if (thisline_decision.plfleft < 0)
 			return;
@@ -2238,7 +2239,7 @@ STATIC_INLINE void decide_fetch_safe (int hpos)
 	}
 }
 
-STATIC_INLINE void start_bpl_dma (int hstart)
+static void start_bpl_dma (int hstart)
 {
 	fetch_state = fetch_started;
 	plfr_state = plfr_active;
@@ -3912,10 +3913,12 @@ static void DMACON (int hpos, uae_u16 v)
 	events_schedule();
 }
 
+static uae_u16 intreq_internal, intena_internal;
+
 int intlev (void)
 {
-  uae_u16 imask = intreq & intena;
-  if (!(imask && (intena & 0x4000)))
+	uae_u16 imask = intreq_internal & intena_internal;
+	if (!(imask && (intena_internal & 0x4000)))
   	return -1;
   if (imask & (0x4000 | 0x2000)) // 13 14
     return 6;
@@ -3966,9 +3969,10 @@ static void INTENA (uae_u16 v)
 	uae_u16 old = intena;
   setclr (&intena,v);
 
-	if (!(v & 0x8000) && old == intena)
+	if (!(v & 0x8000) && old == intena && intena == intena_internal)
 		return;
 
+	intena_internal = intena;
   if (v & 0x8000)
     doint();
 }
@@ -3976,6 +3980,7 @@ static void INTENA (uae_u16 v)
 void INTREQ_f (uae_u16 v)
 {
  	setclr (&intreq, v);
+	setclr (&intreq_internal, v);
 }
 
 bool INTREQ_0 (uae_u16 v)
@@ -3983,7 +3988,9 @@ bool INTREQ_0 (uae_u16 v)
 	uae_u16 old = intreq;
 	setclr (&intreq, v);
 
-	if (old == intreq)
+	uae_u16 old2 = intreq_internal;
+	intreq_internal = intreq;
+	if (old == intreq && old2 == intreq_internal)
 		return false;
   if (v & 0x8000)
   	doint();
@@ -4934,7 +4941,7 @@ static int customdelay[]= {
 
 static void update_copper (int until_hpos)
 {
-	int vp = vpos & (((cop_state.i2 >> 8) & 0x7F) | 0x80);
+	int vp = vpos & (((cop_state.saved_i2 >> 8) & 0x7F) | 0x80);
 	int c_hpos = cop_state.hpos;
 	
   if (nocustom()) {
@@ -5077,6 +5084,8 @@ static void update_copper (int until_hpos)
       		continue;
 				cop_state.i2 = last_custom_value1 = chipmem_wget_indirect (cop_state.ip);
 				cop_state.ip += 2;
+			  cop_state.saved_i1 = cop_state.i1;
+			  cop_state.saved_i2 = cop_state.i2;
 				
 				if (cop_state.i1 & 1) { // WAIT or SKIP
 		      cop_state.ignore_next = 0;
@@ -5120,12 +5129,12 @@ static void update_copper (int until_hpos)
 			case COP_wait1:
 				cop_state.state = COP_wait;
 				
-				cop_state.vcmp = (cop_state.i1 & (cop_state.i2 | 0x8000)) >> 8;
-				cop_state.hcmp = (cop_state.i1 & cop_state.i2 & 0xFE);
+				cop_state.vcmp = (cop_state.saved_i1 & (cop_state.saved_i2 | 0x8000)) >> 8;
+				cop_state.hcmp = (cop_state.saved_i1 & cop_state.saved_i2 & 0xFE);
 				
-				vp = vpos & (((cop_state.i2 >> 8) & 0x7F) | 0x80);
+				vp = vpos & (((cop_state.saved_i2 >> 8) & 0x7F) | 0x80);
 				
-	      if (cop_state.i1 == 0xFFFF && cop_state.i2 == 0xFFFE) {
+	      if (cop_state.saved_i1 == 0xFFFF && cop_state.saved_i2 == 0xFFFE) {
 				  cop_state.state = COP_waitforever;
 					copper_enabled_thisline = 0;
 					unset_special (SPCFLAG_COPPER);
@@ -5147,7 +5156,7 @@ static void update_copper (int until_hpos)
 				/* First handle possible blitter wait
 				 * Must be before following free cycle check
 				 */
-			    if ((cop_state.i2 & 0x8000) == 0) {
+			    if ((cop_state.saved_i2 & 0x8000) == 0) {
 					  decide_blitter(old_hpos);
 				    if (bltstate != BLT_done) {
 					    /* We need to wait for the blitter.  */
@@ -5161,7 +5170,7 @@ static void update_copper (int until_hpos)
     	    if (copper_cant_read (old_hpos))
         		continue;
 				
-				  hp = ch_comp & (cop_state.i2 & 0xFE);
+				  hp = ch_comp & (cop_state.saved_i2 & 0xFE);
 	        if (vp == cop_state.vcmp && hp < cop_state.hcmp) {
 					  /* Position not reached yet.  */
             if(currprefs.fast_copper) {
@@ -5192,12 +5201,12 @@ static void update_copper (int until_hpos)
 	      if (copper_cant_read (old_hpos))
 		      continue;
 
-	      vcmp = (cop_state.i1 & (cop_state.i2 | 0x8000)) >> 8;
-	      hcmp = (cop_state.i1 & cop_state.i2 & 0xFE);
-	      vp1 = vpos & (((cop_state.i2 >> 8) & 0x7F) | 0x80);
-	      hp1 = c_hpos & (cop_state.i2 & 0xFE);
+	      vcmp = (cop_state.saved_i1 & (cop_state.saved_i2 | 0x8000)) >> 8;
+	      hcmp = (cop_state.saved_i1 & cop_state.saved_i2 & 0xFE);
+	      vp1 = vpos & (((cop_state.saved_i2 >> 8) & 0x7F) | 0x80);
+	      hp1 = c_hpos & (cop_state.saved_i2 & 0xFE);
 
-	      if ((vp1 > vcmp || (vp1 == vcmp && hp1 >= hcmp)) && ((cop_state.i2 & 0x8000) != 0 || bltstate == BLT_done))
+	      if ((vp1 > vcmp || (vp1 == vcmp && hp1 >= hcmp)) && ((cop_state.saved_i2 & 0x8000) != 0 || bltstate == BLT_done))
 		      cop_state.ignore_next = 1;
 
 	      cop_state.state = COP_read1;
@@ -5231,7 +5240,7 @@ static void compute_spcflag_copper (int hpos)
 		return;
 	
 	if (cop_state.state == COP_wait) {
-		int vp = vpos & (((cop_state.i2 >> 8) & 0x7F) | 0x80);
+		int vp = vpos & (((cop_state.saved_i2 >> 8) & 0x7F) | 0x80);
 		
 		if (vp < cop_state.vcmp)
 			return;
@@ -5276,7 +5285,7 @@ void blitter_done_notify (int hpos)
 	if (cop_state.state != COP_bltwait)
 		return;
 	
-	int vp_wait = vpos & (((cop_state.i2 >> 8) & 0x7F) | 0x80);
+	int vp_wait = vpos & (((cop_state.saved_i2 >> 8) & 0x7F) | 0x80);
 	int vp = vpos;
 
 	hpos++;
@@ -5288,7 +5297,7 @@ void blitter_done_notify (int hpos)
 	cop_state.hpos = hpos;
 	cop_state.state = COP_wait;
 	/* No need to check blitter state again */
-	cop_state.i2 |= 0x8000;
+	cop_state.saved_i2 |= 0x8000;
 
 	if (dmaen(DMA_COPPER) && vp_wait >= cop_state.vcmp) {
 		copper_enabled_thisline = 1;
@@ -6304,6 +6313,14 @@ void custom_prepare (void)
 	hsync_handler_post (true);
 }
 
+void custom_cpuchange(void)
+{
+	// both values needs to be same but also different
+	// after CPU mode changes
+	intreq_internal = intreq | 0x8000;
+	intena_internal = intena | 0x8000;
+}
+
 void custom_reset (bool hardreset, bool keyboardreset)
 {
 	if (hardreset)
@@ -6345,8 +6362,8 @@ void custom_reset (bool hardreset, bool keyboardreset)
 		memset (spr, 0, sizeof spr);
 		
 		dmacon = 0;
-    intreq = 0;
-		intena = 0;
+		intreq_internal = 0;
+		intena = intena_internal = 0;
 
 		copcon = 0;
 		DSKLEN (0, 0);
@@ -7067,8 +7084,9 @@ uae_u8 *restore_custom (uae_u8 *src)
   ddfstop = RW;		/* 094 DDFSTOP */
   dmacon = RW & ~(0x2000|0x4000); /* 096 DMACON */
   CLXCON(RW);	    /* 098 CLXCON */
-  intena = RW;		/* 09A INTENA */
+	intena = intena_internal = RW;	/* 09A INTENA */
   intreq = RW;	  /* 09C INTREQ */
+	intreq_internal = intreq;
   adkcon = RW;		/* 09E ADKCON */
   /* 0A0 - 0DE Audio regs */
   for (i = 0; i < 8; i++)

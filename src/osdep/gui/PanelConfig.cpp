@@ -121,8 +121,10 @@ class ConfigActionListener : public gcn::ActionListener
           strncat(filename, txtName->getText().c_str(), MAX_DPATH - 1);
           strncat(filename, ".uae", MAX_DPATH - 1);
           strncpy(workprefs.description, txtDesc->getText().c_str(), 255);
-          if(cfgfile_save(&workprefs, filename, 0))
+          if(cfgfile_save(&workprefs, filename, 0)) {
+            strncpy(last_active_config, txtName->getText().c_str(), MAX_PATH - 1);
             RefreshPanelConfig();
+          }
         }
 
       } else if(actionEvent.getSource() == cmdDelete) {

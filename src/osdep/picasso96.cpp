@@ -2924,7 +2924,7 @@ static bool picasso_flushpixels (uae_u8 *src, int off)
 
   copyall (src + off, dst);
 
-  if(currprefs.leds_on_screen)
+  if(currprefs.leds_on_screen & STATUSLINE_RTG)
 		picasso_statusline (dst);
 
   gfx_unlock_picasso (true);

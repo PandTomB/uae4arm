@@ -1824,7 +1824,7 @@ void alloc_cache(void)
 	 	compiled_code = popallspace + POPALLSPACE_SIZE;
 
   if (compiled_code) {
-		jit_log("Actual translation cache size : %d KB at %p-%p", cache_size, compiled_code, compiled_code + cache_size*1024);
+		write_log("Actual translation cache size : %d KB at %p-%p", cache_size, compiled_code, compiled_code + cache_size*1024);
 #if defined(CPU_arm) && !defined(ARMV6T2)
   	max_compile_start = compiled_code + cache_size*1024 - BYTES_PER_INST - DATA_BUFFER_SIZE;
 #else

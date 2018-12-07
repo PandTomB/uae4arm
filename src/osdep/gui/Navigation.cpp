@@ -43,7 +43,7 @@ static NavigationMap navMap[] =
   { "Sound",            "sndDisable",     "sndDisable",     "Display",          "Game ports" },
   { "Game ports",       "cboAutofire0",   "cboPort0",       "Sound",            "Input" },
   { "Input",            "cboDevice",      "cboDevice",      "Game ports",       "Miscellaneous" },
-  { "Miscellaneous",    "StatusLine",     "StatusLine",     "Input",            "Savestates" },
+  { "Miscellaneous",    "ShowGUI",        "ShowGUI",        "Input",            "Savestates" },
   { "Savestates",       "State0",         "State0",         "Miscellaneous",    "Reset" },
   { "Reset",            "Start",          "Quit",           "Savestates",       "Paths" },
   { "Quit",             "Reset",          "Shutdown",       "Savestates",       "Paths" },
@@ -269,18 +269,26 @@ static NavigationMap navMap[] =
   
 // PanelMisc
 #ifdef PANDORA
-  { "StatusLine",     "Miscellaneous",  "Miscellaneous",  "MasterWP",       "HideIdle" },
-  { "HideIdle",       "Miscellaneous",  "Miscellaneous",  "StatusLine",     "ShowGUI" },
-  { "ShowGUI",        "Miscellaneous",  "Miscellaneous",  "HideIdle",       "PandSpeed" },
-  { "PandSpeed",      "",               "",               "ShowGUI",        "BSDSocket" },
-  { "BSDSocket",      "Miscellaneous",  "Miscellaneous",  "PandSpeed",      "MasterWP" },
-  { "MasterWP",       "Miscellaneous",  "Miscellaneous",  "BSDSocket",      "StatusLine" },
+  { "ShowGUI",        "Miscellaneous",  "StatusLine",     "PandSpeed",      "BSDSocket" },
+  { "BSDSocket",      "Miscellaneous",  "StatusLineRTG",  "ShowGUI",        "MasterWP" },
+  { "MasterWP",       "Miscellaneous",  "ShowIdle",       "BSDSocket",      "PandSpeed" },
+  { "StatusLine",     "ShowGUI",        "Miscellaneous",  "PandSpeed",      "StatusLineRTG" },
 #else /* RASPBERRY */
-  { "StatusLine",     "Miscellaneous",  "Miscellaneous",  "MasterWP",       "HideIdle" },
-  { "HideIdle",       "Miscellaneous",  "Miscellaneous",  "StatusLine",     "ShowGUI" },
-  { "ShowGUI",        "Miscellaneous",  "Miscellaneous",  "HideIdle",       "BSDSocket" },
-  { "BSDSocket",      "Miscellaneous",  "Miscellaneous",  "ShowGUI",        "MasterWP" },
-  { "MasterWP",       "Miscellaneous",  "Miscellaneous",  "BSDSocket",      "StatusLine" },
+  { "ShowGUI",        "Miscellaneous",  "StatusLine",     "MasterWP",       "BSDSocket" },
+  { "BSDSocket",      "Miscellaneous",  "StatusLineRTG",  "ShowGUI",        "MasterWP" },
+  { "MasterWP",       "Miscellaneous",  "ShowIdle",       "BSDSocket",      "ShowGUI" },
+  { "StatusLine",     "ShowGUI",        "Miscellaneous",  "ShowDisk",       "StatusLineRTG" },
+#endif
+  { "StatusLineRTG",  "BSDSocket",      "Miscellaneous",  "StatusLine",     "ShowIdle" },
+  { "ShowIdle",       "MasterWP",       "Miscellaneous",  "StatusLineRTG",  "ShowFPS" },
+  { "ShowFPS",        "MasterWP",       "Miscellaneous",  "ShowIdle",       "ShowHD" },
+  { "ShowHD",         "MasterWP",       "Miscellaneous",  "ShowFPS",        "ShowCD" },
+  { "ShowCD",         "MasterWP",       "Miscellaneous",  "ShowHD",         "ShowDisk" },
+#ifdef PANDORA
+  { "ShowDisk",       "MasterWP",       "Miscellaneous",  "ShowCD",         "PandSpeed" },
+  { "PandSpeed",      "",               "",               "MasterWP",       "ShowGUI" },
+#else /* RASPBERRY */
+  { "ShowDisk",       "MasterWP",       "Miscellaneous",  "ShowCD",         "StatusLine" },
 #endif
   
 // PanelSavestate

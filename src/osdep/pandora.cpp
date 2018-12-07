@@ -75,9 +75,8 @@ static void resetCpuSpeed(void)
 
 void target_default_options (struct uae_prefs *p, int type)
 {
-  p->pandora_vertical_offset = OFFSET_Y_ADJUST;
+  p->gfx_monitor.gfx_size.y = OFFSET_Y_ADJUST;
   p->pandora_cpu_speed = defaultCpuSpeed;
-  p->pandora_hide_idle_led = 0;
   
   p->pandora_tapDelay = 10;
 
@@ -137,22 +136,19 @@ void target_fixup_options (struct uae_prefs *p)
 void target_save_options (struct zfile *f, struct uae_prefs *p)
 {
   cfgfile_write (f, "pandora.cpu_speed", "%d", p->pandora_cpu_speed);
-  cfgfile_write (f, "pandora.hide_idle_led", "%d", p->pandora_hide_idle_led);
   cfgfile_write (f, "pandora.tap_delay", "%d", p->pandora_tapDelay);
-  cfgfile_write (f, "pandora.move_y", "%d", p->pandora_vertical_offset - OFFSET_Y_ADJUST);
 }
 
 
 int target_parse_option (struct uae_prefs *p, const char *option, const char *value)
 {
   int result = (cfgfile_intval (option, value, "cpu_speed", &p->pandora_cpu_speed, 1)
-    || cfgfile_intval (option, value, "hide_idle_led", &p->pandora_hide_idle_led, 1)
     || cfgfile_intval (option, value, "tap_delay", &p->pandora_tapDelay, 1)
     );
   if(!result) {
-    result = cfgfile_intval (option, value, "move_y", &p->pandora_vertical_offset, 1);
+    result = cfgfile_intval (option, value, "move_y", &p->gfx_monitor.gfx_size.y, 1); // For compatibility only
     if(result)
-      p->pandora_vertical_offset += OFFSET_Y_ADJUST;
+      p->gfx_monitor.gfx_size.y += OFFSET_Y_ADJUST;
   }
 
   return result;
@@ -161,11 +157,11 @@ int target_parse_option (struct uae_prefs *p, const char *option, const char *va
 
 static void moveVertical(int value)
 {
-	changed_prefs.pandora_vertical_offset += value;
-	if(changed_prefs.pandora_vertical_offset < -16 + OFFSET_Y_ADJUST)
-		changed_prefs.pandora_vertical_offset = -16 + OFFSET_Y_ADJUST;
-	else if(changed_prefs.pandora_vertical_offset > 16 + OFFSET_Y_ADJUST)
-		changed_prefs.pandora_vertical_offset = 16 + OFFSET_Y_ADJUST;
+	changed_prefs.gfx_monitor.gfx_size.y += value;
+	if(changed_prefs.gfx_monitor.gfx_size.y < -16 + OFFSET_Y_ADJUST)
+		changed_prefs.gfx_monitor.gfx_size.y = -16 + OFFSET_Y_ADJUST;
+	else if(changed_prefs.gfx_monitor.gfx_size.y > 16 + OFFSET_Y_ADJUST)
+		changed_prefs.gfx_monitor.gfx_size.y = 16 + OFFSET_Y_ADJUST;
 }
 
 

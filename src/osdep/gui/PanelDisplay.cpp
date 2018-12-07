@@ -92,8 +92,8 @@ static void RefreshPanelDisplay(void)
   chkAspect->setSelected(workprefs.gfx_correct_aspect);
 #endif
   
-  sldVertPos->setValue(workprefs.pandora_vertical_offset - OFFSET_Y_ADJUST);
-  snprintf(tmp, 31, "%d", workprefs.pandora_vertical_offset - OFFSET_Y_ADJUST);
+  sldVertPos->setValue(workprefs.gfx_monitor.gfx_size.y - OFFSET_Y_ADJUST);
+  snprintf(tmp, 31, "%d", workprefs.gfx_monitor.gfx_size.y - OFFSET_Y_ADJUST);
   lblVertPosInfo->setCaption(tmp);
   
   chkLineDbl->setSelected(workprefs.gfx_vresolution != VRES_NONDOUBLE);
@@ -119,8 +119,8 @@ class AmigaScreenActionListener : public gcn::ActionListener
     	  }
 
       } else if (actionEvent.getSource() == sldVertPos) {
-        if(workprefs.pandora_vertical_offset != (int)(sldVertPos->getValue()) + OFFSET_Y_ADJUST) {
-      		workprefs.pandora_vertical_offset = (int)(sldVertPos->getValue()) + OFFSET_Y_ADJUST;
+        if(workprefs.gfx_monitor.gfx_size.y != (int)(sldVertPos->getValue()) + OFFSET_Y_ADJUST) {
+      		workprefs.gfx_monitor.gfx_size.y = (int)(sldVertPos->getValue()) + OFFSET_Y_ADJUST;
       		RefreshPanelDisplay();
     	  }
 

@@ -13,8 +13,7 @@
 
 void target_default_options (struct uae_prefs *p, int type)
 {
-  p->pandora_vertical_offset = OFFSET_Y_ADJUST;
-  p->pandora_hide_idle_led = 0;
+  p->gfx_monitor.gfx_size.y = OFFSET_Y_ADJUST;
   
 	p->picasso96_modeflags = RGBFF_CLUT | RGBFF_R5G6B5 | RGBFF_R8G8B8A8;
 	
@@ -85,9 +84,6 @@ void target_fixup_options (struct uae_prefs *p)
 
 void target_save_options (struct zfile *f, struct uae_prefs *p)
 {
-  cfgfile_write (f, "pandora.hide_idle_led", "%d", p->pandora_hide_idle_led);
-  cfgfile_write (f, "pandora.move_y", "%d", p->pandora_vertical_offset - OFFSET_Y_ADJUST);
-
 	cfgfile_write(f, _T("gfx_correct_aspect"), _T("%d"), p->gfx_correct_aspect);
 	cfgfile_write(f, _T("gfx_fullscreen_ratio"), _T("%d"), p->gfx_fullscreen_ratio);
 	cfgfile_write(f, _T("kbd_led_num"), _T("%d"), p->kbd_led_num);
@@ -98,18 +94,16 @@ void target_save_options (struct zfile *f, struct uae_prefs *p)
 
 int target_parse_option (struct uae_prefs *p, const char *option, const char *value)
 {
-  int result = (cfgfile_intval (option, value, "hide_idle_led", &p->pandora_hide_idle_led, 1)
-
-    || cfgfile_intval (option, value, "gfx_correct_aspect", &p->gfx_correct_aspect, 1)
+  int result = (cfgfile_intval (option, value, "gfx_correct_aspect", &p->gfx_correct_aspect, 1)
     || cfgfile_intval (option, value, "gfx_fullscreen_ratio", &p->gfx_fullscreen_ratio, 1)
     || cfgfile_intval (option, value, "kbd_led_num", &p->kbd_led_num, 1)
     || cfgfile_intval (option, value, "kbd_led_scr", &p->kbd_led_scr, 1)
     || cfgfile_intval (option, value, "kbd_led_cap", &p->kbd_led_cap, 1)
     );
   if(!result) {
-    result = cfgfile_intval (option, value, "move_y", &p->pandora_vertical_offset, 1);
+    result = cfgfile_intval (option, value, "move_y", &p->gfx_monitor.gfx_size.y, 1); // for compatibility only
     if(result)
-      p->pandora_vertical_offset += OFFSET_Y_ADJUST;
+      p->gfx_monitor.gfx_size.y += OFFSET_Y_ADJUST;
   }
 
   return result;
@@ -179,6 +173,10 @@ int handle_msgpump (void)
         break;
         
   	  case SDL_KEYUP:
+			  // fix Caps Lock keypress shown as SDLK_UNKNOWN (scancode = 58)
+			  if (rEvent.key.keysym.scancode == 58 && rEvent.key.keysym.sym == SDLK_UNKNOWN)
+				  rEvent.key.keysym.sym = SDLK_CAPSLOCK;
+
   	    switch(rEvent.key.keysym.sym)
   	    {
   		    case SDLK_LCTRL: // Select key
