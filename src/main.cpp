@@ -201,9 +201,9 @@ void fixup_prefs (struct uae_prefs *p, bool userconfig)
 
 	for (int i = 0; i < MAX_RTG_BOARDS; i++) {
 		struct rtgboardconfig *rbc = &p->rtgboards[i];
-	  if (rbc->rtgmem_size > 0x1000000 && rbc->rtgmem_type == GFXBOARD_UAE_Z3) {
-		  error_log (_T("Graphics card memory size %d (0x%x) larger than maximum reserved %d (0x%x)."), rbc->rtgmem_size, rbc->rtgmem_size, 0x1000000, 0x1000000);
-		  rbc->rtgmem_size = 0x1000000;
+	  if (rbc->rtgmem_size > max_z3fastmem && rbc->rtgmem_type == GFXBOARD_UAE_Z3) {
+		  error_log (_T("Graphics card memory size %d (0x%x) larger than maximum reserved %d (0x%x)."), rbc->rtgmem_size, rbc->rtgmem_size, max_z3fastmem, max_z3fastmem);
+		  rbc->rtgmem_size = max_z3fastmem;
 	    err = 1;
     }
     if ((rbc->rtgmem_size & (rbc->rtgmem_size - 1)) != 0 || (rbc->rtgmem_size != 0 && (rbc->rtgmem_size < 0x100000))) {
@@ -249,11 +249,11 @@ void fixup_prefs (struct uae_prefs *p, bool userconfig)
 		p->chipmem_size = 0x200000;
 	  err = 1;
   }
-	if (p->mbresmem_low_size > 0x01000000 || (p->mbresmem_low_size & 0xfffff)) {
+	if (p->mbresmem_low_size > 0x04000000 || (p->mbresmem_low_size & 0xfffff)) {
 		p->mbresmem_low_size = 0;
 		error_log (_T("Unsupported Mainboard RAM size"));
 	}
-	if (p->mbresmem_high_size > 0x02000000 || (p->mbresmem_high_size & 0xfffff)) {
+	if (p->mbresmem_high_size > 0x08000000 || (p->mbresmem_high_size & 0xfffff)) {
 		p->mbresmem_high_size = 0;
 		error_log (_T("Unsupported CPU Board RAM size."));
 	}

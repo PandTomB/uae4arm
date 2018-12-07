@@ -1869,10 +1869,6 @@ void m68k_go (int may_quit)
 		}
 		if (regs.halted) {
 			cpu_halt (regs.halted);
-			if (regs.halted < 0) {
-				haltloop();
-			  continue;
-      }
 		}
 
     run_func = 

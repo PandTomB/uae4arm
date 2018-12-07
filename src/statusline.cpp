@@ -6,21 +6,12 @@
 
 #include "options.h"
 #include "uae.h"
-#include "memory.h"
-#include "newcpu.h"
-#include "custom.h"
 #include "xwin.h"
 #include "autoconf.h"
 #include "gui.h"
-#include "picasso96.h"
+#include "custom.h"
 #include "drawing.h"
 #include "statusline.h"
-
-extern SDL_Surface *prSDLScreen;
-
-/*
- * Some code to put status information on the screen.
- */
 
 static const char *numbers = { /* ugly  0123456789CHD%+-PNK */
 	"+++++++--++++-+++++++++++++++++-++++++++++++++++++++++++++++++++++++++++++++-++++++-++++----++---+--------------+++++++++++++++++++++"

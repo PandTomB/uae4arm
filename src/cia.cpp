@@ -538,6 +538,8 @@ void CIA_hsync_posthandler (bool ciahsync)
 
 void CIA_vsync_prehandler (void)
 {
+  gui_data.powerled = led;
+  led_filter_audio();
 	CIA_handler ();
 	if (kblostsynccnt > 0) {
 		kblostsynccnt -= maxvpos;
@@ -565,15 +567,9 @@ void CIAA_tod_inc (int cycles)
 STATIC_INLINE void check_led (void)
 {
   uae_u8 v = ciaapra;
-  bool led2;
 
   v |= ~ciaadra; /* output is high when pin's direction is input */
-  led2 = (v & 2) ? 0 : 1;
-  if (led2 != led) {
-    led = led2;
-    gui_data.powerled = led2;
-    led_filter_audio();
-  }
+	led = (v & 2) ? 0 : 1;
 }
 
 static void bfe001_change (void)

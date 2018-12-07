@@ -5641,14 +5641,13 @@ static int mavg (struct mavg_data *md, int newval, int size)
 
 #define MAVG_VSYNC_SIZE 128
 
-static bool framewait (void)
+static void framewait (void)
 {
 	struct amigadisplay *ad = &adisplays;
 	frame_time_t curr_time;
 	frame_time_t start;
   frame_time_t time_for_next_frame = vsynctimebase;
 	int vs = isvsync_chipset ();
-	int status = 0;
 
 	events_reset_syncline();
 
@@ -5687,10 +5686,8 @@ static bool framewait (void)
 			vsynctimeperline = 1;
 
 		frame_shown = true;
-		return 1;
+		return;
 	}
-
-	status = 1;
 
 	int vstb = vsynctimebase;
 
@@ -5751,7 +5748,6 @@ static bool framewait (void)
 		
 		frame_shown = true;
   }
-	return status != 0;
 }
 
 #define FPSCOUNTER_MAVG_SIZE 10
@@ -7410,6 +7406,7 @@ uae_u8 *restore_custom_extra (uae_u8 *src)
 	currprefs.cs_ksmirror_a8 = changed_prefs.cs_ksmirror_a8 = RBB;
 	currprefs.cs_ksmirror_e0 = changed_prefs.cs_ksmirror_e0 = RBB;
 	currprefs.cs_z3autoconfig = changed_prefs.cs_z3autoconfig = RBB;
+	currprefs.cs_bytecustomwritebug = changed_prefs.cs_bytecustomwritebug = RBB;
 
 	currprefs.cs_ciatype[0] = changed_prefs.cs_ciatype[0] = RBB;
 	currprefs.cs_ciatype[1] = changed_prefs.cs_ciatype[1] = RBB;
@@ -7445,6 +7442,8 @@ uae_u8 *save_custom_extra (int *len, uae_u8 *dstptr)
 	SB (currprefs.cs_ksmirror_a8 ? 1 : 0);
 	SB (currprefs.cs_ksmirror_e0 ? 1 : 0);
 	SB (currprefs.cs_z3autoconfig ? 1 : 0);
+
+	SB(currprefs.cs_bytecustomwritebug ? 1 : 0);
 	SB(currprefs.cs_ciatype[0]);
 	SB(currprefs.cs_ciatype[1]);
 
@@ -7477,6 +7476,7 @@ void check_prefs_changed_custom (void)
 	currprefs.cs_ramseyrev = changed_prefs.cs_ramseyrev;
 	currprefs.cs_df0idhw = changed_prefs.cs_df0idhw;
 	currprefs.cs_z3autoconfig = changed_prefs.cs_z3autoconfig;
+	currprefs.cs_bytecustomwritebug = changed_prefs.cs_bytecustomwritebug;
 	currprefs.cs_unmapped_space = changed_prefs.cs_unmapped_space;
 	currprefs.cs_ciatype[0] = changed_prefs.cs_ciatype[0];
 	currprefs.cs_ciatype[1] = changed_prefs.cs_ciatype[1];

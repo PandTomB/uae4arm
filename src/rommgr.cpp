@@ -537,28 +537,28 @@ int load_keyring (struct uae_prefs *p, const TCHAR *path)
   	{
 		case 0:
 			if (path)
-      {
 				_tcscpy (tmp, path);
-  	    _tcscat (tmp, _T("rom.key"));
-  	  }
 			break;
 		case 1:
+	    _tcscat (tmp, _T("rom.key"));
+			break;
+		case 2:
 	    if (p) {
     		_tcscpy (tmp, p->path_rom.path[0]);
     		_tcscat (tmp, _T("rom.key"));
 	    }
     	break;
-	  case 2:
+	  case 3:
 	    _tcscpy (tmp, _T("roms/rom.key"));
     	break;
-  	case 3:
+  	case 4:
 	    _tcscpy (tmp, start_path_data);
 	    _tcscat (tmp, _T("rom.key"));
     	break;
-  	case 4:
+  	case 5:
 	    _stprintf (tmp, _T("%s../shared/rom/rom.key"), start_path_data);
     	break;
-  	case 5:
+  	case 6:
 	    if (p) {
     		for (i = 0; uae_archive_extensions[i]; i++) {
   		    if (_tcsstr (p->romfile, uae_archive_extensions[i]))
@@ -574,7 +574,7 @@ int load_keyring (struct uae_prefs *p, const TCHAR *path)
     		}
 	    }
 	    break;
-	  case 6:
+	  case 7:
 	    return get_keyring ();
   	}
   	cnt++;

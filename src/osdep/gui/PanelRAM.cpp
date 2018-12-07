@@ -29,10 +29,10 @@ static const char *SlowMem_list[] = { "None", "512 K", "1 MB", "1.5 MB", "1.8 MB
 static const int SlowMem_values[] = { 0x000000, 0x080000, 0x100000, 0x180000, 0x1c0000 };
 static const char *FastMem_list[] = { "None", "1 MB", "2 MB", "4 MB", "8 MB", "16 MB", "32 MB", "64 MB", "128 MB" };
 static const int FastMem_values[] = { 0x000000, 0x100000, 0x200000, 0x400000, 0x800000, 0x1000000, 0x2000000, 0x4000000, 0x8000000 };
-static const char *A3000LowMem_list[] = { "None", "8 MB", "16 MB" };
-static const int A3000LowMem_values[] = { 0x080000, 0x800000, 0x1000000 };
-static const char *A3000HighMem_list[] = { "None", "8 MB", "16 MB", "32 MB" };
-static const int A3000HighMem_values[] = { 0x080000, 0x800000, 0x1000000, 0x2000000 };
+static const char *A3000LowMem_list[] = { "None", "8 MB", "16 MB", "32 MB", "64 MB" };
+static const int A3000LowMem_values[] = { 0x080000, 0x800000, 0x1000000, 0x2000000, 0x4000000 };
+static const char *A3000HighMem_list[] = { "None", "8 MB", "16 MB", "32 MB", "64 MB", "128 MB" };
+static const int A3000HighMem_values[] = { 0x080000, 0x800000, 0x1000000, 0x2000000, 0x4000000, 0x8000000 };
 
 static gcn::Window *grpRAM;
 static gcn::Label* lblChipmem;
@@ -104,7 +104,7 @@ static void RefreshPanelRAM(void)
   }
   sldGfxmem->setEnabled(!workprefs.address_space_24);
 
-  for(i = 0; i < 3; ++i) {
+  for(i = 0; i < 5; ++i) {
     if(workprefs.mbresmem_low_size == A3000LowMem_values[i]) {
       sldA3000Lowmem->setValue(i);
       lblA3000Lowsize->setCaption(A3000LowMem_list[i]);
@@ -112,7 +112,7 @@ static void RefreshPanelRAM(void)
     }
   }
 
-  for(i = 0; i < 4; ++i) {
+  for(i = 0; i < 6; ++i) {
     if(workprefs.mbresmem_high_size == A3000HighMem_values[i]) {
       sldA3000Highmem->setValue(i);
       lblA3000Highsize->setCaption(A3000HighMem_list[i]);
@@ -229,7 +229,7 @@ void InitPanelRAM(const struct _ConfigCategory& category)
   lblGfxsize = new gcn::Label("None   ");
 
 	lblA3000Lowmem = new gcn::Label("A4000 Motherb. slot:");
-  sldA3000Lowmem = new gcn::Slider(0, 2);
+  sldA3000Lowmem = new gcn::Slider(0, 4);
   sldA3000Lowmem->setSize(110, SLIDER_HEIGHT);
   sldA3000Lowmem->setBaseColor(gui_baseCol);
 	sldA3000Lowmem->setMarkerLength(20);
@@ -239,7 +239,7 @@ void InitPanelRAM(const struct _ConfigCategory& category)
   lblA3000Lowsize = new gcn::Label("None   ");
 
 	lblA3000Highmem = new gcn::Label("A4000 Proc. board:");
-  sldA3000Highmem = new gcn::Slider(0, 3);
+  sldA3000Highmem = new gcn::Slider(0, 5);
   sldA3000Highmem->setSize(110, SLIDER_HEIGHT);
   sldA3000Highmem->setBaseColor(gui_baseCol);
 	sldA3000Highmem->setMarkerLength(20);
