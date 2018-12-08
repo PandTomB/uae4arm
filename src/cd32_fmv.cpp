@@ -1295,7 +1295,14 @@ static void cd32_fmv_audio_handler(void)
 	if (!fmv_ram_bank.baseaddr)
 		return;
 
-	cd_audio_mode_changed = false;
+	if (cd_audio_mode_changed || (cl450_play && !cda)) {
+	  cd_audio_mode_changed = false;
+		if (cl450_play) {
+			delete cda;
+			cda = new cda_audio(PCM_SECTORS, KJMP2_SAMPLES_PER_FRAME * 4, 44100);
+			l64111_setvolume();
+    }
+  }
 
 	if (cl450_buffer_offset == 0) {
 		if (cl450_buffer_empty_cnt >= 2)
@@ -1454,12 +1461,7 @@ addrbank *cd32_fmv_init (struct autoconfig_info *aci)
 	mapped_malloc(&fmv_ram_bank);
 	if (!pcmaudio)
 		pcmaudio = xcalloc(struct fmv_pcmaudio, L64111_CHANNEL_BUFFERS);
-
 	kjmp2_init(&mp2);
-	if (!cda) {
-		cda = new cda_audio(PCM_SECTORS, KJMP2_SAMPLES_PER_FRAME * 4, 44100);
-		l64111_setvolume();
-	}
 	if (!mpeg_decoder) {
 		mpeg_decoder = mpeg2_init();
 		mpeg_info = mpeg2_info(mpeg_decoder);

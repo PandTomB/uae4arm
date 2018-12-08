@@ -88,16 +88,18 @@ STATIC_INLINE void ICR (uae_u32 data)
 	safe_interrupt_set((data & 0x2000) != 0);
 }
 
-STATIC_INLINE void ICRA(uae_u32 data)
+STATIC_INLINE void ICRA(uae_u32 dummy)
 {
-	ciaaicr |= 0x40;
+	if (ciaaicr & 0x80)
+  	ciaaicr |= 0x40;
 	ciaaicr |= 0x20;
 	ICR (0x0008);
 }
 
-STATIC_INLINE void ICRB(uae_u32 data)
+STATIC_INLINE void ICRB(uae_u32 dummy)
 {
-	ciabicr |= 0x40;
+	if (ciabicr & 0x80)
+	  ciabicr |= 0x40;
 	ciabicr |= 0x20;
 	ICR (0x2000);
 }
@@ -107,7 +109,7 @@ STATIC_INLINE void RethinkICRA (void)
   if (ciaaicr & ciaaimask) {
 		if (!(ciaaicr & 0x80)) {
 			ciaaicr |= 0x80;
-      ICRA (0x0008);
+      ICRA (0);
     }
   }
 }

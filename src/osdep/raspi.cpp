@@ -235,7 +235,7 @@ int handle_msgpump (void)
 
 int main (int argc, char *argv[])
 {
-	printf("UAE4ARM 4.0.1, by TomB\n");
+	printf("UAE4ARM %d.%d.%d, by TomB\n", UAEMAJOR, UAEMINOR, UAESUBREV);
 
   generic_main(argc, argv);
 }

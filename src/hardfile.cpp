@@ -649,10 +649,12 @@ static uae_u64 cmd_read(TrapContext *ctx, struct hardfiledata *hfd, uaecptr data
 		return 0;
 	if (!ctx) {
     addrbank *bank_data = &get_mem_bank (dataptr);
-	  if (!bank_data || !bank_data->check (dataptr, len))
+	  if (!bank_data)
     	return 0;
-    uae_u8 *buffer = bank_data->xlateaddr (dataptr);
-    return cmd_readx (hfd, buffer, offset, len);
+    if (bank_data->check (dataptr, len)) {
+      uae_u8 *buffer = bank_data->xlateaddr (dataptr);
+      return cmd_readx (hfd, buffer, offset, len);
+	  }
 	}
 	int total = 0;
 	while (len > 0) {
@@ -681,10 +683,12 @@ static uae_u64 cmd_write(TrapContext *ctx, struct hardfiledata *hfd, uaecptr dat
 		return 0;
 	if (!ctx) {
     addrbank *bank_data = &get_mem_bank (dataptr);
-	  if (!bank_data || !bank_data->check (dataptr, len))
+	  if (!bank_data)
     	return 0;
-    uae_u8 *buffer = bank_data->xlateaddr (dataptr);
-    return cmd_writex (hfd, buffer, offset, len);
+		if (bank_data->check(dataptr, len)) {
+      uae_u8 *buffer = bank_data->xlateaddr (dataptr);
+      return cmd_writex (hfd, buffer, offset, len);
+	  }
 	}
 	int total = 0;
 	while (len > 0) {
@@ -1584,10 +1588,14 @@ static int handle_scsi (TrapContext *ctx, uae_u8 *iobuf, uaecptr request, struct
 		trap_put_bytes(ctx, sd->reply, scsi_data, sd->reply_len);
 	}
 	if (scsi_sense) {
-		trap_put_bytes(ctx, sd->sense, scsi_sense, sd->sense_len < scsi_sense_len ? sd->sense_len : scsi_sense_len);
+		int slen = sd->sense_len < scsi_sense_len ? sd->sense_len : scsi_sense_len;
+		trap_put_bytes(ctx, sd->sense, scsi_sense, slen);
 		if (scsi_sense_len > sd->sense_len) {
 			trap_set_bytes(ctx, scsi_sense + sd->sense_len, 0, scsi_sense_len - sd->sense_len);
 		}
+		put_word_host(scsicmd + 28, slen); /* scsi_SenseActual */
+	} else {
+		put_word_host(scsicmd + 28, 0);
 	}
 	if (sd->data_len < 0) {
 		put_long_host(scsicmd + 8, 0); /* scsi_Actual */
@@ -2062,6 +2070,7 @@ static uae_u32 hardfile_do_io (TrapContext *ctx, struct hardfiledata *hfd, struc
 		} else { /* we don't want users trashing their "partition" hardfiles with hdtoolbox */
 			error = handle_scsi(ctx, iobuf, request, hfd, hfpd->sd, true);
 		}
+		actual = 30; // sizeof(struct SCSICmd)
   	break;
 #endif
 

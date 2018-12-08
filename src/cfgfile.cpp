@@ -85,8 +85,8 @@ static const TCHAR *joyaf[] = { _T("none"), _T("normal"), _T("toggle"), _T("alwa
 static const TCHAR *cdmodes[] = { _T("disabled"), _T(""), _T("image"), 0 };
 static const TCHAR *waitblits[] = { _T("disabled"), _T("automatic"), _T("noidleonly"), _T("always"), 0 };
 static const TCHAR *autoext2[] = { _T("disabled"), _T("copy"), _T("replace"), 0 };
-static const TCHAR *leds[] = { _T("power"), _T("df0"), _T("df1"), _T("df2"), _T("df3"), _T("hd"), _T("cd"), _T("fps"), _T("cpu"), _T("snd"), _T("md"), 0 };
-static const int leds_order[] = { 3, 6, 7, 8, 9, 4, 5, 2, 1, 0, 9 };
+static const TCHAR *leds[] = { _T("power"), _T("df0"), _T("df1"), _T("df2"), _T("df3"), _T("hd"), _T("cd"), _T("fps"), _T("cpu"), _T("snd"), _T("md"), _T("net"), 0 };
+static const int leds_order[] = { 3, 6, 7, 8, 9, 4, 5, 2, 1, 0, 9, 10 };
 static const TCHAR *unmapped[] = { _T("floating"), _T("zero"), _T("one"), 0 };
 static const TCHAR *ciatype[] = { _T("default"), _T("391078-01"), 0 };
 
@@ -921,6 +921,7 @@ static void cfgfile_write_board_rom(struct uae_prefs *prefs, struct zfile *f, st
 	if (!ert)
 		return;
 	for (int i = 0; i < MAX_BOARD_ROMS; i++) {
+		struct romconfig *rc = &br->roms[i];
 		if (br->device_num == 0)
 			_tcscpy(name, ert->name);
 		else
@@ -928,13 +929,13 @@ static void cfgfile_write_board_rom(struct uae_prefs *prefs, struct zfile *f, st
 		if (i == 0 || _tcslen(br->roms[i].romfile)) {
 			_stprintf(buf, _T("%s%s_rom_file"), name, i ? _T("_ext") : _T(""));
 			cfgfile_write_rom (f, mp, br->roms[i].romfile, buf);
-			if (br->roms[i].romident[0]) {
+			if (rc->romident[0]) {
 				_stprintf(buf, _T("%s%s_rom"), name, i ? _T("_ext") : _T(""));
-				cfgfile_dwrite_str (f, buf, br->roms[i].romident);
+				cfgfile_dwrite_str (f, buf, rc->romident);
 			}
-			if (br->roms[i].board_ram_size) {
+			if (rc->board_ram_size) {
 				_stprintf(buf, _T("%s%s_mem_size"), name, i ? _T("_ext") : _T(""));
-				cfgfile_write(f, buf, _T("%d"), br->roms[i].board_ram_size / 0x40000);
+				cfgfile_write(f, buf, _T("%d"), rc->board_ram_size / 0x40000);
 			}
 		}
 	}
@@ -1769,6 +1770,10 @@ static int cfgfile_parse_host (struct uae_prefs *p, TCHAR *option, TCHAR *value)
 						*next2++ = 0;
 					cfgfile_intval (option, next, tmp, &unitnum, 1);
 				}
+				if (value[0] == 0 || !_tcsicmp(value, _T("empty")) || !_tcscmp(value, _T("."))) {
+					value[0] = 0;
+					p->cdslots[i].name[0] = 0;
+				}
 				if (_tcslen (value) > 0) {
 					_tcsncpy (p->cdslots[i].name, value, sizeof p->cdslots[i].name / sizeof (TCHAR));
 				}
@@ -1840,7 +1845,7 @@ static int cfgfile_parse_host (struct uae_prefs *p, TCHAR *option, TCHAR *value)
 	}
 
 	if (_tcscmp (option, _T("gfx_linemode")) == 0) {
-		int v;
+		int v = 0;
 		p->gfx_vresolution = VRES_DOUBLE;
 		if (cfgfile_strval(option, value, _T("gfx_linemode"), &v, linemode, 0)) {
 			p->gfx_vresolution = VRES_NONDOUBLE;
@@ -3021,8 +3026,11 @@ static int cfgfile_parse_hardware (struct uae_prefs *p, const TCHAR *option, TCH
 
   for (i = 0; i < 4; i++) {
 	  _stprintf (tmpbuf, _T("floppy%d"), i);
-	  if (cfgfile_string(option, value, tmpbuf, p->floppyslots[i].df, sizeof p->floppyslots[i].df / sizeof (TCHAR)))
+		if (cfgfile_string(option, value, tmpbuf, p->floppyslots[i].df, sizeof p->floppyslots[i].df / sizeof(TCHAR))) {
+			if (!_tcscmp(p->floppyslots[i].df, _T(".")))
+				p->floppyslots[i].df[0] = 0;
 	    return 1;
+		}
   }
 
   if (cfgfile_intval (option, value, _T("chipmem_size"), &dummyint, 1)) {

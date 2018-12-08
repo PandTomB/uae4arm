@@ -514,12 +514,21 @@ static int get_floppy_speed (void)
   return m;
 }
 
-static int get_floppy_speed2 (drive *drv)
+static int get_floppy_speed_from_image(drive *drv)
 {
-  int m = get_floppy_speed () * drv->tracklen / (2 * 8 * FLOPPY_WRITE_LEN * drv->ddhd);
-  if (m <= 0)
-  	m = 1;
-  return m;
+	int l, m;
+	
+	l = drv->tracklen;
+	m = get_floppy_speed () * l / (2 * 8 * FLOPPY_WRITE_LEN * drv->ddhd);
+
+	// 4us track?
+	if (l < (FLOPPY_WRITE_LEN_PAL * 8) * 4 / 6)
+		m *= 2;
+
+	if (m <= 0)
+		m = 1;
+
+	return m;
 }
 
 /* Simulate exact behaviour of an A3000T 3.5 HD disk drive.
@@ -553,8 +562,9 @@ static void drive_settype_id (drive *drv)
 	    drv->drive_id = DRIVE_ID_525SD;
 	    break;
     case DRV_NONE:
-	  case DRV_PC_ONLY_40:
-	  case DRV_PC_ONLY_80:
+	  case DRV_PC_525_ONLY_40:
+	  case DRV_PC_525_40_80:
+	  case DRV_PC_35_ONLY_80:
 	    drv->drive_id = DRIVE_ID_NONE;
 	    break;
   }
@@ -591,7 +601,8 @@ static void reset_drive_gui(int num)
 
 static bool ispcbridgedrive(int num)
 {
-	return currprefs.floppyslots[num].dfxtype == DRV_PC_ONLY_40  || currprefs.floppyslots[num].dfxtype == DRV_PC_ONLY_80;
+	int type = currprefs.floppyslots[num].dfxtype;
+	return type == DRV_PC_525_ONLY_40 || type == DRV_PC_35_ONLY_80 || type == DRV_PC_525_40_80;
 }
 
 static void reset_drive(int num)
@@ -1128,32 +1139,35 @@ static int drive_insert (drive * drv, struct uae_prefs *p, int dnum, const TCHAR
 		size == 9 * 82 * 1 * 512 || size == 18 * 82 * 1 * 512 || size == 10 * 82 * 1 * 512 || size == 20 * 82 * 1 * 512)) {
     	/* PC formatted image */
 			int side, sd;
+			int dfxtype = p->floppyslots[dnum].dfxtype;
 
 			drv->num_secs = 9;
 			drv->ddhd = 1;
 			sd = 0;
 
-			bool can40 = p->floppyslots[dnum].dfxtype == DRV_525_DD || p->floppyslots[dnum].dfxtype == DRV_PC_ONLY_40;
+			bool can40 = dfxtype == DRV_525_DD || dfxtype == DRV_PC_525_ONLY_40 || dfxtype == DRV_PC_525_40_80;
+			bool can80 = dfxtype == DRV_35_HD || dfxtype == DRV_PC_35_ONLY_80 || dfxtype == DRV_PC_525_40_80;
+			bool drv525 = dfxtype == DRV_525_DD || dfxtype == DRV_PC_525_ONLY_40 || dfxtype == DRV_PC_525_40_80;
 
 		  for (side = 2; side > 0; side--) {
-				if (drv->hard_num_cyls >= 80 && !can40) {
+				if (drv->hard_num_cyls >= 80 && can80) {
 			    if (       size ==  9 * 80 * side * 512 || size ==  9 * 81 * side * 512 || size ==  9 * 82 * side * 512) {
       	    drv->num_secs = 9;
       	    drv->ddhd = 1;
 				    break;
-			    } else if (size == 18 * 80 * side * 512 || size == 18 * 81 * side * 512 || size == 18 * 82 * side * 512) {
+					} else if (!drv525 && (size == 18 * 80 * side * 512 || size == 18 * 81 * side * 512 || size == 18 * 82 * side * 512)) {
       	    drv->num_secs = 18;
       	    drv->ddhd = 2;
 				    break;
-			    } else if (size == 10 * 80 * side * 512 || size == 10 * 81 * side * 512 || size == 10 * 82 * side * 512) {
+					} else if (!drv525 && (size == 10 * 80 * side * 512 || size == 10 * 81 * side * 512 || size == 10 * 82 * side * 512)) {
 	          drv->num_secs = 10;
 	          drv->ddhd = 1;
 				    break;
-			    } else if (size == 20 * 80 * side * 512 || size == 20 * 81 * side * 512 || size == 20 * 82 * side * 512) {
+					} else if (!drv525 && (size == 20 * 80 * side * 512 || size == 20 * 81 * side * 512 || size == 20 * 82 * side * 512)) {
 	          drv->num_secs = 20;
 	          drv->ddhd = 2;
 					  break;
-				  } else if (size == 21 * 80 * side * 512 || size == 21 * 81 * side * 512 || size == 21 * 82 * side * 512) {
+					} else if (!drv525 && (size == 21 * 80 * side * 512 || size == 21 * 81 * side * 512 || size == 21 * 82 * side * 512)) {
 					  drv->num_secs = 21;
 					  drv->ddhd = 2;
 					  break;
@@ -1772,7 +1786,7 @@ static void drive_fill_bigbuf (drive * drv, int force)
     memset (drv->bigmfmbuf, 0, FLOPPY_WRITE_LEN * 2 * drv->ddhd);
   }
 
-  drv->trackspeed = get_floppy_speed2 (drv);
+  drv->trackspeed = get_floppy_speed_from_image (drv);
   updatemfmpos (drv);
 }
 
@@ -2256,7 +2270,7 @@ bool disk_creatediskfile (struct uae_prefs *p, const TCHAR *name, int type, driv
     tracks = 2 * 80;
   file_size = 880 * 1024;
   sectors = 11;
-	if (adftype == DRV_PC_ONLY_40 || adftype == DRV_PC_ONLY_80) {
+	if (adftype == DRV_PC_525_ONLY_40 || adftype == DRV_PC_35_ONLY_80 || adftype == DRV_PC_525_40_80) {
 	  file_size = 720 * 1024;
 	  sectors = 9;
   }
@@ -2268,7 +2282,10 @@ bool disk_creatediskfile (struct uae_prefs *p, const TCHAR *name, int type, driv
 	  file_size *= 2;
 	  track_len *= 2;
 		ddhd = 2;
-	} else if (adftype == DRV_PC_ONLY_40) {
+		if (adftype == DRV_PC_525_40_80) {
+			file_size = 15 * 512 * 80 * 2;
+		}
+	} else if (adftype == DRV_PC_525_ONLY_40) {
     file_size /= 2;
     tracks /= 2;
   }
@@ -2737,7 +2754,7 @@ static void fetchnextrevolution (drive *drv)
 {
 	if (drv->revolution_check)
 		return;
-  drv->trackspeed = get_floppy_speed2 (drv);
+  drv->trackspeed = get_floppy_speed_from_image (drv);
 	drv->revolution_check = 2;
   if (!drv->multi_revolution)
   	return;
@@ -2856,7 +2873,7 @@ static void updatetrackspeed (drive *drv, int mfmpos)
 {
 	if (dskdmaen < DSKDMA_WRITE) {
 		int t = drv->tracktiming[mfmpos / 8];
-		int ts = get_floppy_speed2 (drv) * t / 1000;
+		int ts = get_floppy_speed_from_image (drv) * t / 1000;
   	if (ts < 700 || ts > 3000) {
 		} else {
 			drv->trackspeed = ts;
@@ -2997,7 +3014,7 @@ static void wordsync_detected(bool startup)
       dma_enable = 1;
 		INTREQ (0x8000 | 0x1000);
   }
-	if (adkcon & 0x0400) {
+	if (adkcon & 0x0400) { // WORDSYNC
 		bitoffset = 15;
 	}
 }
@@ -3023,8 +3040,11 @@ static void disk_doupdate_read (drive * drv, int floppybits)
 	mfmbuf[7] = 0x4444;
 	*/
   while (floppybits >= drv->trackspeed) {
+		bool skipbit = false;
+
     if (drv->tracktiming[0])
       updatetrackspeed (drv, drv->mfmpos);
+
     word <<= 1;
 
     if (!drive_empty (drv)) {
@@ -3033,6 +3053,7 @@ static void disk_doupdate_read (drive * drv, int floppybits)
       else
   	    word |= getonebit (drv->bigmfmbuf, drv->mfmpos);
     }
+
 		if (doreaddma () < 0) {
 			word >>= 1;
 			return;
@@ -3064,14 +3085,34 @@ static void disk_doupdate_read (drive * drv, int floppybits)
 				}
 			}
 	  }
-  	if ((bitoffset & 7) == 7) {
+
+		// MSBSYNC
+		if (adkcon & 0x200) {
+			if ((word & 0x0001) == 0 && bitoffset == 0) {
+				word = 0;
+				skipbit = true;
+			}
+			if ((word & 0x0001) == 0 && bitoffset == 8) {
+				word >>= 1;
+				skipbit = true;
+			}
+		}
+
+		if (!skipbit && (bitoffset & 7) == 7) {
 	    dskbytr_val = word & 0xff;
 	    dskbytr_val |= 0x8000;
   	}
-		if (word == dsksync)
+
+		// WORDSYNC
+		if (!(adkcon & 0x200) && word == dsksync) {
 			wordsync_detected(false);
-	  bitoffset++;
-	  bitoffset &= 15;
+		}
+
+		if (!skipbit) {
+	    bitoffset++;
+	    bitoffset &= 15;
+		}
+
 	  floppybits -= drv->trackspeed;
   }
 }
@@ -3792,7 +3833,7 @@ uae_u8 *restore_disk(int num,uae_u8 *src)
 		s = restore_path_full();
 	}
   _tcscpy (old, currprefs.floppyslots[num].df);
-  _tcsncpy(changed_prefs.floppyslots[num].df, s,255);
+  _tcsncpy(changed_prefs.floppyslots[num].df, s, MAX_DPATH);
   xfree (s);
 
   newis = changed_prefs.floppyslots[num].df[0] ? 1 : 0;
@@ -3884,9 +3925,11 @@ uae_u8 *save_disk2 (int num, int *len, uae_u8 *dstptr)
 	int size = 0;
 	if (drv->motoroff == 0 && drv->buffered_side >= 0 && drv->tracklen > 0) {
 		m = 1;
-		if (drv->tracktiming[0])
-			m |= 2;
 		size += ((drv->tracklen + 15) * 2) / 8;
+		if (drv->tracktiming[0]) {
+			m |= 2;
+			size *= 2;
+		}
 	}
 	if (!m)
 		return NULL;

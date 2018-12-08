@@ -1137,7 +1137,7 @@ static bool mmu_op30_invea(uae_u32 opcode)
 	int rreg = opcode & 7;
 
 	// Dn, An, (An)+, -(An), immediate and PC-relative not allowed
-	if (eamode == 0 || eamode == 1 || eamode == 3 || eamode == 4 || eamode == 6 || (eamode == 7 && rreg > 1))
+	if (eamode == 0 || eamode == 1 || eamode == 3 || eamode == 4 || (eamode == 7 && rreg > 1))
 		return true;
 	return false;
 }
@@ -2141,7 +2141,7 @@ void exception3b (uae_u32 opcode, uaecptr addr, bool w, bool i, uaecptr pc)
 	exception3f (opcode, addr, w, i, false, pc, true);
 }
 
-void exception2 (uaecptr addr, bool read, int size, uae_u32 fc)
+void exception2_setup(uaecptr addr, bool read, int size, uae_u32 fc)
 {
 	last_addr_for_exception_3 = m68k_getpc();
 	last_fault_for_exception_3 = addr;
@@ -2149,6 +2149,11 @@ void exception2 (uaecptr addr, bool read, int size, uae_u32 fc)
 	last_instructionaccess_for_exception_3 = (fc & 1) == 0;
 	last_op_for_exception_3 = regs.opcode;
 	last_notinstruction_for_exception_3 = exception_in_exception != 0;
+}
+
+void exception2 (uaecptr addr, bool read, int size, uae_u32 fc)
+{
+	exception2_setup(addr, read, size, fc);
 	THROW(2);
 }
 

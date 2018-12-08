@@ -1086,8 +1086,9 @@ addrbank z3fastmem_bank[MAX_RAM_BOARDS] =
 
 static addrbank *expamem_map_fastcard(struct autoconfig_info *aci)
 {
+	int devnum = aci->devnum;
 	uae_u32 start = ((expamem_hi | (expamem_lo >> 4)) << 16);
-	addrbank *ab = &fastmem_bank[aci->devnum];
+	addrbank *ab = &fastmem_bank[devnum];
 	if (start == 0x00ff0000)
 		return ab;
 	uae_u32 size = ab->allocated_size;
@@ -1404,8 +1405,9 @@ static addrbank *expamem_map_z3fastmem (struct autoconfig_info *aci)
 	uaecptr z3fs = expamem_board_pointer;
 	uae_u32 size = currprefs.z3fastmem[devnum].size;
 
-	if (ab->allocated_size)
+	if (ab->allocated_size) {
 		map_banks_z3(ab, z3fs >> 16, size >> 16);
+  }
 	return ab;
 }
 

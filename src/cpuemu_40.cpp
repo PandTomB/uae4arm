@@ -21680,7 +21680,8 @@ uae_u32 REGPARAM2 CPUFUNC(op_8148_40)(uae_u32 opcode)
 	m68k_areg (regs, srcreg) -= areg_byteinc[srcreg];
 	val = (uae_u16)(get_byte_jit (m68k_areg (regs, srcreg)) & 0xff);
 	m68k_areg (regs, srcreg) -= areg_byteinc[srcreg];
-	val = (val | ((uae_u16)(get_byte_jit (m68k_areg (regs, srcreg)) & 0xff) << 8)) + get_diword (2);
+	val = val | ((uae_u16)(get_byte_jit (m68k_areg (regs, srcreg)) & 0xff) << 8);
+	val += get_diword (2);
 	m68k_areg (regs, dstreg) -= areg_byteinc[dstreg];
 	put_byte_jit (m68k_areg (regs, dstreg),((val >> 4) & 0xf0) | (val & 0xf));
 }	m68k_incpc (4);
@@ -21819,7 +21820,8 @@ uae_u32 REGPARAM2 CPUFUNC(op_8180_40)(uae_u32 opcode)
 	uae_u32 srcreg = (opcode & 7);
 	uae_u32 dstreg = (opcode >> 9) & 7;
 {	uae_u16 val = m68k_dreg (regs, srcreg);
-	val = (((val << 4) & 0xf00) | (val & 0xf)) + get_diword (2);
+	val = ((val << 4) & 0xf00) | (val & 0xf);
+	val += get_diword (2);
 	m68k_dreg (regs, dstreg) = (m68k_dreg (regs, dstreg) & 0xffff0000) | (val & 0xffff);
 }	m68k_incpc (4);
 return 9 * CYCLE_UNIT / 2;

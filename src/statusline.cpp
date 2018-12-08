@@ -82,7 +82,7 @@ void draw_status_line_single (uae_u8 *buf, int y, int totalwidth)
 
 		pen_rgb = c1;
 		if (led >= LED_DF0 && led <= LED_DF3) {
-			int pled = led - LED_DF0;
+			int pled = currprefs.nr_floppies - (led - LED_DF0) - 1;
 			int track = gui_data.drive_track[pled];
 			on_rgb = 0x0c0;
 			on_rgb2 = 0x060;

@@ -87,6 +87,8 @@ struct cdunit {
 	TCHAR imgname_out[MAX_DPATH];
 	uae_sem_t sub_sem;
 	struct device_info di;
+	volatile int cda_bufon[2];
+	cda_audio *cda;
 };
 
 static struct cdunit cdunits[MAX_TOTAL_SCSI_DEVICES];
@@ -379,12 +381,9 @@ static void audio_unpack (struct cdunit *cdu, struct cdtoc *t)
 		sleep_millis(10);
 }
 
-static volatile int cda_bufon[2];
-static cda_audio *cda;
-
 static bool cdda_play_func2 (struct cdunit *cdu, int *outpos)
 {
-	int cdda_pos;
+	int cdda_pos = cdu->cdda_start;
 	int bufnum;
 	int oldplay;
 	int idleframes = 0;
@@ -399,10 +398,10 @@ static bool cdda_play_func2 (struct cdunit *cdu, int *outpos)
 		sleep_millis(10);
 	oldplay = -1;
 
-	cda_bufon[0] = cda_bufon[1] = 0;
+	cdu->cda_bufon[0] = cdu->cda_bufon[1] = 0;
 	bufnum = 0;
 
-	cda = new cda_audio (CDDA_BUFFERS, 2352, 44100);
+	cdu->cda = new cda_audio (CDDA_BUFFERS, 2352, 44100);
 
 	while (cdu->cdda_play > 0) {
 
@@ -496,9 +495,9 @@ static bool cdda_play_func2 (struct cdunit *cdu, int *outpos)
 			}
 		}
 
-	  cda->wait(bufnum);
+	  cdu->cda->wait(bufnum);
 
-		cda_bufon[bufnum] = 0;
+		cdu->cda_bufon[bufnum] = 0;
 		if (cdu->cdda_play <= 0)
 			goto end;
 
@@ -517,10 +516,10 @@ static bool cdda_play_func2 (struct cdunit *cdu, int *outpos)
 
 			setstate(cdu, AUDIO_STATUS_IN_PROGRESS, cdda_pos);
 
-			memset (cda->buffers[bufnum], 0, CDDA_BUFFERS * 2352);
+			memset (cdu->cda->buffers[bufnum], 0, CDDA_BUFFERS * 2352);
 
 			for (cnt = 0; cnt < CDDA_BUFFERS && cdu->cdda_play > 0; cnt++) {
-				uae_u8 *dst = cda->buffers[bufnum] + cnt * 2352;
+				uae_u8 *dst = cdu->cda->buffers[bufnum] + cnt * 2352;
 				uae_u8 subbuf[SUB_CHANNEL_SIZE];
 				sector = cdda_pos;
 
@@ -585,9 +584,9 @@ static bool cdda_play_func2 (struct cdunit *cdu, int *outpos)
 			if (idleframes <= 0)
 				cdu->cd_last_pos = cdda_pos;
 
-		  cda_bufon[bufnum] = 1;
-		  cda->setvolume (cdu->cdda_volume[0], cdu->cdda_volume[1]);
-		  if (!cda->play (bufnum)) {
+		  cdu->cda_bufon[bufnum] = 1;
+		  cdu->cda->setvolume (cdu->cdda_volume[0], cdu->cdda_volume[1]);
+		  if (!cdu->cda->play (bufnum)) {
 			  if (cdu->cdda_play > 0)
 					setstate (cdu, AUDIO_STATUS_PLAY_ERROR, -1);
 			  goto end;
@@ -602,7 +601,7 @@ static bool cdda_play_func2 (struct cdunit *cdu, int *outpos)
 
 		}
 
-		if (cda_bufon[0] == 0 && cda_bufon[1] == 0) {
+		if (cdu->cda_bufon[0] == 0 && cdu->cda_bufon[1] == 0) {
 			while (cdu->cdda_paused && cdu->cdda_play == oldplay)
 				sleep_millis(10);
 		}
@@ -617,13 +616,13 @@ static bool cdda_play_func2 (struct cdunit *cdu, int *outpos)
 
 end:
 	*outpos = cdda_pos;
-  cda->wait (0);
-  cda->wait (1);
+  cdu->cda->wait (0);
+  cdu->cda->wait (1);
 
 	while (cdimage_unpack_active == 1)
 		sleep_millis(10);
 
-	delete cda;
+	delete cdu->cda;
 
 	write_log (_T("IMAGE CDDA: thread killed (%s)\n"), restart ? _T("restart") : _T("play end"));
 	cd_audio_mode_changed = false;
@@ -2017,8 +2016,8 @@ static int open_device (int unitnum, const TCHAR *ident, int flags)
 		if (ident) {
 			_tcscpy(cdu->imgname_in, ident);
 			cfgfile_resolve_path_out_load(cdu->imgname_in, cdu->imgname_out, MAX_DPATH, PATH_CD);
+			parse_image(cdu, cdu->imgname_out);
     }
-		parse_image (cdu, ident);
 		cdu->open = true;
 		cdu->enabled = true;
 		cdu->cdda_volume[0] = 0x7fff;
@@ -2031,7 +2030,7 @@ static int open_device (int unitnum, const TCHAR *ident, int flags)
 		}
 		ret = 1;
 	}
-	blkdev_cd_change (unitnum, cdu->imgname_in);
+	blkdev_cd_change (unitnum, cdu->imgname_out);
 	return ret;
 }
 
@@ -2053,7 +2052,7 @@ static void close_device (int unitnum)
 		unload_image (cdu);
 		uae_sem_destroy (&cdu->sub_sem);
 	}
-	blkdev_cd_change (unitnum, cdu->imgname_in);
+	blkdev_cd_change (unitnum, cdu->imgname_out);
 }
 
 static void close_bus (void)

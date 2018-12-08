@@ -68,7 +68,7 @@ static uae_sem_t render_sem = 0;
 static bool volatile render_thread_busy = false;
 
 extern int sprite_buffer_res;
-int lores_shift;
+int lores_shift, shres_shift;
 
 static void pfield_set_linetoscr(void);
 
@@ -76,8 +76,10 @@ static void lores_set(int lores)
 {
 	int old = lores_shift;
 	lores_shift = lores;
-	if (lores_shift != old)
+	if (lores_shift != old || shres_shift != RES_MAX - lores) {
+		shres_shift = RES_MAX - lores;
 		pfield_set_linetoscr();
+	}
 }
 
 static void lores_reset (void)
@@ -119,8 +121,9 @@ static int sprite_offs[256];
 xcolnr xcolors[4096];
 
 struct spritepixelsbuf {
-	uae_u8 attach;
+	bool attach;
 	uae_u8 stdata;
+	uae_u16 stfmdata;
 	uae_u16 data;
 };
 static struct spritepixelsbuf spritepixels_buffer[MAX_PIXELS_PER_LINE];
@@ -143,15 +146,14 @@ static xcolnr *p_xcolors;
    than enough".  The coordinates used for indexing into these arrays are
    almost, but not quite, Amiga coordinates (there's a constant offset).  */
 static union pixdata_u {
+	uae_u64 apixels_q[MAX_PIXELS_PER_LINE * 2 / sizeof(uae_u64)];
+	uae_u32 apixels_l[MAX_PIXELS_PER_LINE * 2 / sizeof(uae_u32)];
   uae_u8 apixels[MAX_PIXELS_PER_LINE * 2];
-  uae_u16 apixels_w[MAX_PIXELS_PER_LINE * 2 / sizeof (uae_u16)];
-  uae_u32 apixels_l[MAX_PIXELS_PER_LINE * 2 / sizeof (uae_u32)];
 } pixdata;
 
 uae_u16 spixels[2 * MAX_SPR_PIXELS];
 
-/* Eight bits for every pixel.  */
-union sps_union spixstate;
+struct sprite_stb spixstate;
 
 static uae_u16 ham_linebuf[MAX_PIXELS_PER_LINE * 2];
 
@@ -163,7 +165,7 @@ static uae_u8 row_tmp[MAX_PIXELS_PER_LINE * 32 / 8];
 static int max_drawn_amiga_line;
 
 /* line_draw_funcs: pfield_do_linetoscr, pfield_do_fill_line, decode_ham */
-typedef void (*line_draw_func)(int, int, bool);
+typedef void (*line_draw_func)(int, int, int);
 
 static bool screenlocked = false;
 static int next_line_to_render = 0;
@@ -193,6 +195,7 @@ static int plf1pri, plf2pri, bplxor, bpland, bpldelay_sh;
 static uae_u32 plf_sprite_mask;
 static int sbasecol[2] = { 16, 16 };
 static int hposblank;
+static bool sprite_smaller_than_64;
 
 static void set_inhibit_frame (int bit)
 {
@@ -273,13 +276,14 @@ static int src_pixel;
 /* How many pixels in window coordinates which are to the left of the left border.  */
 static int unpainted;
 
-STATIC_INLINE xcolnr getbgc (bool blank)
+STATIC_INLINE xcolnr getbgc (int blank)
 {
-	return (blank || hposblank || ce_is_borderblank(colors_for_drawing.extra)) ? 0 : colors_for_drawing.acolors[0];
+	return (blank >= 0 && (blank > 0 || hposblank || ce_is_borderblank(colors_for_drawing.extra))) ? 0 : colors_for_drawing.acolors[0];
 }
 
-static void set_res_shift(int shift)
+static void set_res_shift(void)
 {
+	int shift = lores_shift - bplres;
 	int old = res_shift;
 	res_shift = shift;
 	if (res_shift != old)
@@ -307,9 +311,11 @@ static void pfield_init_linetoscr (bool border)
 
 	// Blerkenwiegel/Scoopex workaround
 	native_ddf_left2 = native_ddf_left;
+
 	if (native_ddf_left < 0)
 		native_ddf_left = 0;
-
+	if (native_ddf_right > MAX_PIXELS_PER_LINE)
+		native_ddf_right = MAX_PIXELS_PER_LINE;
 	if (native_ddf_right < native_ddf_left)
 		native_ddf_right = native_ddf_left;
 
@@ -320,7 +326,7 @@ static void pfield_init_linetoscr (bool border)
 	if (linetoscr_diw_end < linetoscr_diw_start)
 		linetoscr_diw_end = linetoscr_diw_start;
 
-	set_res_shift(lores_shift - bplres);
+	set_res_shift();
 
 	playfield_start = linetoscr_diw_start;
 	playfield_end = linetoscr_diw_end;
@@ -428,8 +434,8 @@ static void pfield_init_linetoscr (bool border)
 	ddf_left -= DISPLAY_LEFT_SHIFT;
 	if (ddf_left < 0)
 		ddf_left = 0;
-	pixels_offset = MAX_PIXELS_PER_LINE - (ddf_left << bplres);
 	ddf_left <<= bplres;
+	pixels_offset = MAX_PIXELS_PER_LINE - ddf_left;
 
   leftborderhidden = playfield_start - native_ddf_left2;
 	src_pixel = MAX_PIXELS_PER_LINE + res_shift_from_window (leftborderhidden);
@@ -497,7 +503,7 @@ static void pfield_erase_vborder_sprites (void)
 }
 
 
-STATIC_INLINE void fill_line_16 (uae_u8 *buf, int start, int stop, bool blank)
+STATIC_INLINE void fill_line_16 (uae_u8 *buf, int start, int stop, int blank)
 {
 	uae_u16 *b = (uae_u16 *)buf;
 	unsigned int i;
@@ -519,7 +525,7 @@ STATIC_INLINE void fill_line_16 (uae_u8 *buf, int start, int stop, bool blank)
 		b[stop] = (uae_u16)col;
 }
 
-static void pfield_do_fill_line (int start, int stop, bool blank)
+static void pfield_do_fill_line (int start, int stop, int blank)
 {
 	if (stop <= start)
 		return;
@@ -539,7 +545,7 @@ static void fill_line2 (int startpos, int len)
 	nrem = nints & 7;
 	nints &= ~7;
 	start = (int *)(((uae_u8*)xlinebuffer) + (startpos << shift));
-	val = getbgc (false);
+	val = getbgc (0);
 	for (; nints > 0; nints -= 8, start += 8) {
 		*start = val;
 		*(start+1) = val;
@@ -599,6 +605,13 @@ static uae_u8 render_sprites (int pos, int dualpf, uae_u8 apixel, int aga)
 	unsigned int v = spb->data;
 	int *shift_lookup = dualpf ? (bpldualpfpri ? dblpf_ms2 : dblpf_ms1) : dblpf_ms;
 	int maskshift, plfmask;
+
+	// If 64 pixel wide sprite and FMODE gets lowered when sprite's
+	// first 32 pixels are being drawn: matching pixel(s) in second
+	// 32 pixel part gets blanked.
+	if (aga && spb->stfmdata && sprite_smaller_than_64) {
+		spb[32 << currprefs.gfx_resolution].data &= ~spb->stfmdata;
+	}
 
 	// shdelay hack, above &spritepixels[pos] is correct. 
 	pos += sprite_shdelay;
@@ -775,11 +788,11 @@ static call_linetoscr pfield_do_linetoscr_normal;
 static call_linetoscr pfield_do_linetoscr_sprite;
 static call_linetoscr pfield_do_linetoscr_spriteonly;
 
-static void pfield_do_linetoscr(int start, int stop, bool blank)
+static void pfield_do_linetoscr(int start, int stop, int blank)
 {
 	src_pixel = pfield_do_linetoscr_normal(src_pixel, start, stop);
 }
-static void pfield_do_linetoscr_spr(int start, int stop, bool blank)
+static void pfield_do_linetoscr_spr(int start, int stop, int blank)
 {
 	src_pixel = pfield_do_linetoscr_sprite(src_pixel, start, stop);
 }
@@ -798,8 +811,8 @@ static int pfield_do_linetoscr_normal_shdelay(int spix, int dpix, int dpix_end)
 	int add = get_shdelay_add();
 	int add2 = add * vidinfo->drawbuffer.pixbytes;
 	if (add) {
-		// Clear skipped pixel(s).
-		pfield_do_linetoscr_shdelay_sprite(spix, dpix, dpix + add);
+		// Fill skipped pixel(s).
+		pfield_do_linetoscr_shdelay_sprite(spix - 1, dpix, dpix + add);
 	}
 	xlinebuffer += add2;
 	int out = pfield_do_linetoscr_shdelay_normal(spix, dpix, dpix_end);
@@ -825,7 +838,7 @@ static int pfield_do_linetoscr_sprite_shdelay(int spix, int dpix, int dpix_end)
 	int add = get_shdelay_add();
 	int add2 = add * vidinfo->drawbuffer.pixbytes;
 	if (add) {
-		pfield_do_linetoscr_shdelay_sprite(out, dpix, dpix + add);
+		pfield_do_linetoscr_shdelay_sprite(out - 1, dpix, dpix + add);
 	}
 	sprite_shdelay = add;
 	spritepixels += add;
@@ -902,7 +915,7 @@ static void pfield_set_linetoscr (void)
 }
 
 // left or right AGA border sprite
-static void pfield_do_linetoscr_bordersprite_aga (int start, int stop, bool blank)
+static void pfield_do_linetoscr_bordersprite_aga (int start, int stop, int blank)
 {
 	if (blank) {
 		pfield_do_fill_line (start, stop, blank);
@@ -911,7 +924,7 @@ static void pfield_do_linetoscr_bordersprite_aga (int start, int stop, bool blan
 	pfield_do_linetoscr_spriteonly(src_pixel, start, stop);
 }
 
-static void dummy_worker (int start, int stop, bool blank)
+static void dummy_worker (int start, int stop, int blank)
 {
 }
 
@@ -1045,7 +1058,7 @@ static void init_ham_decoding (void)
 	}
 }
 
-static void decode_ham (int pix, int stoppos, bool blank)
+static void decode_ham (int pix, int stoppos, int blank)
 {
 	int todraw_amiga = res_shift_from_window (stoppos - pix);
 	
@@ -1158,13 +1171,15 @@ static void gen_pfield_tables (void)
 STATIC_INLINE void draw_sprites_1 (struct sprite_entry *e, const int dualpf, const int has_attach)
 {
   uae_u16 *buf = spixels + e->first_pixel;
-  uae_u8 *stbuf = spixstate.bytes + e->first_pixel;
+  uae_u8 *stbuf = spixstate.stb + e->first_pixel;
+	uae_u16 *stfmbuf = spixstate.stbfm + e->first_pixel;
   int spr_pos, pos;
 	int epos = e->pos;
 	int emax = e->max;
 
   buf -= epos;
   stbuf -= epos;
+	stfmbuf -= epos;
 
   spr_pos = epos + ((DIW_DDF_OFFSET - DISPLAY_LEFT_SHIFT) << sprite_buffer_res);
 
@@ -1175,6 +1190,7 @@ STATIC_INLINE void draw_sprites_1 (struct sprite_entry *e, const int dualpf, con
 		if (spr_pos >= 0 && spr_pos < MAX_PIXELS_PER_LINE) {
 			spritepixels[spr_pos].data = buf[pos];
 			spritepixels[spr_pos].stdata = stbuf[pos];
+			spritepixels[spr_pos].stfmdata = stfmbuf[pos];
 			spritepixels[spr_pos].attach = has_attach;
 		}
   }	 
@@ -1402,7 +1418,7 @@ static void pfield_doline_n7 (uae_u32 *pixels, int wordcount, int lineno)
       MERGE (b6, b7, 0x00ff00ff, 8);
 
       MERGE (b0, b2, 0x0000ffff, 16);
-      do_put_mem_long(pixels, b0);
+      do_put_mem_long(pixels + 0, b0);
       do_put_mem_long(pixels + 4, b2);
       MERGE (b1, b3, 0x0000ffff, 16);
       do_put_mem_long(pixels + 2, b1);
@@ -1498,7 +1514,7 @@ static void NOINLINE pfield_doline_n8 (uae_u32 *data, int count) { pfield_doline
 static void pfield_doline (int lineno)
 {
   int wordcount = dp_for_drawing->plflinelen;
-  uae_u32 *data = pixdata.apixels_l + MAX_PIXELS_PER_LINE / 4;
+  uae_u32 *data = pixdata.apixels_l + MAX_PIXELS_PER_LINE / sizeof(uae_u32);
       
 #ifdef USE_ARMNEON
   pfield_doline_n[bplplanecnt](data, wordcount, lineno);
@@ -1670,6 +1686,7 @@ static void pfield_expand_dp_bplcon (void)
 		bpldelay_sh = sh;
 		pfield_mode_changed = true;
 	}
+	sprite_smaller_than_64 = (dp_for_drawing->fmode & 0x0c) != 0x0c;
 	if (pfield_mode_changed)
 		pfield_set_linetoscr();
 	
@@ -1719,9 +1736,12 @@ static void pfield_expand_dp_bplconx (int regno, int v)
     case 0x10c: // BPLCON4
       dp_for_drawing->bplcon4 = v;
       break;
+	case 0x1fc: // FMODE
+		dp_for_drawing->fmode = v;
+		break;
   }
   pfield_expand_dp_bplcon();
-	set_res_shift(lores_shift - bplres);
+	set_res_shift();
 }
 
 static int drawing_color_matches;
@@ -1786,10 +1806,10 @@ STATIC_INLINE void do_color_changes (line_draw_func worker_border, line_draw_fun
     if (nextpos > endpos)
       nextpos_in_range = endpos;
 
-		// left border (hblank end to playfield start)
+		// normal left border (hblank end to playfield start)
 	  if (nextpos_in_range > lastpos && lastpos < playfield_start) {
 		  int t = nextpos_in_range <= playfield_start ? nextpos_in_range : playfield_start;
-		  (*worker_border) (lastpos, t, false);
+		  (*worker_border) (lastpos, t, 0);
 		  lastpos = t;
 	  }
 
@@ -1801,13 +1821,13 @@ STATIC_INLINE void do_color_changes (line_draw_func worker_border, line_draw_fun
 			if (bplxor && may_require_hard_way && worker_pfield != pfield_do_linetoscr_bordersprite_aga)
 				playfield_hard_way(worker_pfield, lastpos, t);
 			else
-		  (*worker_pfield) (lastpos, t, false);
+		  (*worker_pfield) (lastpos, t, 0);
 		  lastpos = t;
 	  }
 
 		// right border (playfield end to hblank start)
 	  if (nextpos_in_range > lastpos && lastpos >= playfield_end) {
-			(*worker_border) (lastpos, nextpos_in_range, false);
+			(*worker_border) (lastpos, nextpos_in_range, 0);
 		  lastpos = nextpos_in_range;
 	  }
 
@@ -1882,6 +1902,7 @@ static void pfield_draw_line (int lineno, int gfx_ypos, int follow_ypos)
 			uae_u16 b2 = dp_for_drawing->bplcon2;
 			uae_u16 b3 = dp_for_drawing->bplcon3;
 			uae_u16 b4 = dp_for_drawing->bplcon4;
+			uae_u16 fm = dp_for_drawing->fmode;
       init_ham_decoding ();
       do_color_changes (dummy_worker, decode_ham);
 	    if (have_color_changes) {
@@ -1891,6 +1912,7 @@ static void pfield_draw_line (int lineno, int gfx_ypos, int follow_ypos)
 				dp_for_drawing->bplcon2 = b2;
 				dp_for_drawing->bplcon3 = b3;
 				dp_for_drawing->bplcon4 = b4;
+				dp_for_drawing->fmode = fm;
 				pfield_expand_dp_bplcon ();
       }
 			hposblank = ohposblank;

@@ -46,6 +46,7 @@ extern unsigned long time_per_frame;
 void run_gui(void);
 void init_max_signals(void);
 void wait_for_vsync(void);
+void reset_sync(void);
 unsigned long target_lastsynctime(void);
 extern int screen_is_picasso;
 

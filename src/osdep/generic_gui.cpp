@@ -530,7 +530,6 @@ void gui_display (int shortcut)
 	black_screen_now();
   gui_update ();
   gui_purge_events();
-  fpscounter_reset();
 
 	reset_sound();
   inputdevice_copyconfig (&changed_prefs, &currprefs);
@@ -543,6 +542,9 @@ void gui_display (int shortcut)
   getcapslock();
 	inputdevice_acquire (TRUE);
 	setmouseactive(1);
+	
+	reset_sync();
+  fpscounter_reset();
 }
 
   
