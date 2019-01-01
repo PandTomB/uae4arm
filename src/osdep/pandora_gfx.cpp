@@ -352,6 +352,12 @@ void wait_for_vsync(void)
 }
 
 
+void reset_sync(void)
+{
+  wait_for_vsync();
+}
+
+
 bool render_screen (bool immediate)
 {
 	if (savestate_state == STATE_DOSAVE)
