@@ -12,6 +12,7 @@ Requirements:
  - libmpg123
  - libxml2
  - libFLAC
+ - capsimg from https://github.com/FrodeSolheim/capsimg
 
 Install the libs to run emulator on Raspberry Pi:
 
@@ -37,6 +38,7 @@ Install the packages to compile uae4arm on Raspberry Pi:
 
 Credits
  - Toni Wilen (WinUAE)
+ - Frode Solheim (FS-UAE)
  - Chui (first version of uae4all)
  - Pickle (initial Pandora port of uae4all)
  - AnotherGuest (uae4all 2.0, based on Symbian sources of uae4all)
