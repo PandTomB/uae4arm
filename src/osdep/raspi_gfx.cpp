@@ -91,7 +91,7 @@ static unsigned long next_amiga_frame_ends = 0;
 extern void sound_adjust(float factor);
 
 
-void vsync_callback(unsigned int a, void* b)
+static void vsync_callback(unsigned int a, void* b)
 {
   atomic_inc(&host_frame);
 
@@ -389,7 +389,7 @@ void RefreshLiveInfo()
 
 #endif
 
-void InitAmigaVidMode(struct uae_prefs *p)
+static void InitAmigaVidMode(struct uae_prefs *p)
 {
   /* Initialize structure for Amiga video modes */
 	struct amigadisplay *ad = &adisplays;

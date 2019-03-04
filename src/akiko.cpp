@@ -141,7 +141,6 @@
 
 */
 
-#include "sysconfig.h"
 #include "sysdeps.h"
 
 #include "options.h"
@@ -151,7 +150,6 @@
 #include "blkdev.h"
 #include "zfile.h"
 #include "threaddep/thread.h"
-#include "akiko.h"
 #include "gui.h"
 #include "crc32.h"
 #include "uae.h"
@@ -428,7 +426,7 @@ static int sector_buffer_sector_1, sector_buffer_sector_2;
 static uae_u8 *sector_buffer_info_1, *sector_buffer_info_2;
 
 static int unitnum = -1;
-static uae_u8 cdrom_door = 1;
+static const uae_u8 cdrom_door = 1;
 static bool akiko_inited;
 static volatile int mediachanged, mediacheckcounter;
 static volatile int frame2counter;
@@ -1434,7 +1432,6 @@ STATIC_INLINE void akiko_put_long (uae_u32 *p, int offset, int v)
 static uae_u32 REGPARAM3 akiko_lget (uaecptr) REGPARAM;
 static uae_u32 REGPARAM3 akiko_wget (uaecptr) REGPARAM;
 static uae_u32 REGPARAM3 akiko_bget (uaecptr) REGPARAM;
-static uae_u32 REGPARAM3 akiko_wgeti (uaecptr) REGPARAM;
 static void REGPARAM3 akiko_lput (uaecptr, uae_u32) REGPARAM;
 static void REGPARAM3 akiko_wput (uaecptr, uae_u32) REGPARAM;
 static void REGPARAM3 akiko_bput (uaecptr, uae_u32) REGPARAM;
@@ -1776,7 +1773,7 @@ addrbank akiko_bank = {
 static const uae_u8 patchdata[]={0x0c,0x82,0x00,0x00,0x03,0xe8,0x64,0x00,0x00,0x46};
 static void patchrom (void)
 {
-    int i;
+  int i;
 	if (currprefs.cpu_model > 68020 || currprefs.cachesize || currprefs.m68k_speed != 0) {
 		uae_u8 *p = extendedkickmem_bank.baseaddr;
 		if (p) {

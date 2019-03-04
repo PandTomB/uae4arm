@@ -335,11 +335,8 @@ extern void rtarea_init (void);
 extern void rtarea_free(void);
 extern void rtarea_setup (void);
 extern void expamem_reset (void);
-extern void expamem_next (addrbank *mapped, addrbank *next);
 extern void set_expamem_z3_hack_mode(int);
-extern uaecptr expamem_board_pointer, expamem_highmem_pointer;
-extern uaecptr expamem_z3_pointer_real, expamem_z3_pointer_uae;
-extern uae_u32 expamem_z3_highram_real, expamem_z3_highram_uae;
+extern uaecptr expamem_board_pointer;
 extern uae_u32 expamem_board_size;
 
 extern uae_u32 last_custom_value1;
@@ -364,7 +361,6 @@ extern void REGPARAM3 sub_bank_bput(uaecptr, uae_u32) REGPARAM;
 extern uae_u32 REGPARAM3 sub_bank_wgeti(uaecptr) REGPARAM;
 extern int REGPARAM3 sub_bank_check(uaecptr addr, uae_u32 size) REGPARAM;
 extern uae_u8 *REGPARAM3 sub_bank_xlate(uaecptr addr) REGPARAM;
-extern addrbank *get_sub_bank(uaecptr *addr);
 
 #define bankindex(addr) (((uaecptr)(addr)) >> 16)
 
@@ -372,7 +368,6 @@ extern addrbank *mem_banks[MEMORY_BANKS];
 
 #define get_mem_bank(addr) (*mem_banks[bankindex(addr)])
 
-extern void memory_init (void);
 extern void memory_cleanup (void);
 extern void map_banks (addrbank *bank, int first, int count, int realsize);
 extern void map_banks_z2 (addrbank *bank, int first, int count);
@@ -590,10 +585,7 @@ extern bool mapped_malloc (addrbank*);
 extern void mapped_free (addrbank*);
 
 extern uaecptr strcpyha_safe (uaecptr dst, const uae_char *src);
-extern uae_char *strcpyah_safe (uae_char *dst, uaecptr src, int maxsize);
 extern void memcpyha_safe (uaecptr dst, const uae_u8 *src, int size);
 extern void memcpyha (uaecptr dst, const uae_u8 *src, int size);
-extern void memcpyah_safe (uae_u8 *dst, uaecptr src, int size);
-extern void memcpyah (uae_u8 *dst, uaecptr src, int size);
 
 #endif /* UAE_MEMORY_H */

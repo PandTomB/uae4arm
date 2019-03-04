@@ -4,7 +4,7 @@ endif
 
 ifeq ($(PLATFORM),rpi3)
   CPU_FLAGS += -march=armv8-a -mfpu=neon-fp-armv8 -mfloat-abi=hard -mtune=cortex-a53
-  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DUSE_JIT_FPU -DARM_HAS_DIV
+  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DARM_HAS_DIV
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
   LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11 -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
@@ -31,7 +31,7 @@ else ifeq ($(PLATFORM),rpi1)
   endif
 else ifeq ($(PLATFORM),Pandora)
   CPU_FLAGS += -march=armv7-a -mfpu=neon -mfloat-abi=softfp -mtune=cortex-a8
-  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DPANDORA -DUSE_JIT_FPU -msoft-float
+  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DPANDORA -msoft-float
   PROFILER_PATH = /media/MAINSD/pandora/test
   ifeq ($(USE_SDL_VERSION),)
     USE_SDL_VERSION = sdl1

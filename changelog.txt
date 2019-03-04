@@ -1,3 +1,4 @@
+2019-03-04 - Removed some unused stuff
 2019-01-01 - Enabled CAPS/IPF support using capsimg from FS-UAE
 2019-01-01 - Bugfix: select disk file in GUI
 2018-12-08 - Merged WinUAE 4.1.0

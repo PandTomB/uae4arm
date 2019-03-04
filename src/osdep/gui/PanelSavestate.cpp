@@ -136,7 +136,7 @@ class SavestateActionListener : public gcn::ActionListener
       			FILE *f = fopen(savestate_fname,"rb");
       			if (f) {
       				fclose(f);
-              savestate_initsave(savestate_fname, 2, 0, false);
+              savestate_initsave(savestate_fname);
       				savestate_state = STATE_DORESTORE;
       				gui_running = false;
       			}
@@ -151,7 +151,7 @@ class SavestateActionListener : public gcn::ActionListener
         // Save current state
         //------------------------------------------
       	if(emulating) {
-          savestate_initsave(savestate_fname, 2, 0, false);
+          savestate_initsave(savestate_fname);
     			save_state (savestate_fname, "...");
           savestate_state = STATE_DOSAVE; // Just to create the screenshot
           delay_savestate_frame = 2;          

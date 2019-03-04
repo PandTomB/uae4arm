@@ -12,15 +12,12 @@
   *
   */
 
-#include "sysconfig.h"
 #include "sysdeps.h"
 
 #include "options.h"
 #include "memory.h"
 #include "custom.h"
 #include "newcpu.h"
-#include "autoconf.h"
-#include "gensound.h"
 #include "audio.h"
 #include "sounddep/sound.h"
 #include "savestate.h"
@@ -746,8 +743,6 @@ static void audio_event_reset (void)
 
 void audio_deactivate(void)
 {
-  gui_data.sndbuf_status = 3;
-  gui_data.sndbuf = 0;
 	audio_work_to_do = 0;
 	pause_sound_buffer ();
   clear_sound_buffers();

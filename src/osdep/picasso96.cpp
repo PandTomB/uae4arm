@@ -39,7 +39,6 @@
  *       easier to read.
  */
  
-#include "sysconfig.h"
 #include "sysdeps.h"
 
 #if defined(PICASSO96)
@@ -71,8 +70,6 @@ static int picasso96_GCT = GCT_Unknown;
 static int picasso96_PCT = PCT_Unknown;
 
 static bool picasso_flushpixels (uae_u8 *src, int offset);
-
-bool have_done_picasso = 1; /* For the JIT compiler */
 
 #define PICASSO_STATE_SETDISPLAY 1
 #define PICASSO_STATE_SETPANNING 2
@@ -416,7 +413,7 @@ static int doskip (void)
   return p96_framecnt > 0;
 }
 
-void picasso_trigger_vblank (void)
+static void picasso_trigger_vblank (void)
 {
 	TrapContext *ctx = NULL;
   if (!ABI_interrupt || !uaegfx_base || !interrupt_enabled)
@@ -590,12 +587,6 @@ static void setconvert(void)
 		vidinfo->ohost_mode = vidinfo->host_mode;
 		vidinfo->orgbformat = state->RGBFormat;
 	}
-}
-
-bool picasso_is_active (void)
-{
-	struct picasso_vidbuf_description *vidinfo = &picasso_vidinfo;
-	return vidinfo->picasso_active;
 }
 
 /* Clear our screen, since we've got a new Picasso screen-mode, and refresh with the proper contents

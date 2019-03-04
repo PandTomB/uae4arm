@@ -8,18 +8,13 @@
 * Copyright 2000-2015 Toni Wilen
 */
 
-#include "sysconfig.h"
 #include "sysdeps.h"
 
-#include <ctype.h>
-#include <assert.h>
 #include <math.h>
 
 #include "options.h"
 #include "uae.h"
-#include "gensound.h"
 #include "audio.h"
-#include "sounddep/sound.h"
 #include "memory.h"
 #include "custom.h"
 #include "newcpu.h"
@@ -30,7 +25,6 @@
 #include "xwin.h"
 #include "inputdevice.h"
 #include "autoconf.h"
-#include "traps.h"
 #include "gui.h"
 #include "picasso96.h"
 #include "drawing.h"
@@ -1511,7 +1505,7 @@ STATIC_INLINE void beginning_of_plane_block (int hpos, int fm)
 
 
 /* The usual inlining tricks - don't touch unless you know what you are doing. */
-STATIC_INLINE void long_fetch_16 (int plane, int nwords, int weird_number_of_bits, int dma)
+STATIC_INLINE void long_fetch_16 (int plane, int nwords, int weird_number_of_bits)
 {
   uae_u16 *real_pt = (uae_u16 *)pfield_xlateptr (bplpt[plane], nwords * 2);
 	int delay = toscr_delay_adjusted[plane & 1];
@@ -1521,9 +1515,7 @@ STATIC_INLINE void long_fetch_16 (int plane, int nwords, int weird_number_of_bit
   uae_u32 fetchval = fetched[plane];
 	uae_u32 *dataptr = (uae_u32 *)(line_data[next_lineno] + 2 * plane * MAX_WORDS_PER_LINE + 4 * out_offs);
 
-  if (dma) {
-    bplpt[plane] += nwords *2;
-  }
+  bplpt[plane] += nwords *2;
 
   if (real_pt == 0)
 		/* @@@ Don't do this, fall back on chipmem_wget instead.  */
@@ -1556,17 +1548,15 @@ STATIC_INLINE void long_fetch_16 (int plane, int nwords, int weird_number_of_bit
 		}
 		shiftbuffer <<= 16;
 		nwords--;
-		if (dma) {
-			fetchval = do_get_mem_word (real_pt);
-			real_pt++;
-		}
+		fetchval = do_get_mem_word (real_pt);
+		real_pt++;
 	}
   fetched[plane] = fetchval;
 	todisplay2[plane] = shiftbuffer >> delay;
   outword[plane] = outval;
 }
 
-STATIC_INLINE void long_fetch_32 (int plane, int nwords, int weird_number_of_bits, int dma)
+STATIC_INLINE void long_fetch_32 (int plane, int nwords, int weird_number_of_bits)
 {
 	uae_u32 *real_pt = (uae_u32 *)pfield_xlateptr (bplpt[plane] & ~3, nwords * 2);
 	int delay = toscr_delay_adjusted[plane & 1];
@@ -1577,9 +1567,7 @@ STATIC_INLINE void long_fetch_32 (int plane, int nwords, int weird_number_of_bit
 	uae_u32 *dataptr = (uae_u32 *)(line_data[next_lineno] + 2 * plane * MAX_WORDS_PER_LINE + 4 * out_offs);
 	bool unaligned = (bplpt[plane] & 2) != 0;
 
-	if (dma) {
-		bplpt[plane] += nwords * 2;
-  }
+	bplpt[plane] += nwords * 2;
 
 	if (real_pt == 0)
 		/* @@@ Don't do this, fall back on chipmem_wget instead.  */
@@ -1616,17 +1604,16 @@ STATIC_INLINE void long_fetch_32 (int plane, int nwords, int weird_number_of_bit
 			shiftbuffer <<= 16;
 		}
 		nwords -= 2;
-		if (dma) {
-			fetchval = do_get_mem_long (real_pt);
-			if (unaligned) {
-				fetchval &= 0x0000ffff;
-				fetchval |= fetchval << 16;
-			} else if (fetchmode_fmode_bpl & 2) {
-				fetchval &= 0xffff0000;
-				fetchval |= fetchval >> 16;
-			}
-			real_pt++;
+
+		fetchval = do_get_mem_long (real_pt);
+		if (unaligned) {
+			fetchval &= 0x0000ffff;
+			fetchval |= fetchval << 16;
+		} else if (fetchmode_fmode_bpl & 2) {
+			fetchval &= 0xffff0000;
+			fetchval |= fetchval >> 16;
 		}
+		real_pt++;
 	}
 	fetched_aga[plane] = fetchval;
 	todisplay2_aga[plane] = (shiftbuffer >> delay) & 0xffffffff;
@@ -1663,7 +1650,7 @@ STATIC_INLINE void aga_shift_n (uae_u64 *p, int n)
 	p[1] >>= n;
 }
 
-STATIC_INLINE void long_fetch_64 (int plane, int nwords, int weird_number_of_bits, int dma)
+STATIC_INLINE void long_fetch_64 (int plane, int nwords, int weird_number_of_bits)
 {
 	uae_u32 *real_pt = (uae_u32 *)pfield_xlateptr (bplpt[plane] & ~7, nwords * 2);
 	int delay = toscr_delay_adjusted[plane & 1];
@@ -1676,9 +1663,7 @@ STATIC_INLINE void long_fetch_64 (int plane, int nwords, int weird_number_of_bit
 	bool unaligned2 = (bplpt[plane] & 2) != 0;
 	bool unaligned4 = (bplpt[plane] & 4) != 0;
 
-	if (dma) {
-		bplpt[plane] += nwords * 2;
-  }
+	bplpt[plane] += nwords * 2;
 
 	if (real_pt == 0)
 		/* @@@ Don't do this, fall back on chipmem_wget instead.  */
@@ -1726,29 +1711,27 @@ STATIC_INLINE void long_fetch_64 (int plane, int nwords, int weird_number_of_bit
 
 		nwords -= 4;
 
-		if (dma) {
-			uae_u32 *real_pt1, *real_pt2;
-			if (unaligned4) {
-				real_pt1 = real_pt + 1;
-				real_pt2 = real_pt + 1;
-			} else {
-				real_pt1 = real_pt;
-				real_pt2 = real_pt + 1;
-			}
-			if (unaligned2) {
-				uae_u32 v1 = do_get_mem_long (real_pt1);
-				uae_u32 v2 = do_get_mem_long (real_pt2);
-				v1 &= 0x0000ffff;
-				v1 |= v1 << 16;
-				v2 &= 0x0000ffff;
-				v2 |= v2 << 16;
-				fetchval = (((uae_u64)v1) << 32) | v2;
-			} else {
-				fetchval = ((uae_u64)do_get_mem_long (real_pt1)) << 32;
-				fetchval |= do_get_mem_long (real_pt2);
-			}
-		  real_pt += 2;
+		uae_u32 *real_pt1, *real_pt2;
+		if (unaligned4) {
+			real_pt1 = real_pt + 1;
+			real_pt2 = real_pt + 1;
+		} else {
+			real_pt1 = real_pt;
+			real_pt2 = real_pt + 1;
 		}
+		if (unaligned2) {
+			uae_u32 v1 = do_get_mem_long (real_pt1);
+			uae_u32 v2 = do_get_mem_long (real_pt2);
+			v1 &= 0x0000ffff;
+			v1 |= v1 << 16;
+			v2 &= 0x0000ffff;
+			v2 |= v2 << 16;
+			fetchval = (((uae_u64)v1) << 32) | v2;
+		} else {
+			fetchval = ((uae_u64)do_get_mem_long (real_pt1)) << 32;
+			fetchval |= do_get_mem_long (real_pt2);
+		}
+	  real_pt += 2;
 	}
 	fetched_aga[plane] = fetchval;
 	aga_shift_n (shiftbuffer, delay);
@@ -1756,14 +1739,14 @@ STATIC_INLINE void long_fetch_64 (int plane, int nwords, int weird_number_of_bit
 	outword[plane] = outval;
 }
 
-static void long_fetch_16_0 (int hpos, int nwords, int dma) { long_fetch_16 (hpos, nwords, 0, dma); }
-static void long_fetch_16_1 (int hpos, int nwords, int dma) { long_fetch_16 (hpos, nwords, 1, dma); }
-static void long_fetch_32_0 (int hpos, int nwords, int dma) { long_fetch_32 (hpos, nwords, 0, dma); }
-static void long_fetch_32_1 (int hpos, int nwords, int dma) { long_fetch_32 (hpos, nwords, 1, dma); }
-static void long_fetch_64_0 (int hpos, int nwords, int dma) { long_fetch_64 (hpos, nwords, 0, dma); }
-static void long_fetch_64_1 (int hpos, int nwords, int dma) { long_fetch_64 (hpos, nwords, 1, dma); }
+static void long_fetch_16_0 (int hpos, int nwords) { long_fetch_16 (hpos, nwords, 0); }
+static void long_fetch_16_1 (int hpos, int nwords) { long_fetch_16 (hpos, nwords, 1); }
+static void long_fetch_32_0 (int hpos, int nwords) { long_fetch_32 (hpos, nwords, 0); }
+static void long_fetch_32_1 (int hpos, int nwords) { long_fetch_32 (hpos, nwords, 1); }
+static void long_fetch_64_0 (int hpos, int nwords) { long_fetch_64 (hpos, nwords, 0); }
+static void long_fetch_64_1 (int hpos, int nwords) { long_fetch_64 (hpos, nwords, 1); }
 
-static void do_long_fetch (int hpos, int nwords, int dma, int fm)
+static void do_long_fetch (int hpos, int nwords, int fm)
 {
 	int i;
 
@@ -1774,28 +1757,28 @@ static void do_long_fetch (int hpos, int nwords, int dma, int fm)
 		case 0:
 			if (out_nbits & 15) {
 				for (i = 0; i < toscr_nr_planes; i++)
-					long_fetch_16_1 (i, nwords, dma);
+					long_fetch_16_1 (i, nwords);
 			} else {
 				for (i = 0; i < toscr_nr_planes; i++)
-					long_fetch_16_0 (i, nwords, dma);
+					long_fetch_16_0 (i, nwords);
 			}
 			break;
 		case 1:
 			if (out_nbits & 15) {
 				for (i = 0; i < toscr_nr_planes; i++)
-					long_fetch_32_1 (i, nwords, dma);
+					long_fetch_32_1 (i, nwords);
 			} else {
 				for (i = 0; i < toscr_nr_planes; i++)
-					long_fetch_32_0 (i, nwords, dma);
+					long_fetch_32_0 (i, nwords);
 			}
 			break;
 		case 2:
 			if (out_nbits & 15) {
 				for (i = 0; i < toscr_nr_planes; i++)
-					long_fetch_64_1 (i, nwords, dma);
+					long_fetch_64_1 (i, nwords);
 			} else {
 				for (i = 0; i < toscr_nr_planes; i++)
-					long_fetch_64_0 (i, nwords, dma);
+					long_fetch_64_0 (i, nwords);
 			}
 			break;
 	}
@@ -1805,7 +1788,7 @@ static void do_long_fetch (int hpos, int nwords, int dma, int fm)
 	out_nbits &= 31;
 	delay_cycles += nwords * 16;
 
-  if (dma && toscr_nr_planes > 0)
+  if (toscr_nr_planes > 0)
 		fetch_state = fetch_was_plane0;
 }
 
@@ -2214,7 +2197,7 @@ STATIC_INLINE void update_fetch (int until, int fm)
 				compute_toscr_delay (bplcon1);
 			}
 
-			do_long_fetch (pos, count >> (3 - toscr_res), dma, fm);
+			do_long_fetch (pos, count >> (3 - toscr_res), fm);
 
 	    /* This must come _after_ do_long_fetch so as not to confuse flush_display
 	       into thinking the first fetch has produced any output worth emitting to
@@ -3291,8 +3274,6 @@ static void reset_decisions (void)
 	toscr_res_old = -1;
 }
 
-int vsynctimebase_orig;
-
 void compute_vsynctime (void)
 {
 	double svpos = maxvpos_nom;
@@ -3308,7 +3289,6 @@ void compute_vsynctime (void)
 		fake_vblank_hz = vblank_hz;
 
 	vsynctimebase = (int)(syncbase / fake_vblank_hz);
-	vsynctimebase_orig = vsynctimebase;
 
 	if (islinetoggle ()) {
 		shpos += 0.5;
@@ -3330,7 +3310,7 @@ int current_maxvpos (void)
 	return maxvpos + (lof_store ? 1 : 0);
 }
 
-struct chipset_refresh *get_chipset_refresh (struct uae_prefs *p)
+static struct chipset_refresh *get_chipset_refresh (struct uae_prefs *p)
 {
 	struct amigadisplay *ad = &adisplays;
 	int islace = interlace_seen ? 1 : 0;
@@ -4050,12 +4030,6 @@ void rethink_uae_int(void)
 			irq2 = true;
   }
 
-	{
-		extern void bsdsock_fake_int_handler (void);
-		extern int volatile bsd_int_requested;
-		if (bsd_int_requested)
-			bsdsock_fake_int_handler ();
-	}
 	if (irq6)
 		safe_interrupt_set(true);
 	if (irq2)

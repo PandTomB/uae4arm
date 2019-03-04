@@ -6,7 +6,6 @@
   * (c) 1995 Bernd Schmidt
   */
 
-#include "sysconfig.h"
 #include "sysdeps.h"
 
 #include "options.h"
@@ -22,9 +21,7 @@
 #include "crc32.h"
 #include "gui.h"
 #include "akiko.h"
-#include "threaddep/thread.h"
 #include "gayle.h"
-#include "gfxboard.h"
 #include "devices.h"
 
 #ifdef JIT
@@ -172,7 +169,7 @@ static int REGPARAM2 dummy_check (uaecptr addr, uae_u32 size)
   return 0;
 }
 
-addrbank *get_sub_bank(uaecptr *paddr)
+static addrbank *get_sub_bank(uaecptr *paddr)
 {
 	int i;
 	uaecptr addr = *paddr;
@@ -407,7 +404,7 @@ int REGPARAM2 default_check (uaecptr a, uae_u32 b)
   return 0;
 }
 
-static int be_cnt, be_recursive;
+static int be_recursive;
 
 uae_u8 *REGPARAM2 default_xlate (uaecptr addr)
 {
@@ -421,9 +418,7 @@ uae_u8 *REGPARAM2 default_xlate (uaecptr addr)
   if (quit_program == 0) {
     /* do this only in 68010+ mode, there are some tricky A500 programs.. */
     if(currprefs.cpu_model > 68000 || !currprefs.cpu_compatible) {
-			if (be_cnt < 3) {
-        write_log (_T("Your Amiga program just did something terribly stupid %08X PC=%08X\n"), addr, M68K_GETPC);
-      }
+      write_log (_T("Your Amiga program just did something terribly stupid %08X PC=%08X\n"), addr, M68K_GETPC);
 			if (gary_toenb && (gary_nonrange(addr) || (size > 1 && gary_nonrange(addr + size - 1)))) {
 				exception2 (addr, false, size, regs.s ? 4 : 0);
 			} else {
@@ -1112,6 +1107,8 @@ bool read_kickstart_version(struct uae_prefs *p)
 	return true;
 }
 
+static void memory_init (void);
+
 void memory_reset (void)
 {
   int bnk, bnk_end;
@@ -1123,7 +1120,7 @@ void memory_reset (void)
 	if (mem_hardreset > 2)
 		memory_init ();
 
-	be_cnt = be_recursive = 0;
+	be_recursive = 0;
   currprefs.chipmem_size = changed_prefs.chipmem_size;
   currprefs.bogomem_size = changed_prefs.bogomem_size;
 	currprefs.mbresmem_low_size = changed_prefs.mbresmem_low_size;
@@ -1288,7 +1285,7 @@ void memory_reset (void)
   write_log (_T("memory init end\n"));
 }
 
-void memory_init (void)
+static void memory_init (void)
 {
 	init_mem_banks ();
 	virtualdevice_init ();
@@ -1701,35 +1698,6 @@ void memcpyha (uaecptr dst, const uae_u8 *src, int size)
 {
     while (size--)
 	put_byte (dst++, *src++);
-}
-void memcpyah_safe (uae_u8 *dst, uaecptr src, int size)
-{
-	if (!addr_valid (_T("memcpyah"), src, size))
-  	return;
-  while (size--)
-  	*dst++ = get_byte(src++);
-}
-void memcpyah (uae_u8 *dst, uaecptr src, int size)
-{
-  while (size--)
-  	*dst++ = get_byte(src++);
-}
-uae_char *strcpyah_safe (uae_char *dst, uaecptr src, int maxsize)
-{
-	uae_char *res = dst;
-  uae_u8 b;
-	dst[0] = 0;
-  do {
-		if (!addr_valid (_T("_tcscpyah"), src, 1))
-	    return res;
-  	b = get_byte(src++);
-  	*dst++ = b;
-		*dst = 0;
-  	maxsize--;
-		if (maxsize <= 1)
-	    break;
-  } while (b);
-  return res;
 }
 uaecptr strcpyha_safe (uaecptr dst, const uae_char *src)
 {

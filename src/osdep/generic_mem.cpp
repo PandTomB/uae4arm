@@ -10,9 +10,15 @@
 #include "autoconf.h"
 #include "akiko.h"
 #include "ar.h"
-#include "uae/mman.h"
 #include <sys/mman.h>
 #include <SDL.h>
+
+struct uae_mman_data
+{
+	uaecptr start;
+	uae_u32 size;
+	bool hasbarrier;
+};
 
 
 static uae_u32 natmem_size;
@@ -193,13 +199,11 @@ static bool A3000MemAvailable(void)
 }
 
 
-bool uae_mman_info(addrbank *ab, struct uae_mman_data *md)
+static bool uae_mman_info(addrbank *ab, struct uae_mman_data *md)
 {
 	bool got = false;
-	bool readonly = false;
 	uaecptr start;
 	uae_u32 size = ab->reserved_size;
-	uae_u32 readonlysize = size;
 	bool barrier = false;
 
 	if (!_tcscmp(ab->label, _T("*"))) {
@@ -222,29 +226,22 @@ bool uae_mman_info(addrbank *ab, struct uae_mman_data *md)
 		start = 0xf80000;
 		got = true;
 		barrier = true;
-		readonly = true;
 	} else if (!_tcscmp(ab->label, _T("rom_a8"))) {
 		start = 0xa80000;
 		got = true;
-		readonly = true;
 	} else if (!_tcscmp(ab->label, _T("rom_e0"))) {
 		start = 0xe00000;
 		got = true;
-		readonly = true;
 	} else if (!_tcscmp(ab->label, _T("rom_f0"))) {
 		start = 0xf00000;
 		got = true;
-		readonly = true;
 	} else if (!_tcscmp(ab->label, _T("rom_f0_ppc"))) {
 		// this is flash and also contains IO
 		start = 0xf00000;
 		got = true;
-		readonly = false;
 	} else if (!_tcscmp(ab->label, _T("rtarea"))) {
 		start = rtarea_base;
 		got = true;
-		readonly = true;
-		readonlysize = RTAREA_TRAPS;
 	} else if (!_tcscmp(ab->label, _T("ramsey_low"))) {
 	  if(ab->reserved_size != lastLowSize)
 	    HandleA3000Mem(ab->reserved_size, lastHighSize);
@@ -347,8 +344,6 @@ bool uae_mman_info(addrbank *ab, struct uae_mman_data *md)
 	if (got) {
 		md->start = start;
 		md->size = size;
-		md->readonly = readonly;
-		md->readonlysize = readonlysize;
 		md->hasbarrier = barrier;
 
 		if (md->hasbarrier) {

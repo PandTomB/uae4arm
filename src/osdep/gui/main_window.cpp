@@ -11,7 +11,6 @@
 #endif
 #include "SelectorEntry.hpp"
 
-#include "sysconfig.h"
 #include "sysdeps.h"
 #include "config.h"
 #include "options.h"
@@ -829,7 +828,7 @@ void run_gui(void)
   // Catch all Guichan/Guisan exceptions.
   catch (gcn::Exception e)
   {
-    printf("%s\n", e.getMessage());
+    printf("%s\n", e.getMessage().c_str());
     uae_quit();
   }
 

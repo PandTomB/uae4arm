@@ -8,18 +8,11 @@
 * Library initialization code (c) Tauno Taipaleenmaki
 */
 
-#include "sysconfig.h"
 #include "sysdeps.h"
-
-#include <assert.h>
-#include <stddef.h>
 
 #include "options.h"
 #include "include/memory.h"
-#include "custom.h"
-#include "newcpu.h"
 #include "autoconf.h"
-#include "traps.h"
 #include "threaddep/thread.h"
 #include "bsdsocket.h"
 #include "native2amiga.h"
@@ -64,15 +57,6 @@ uae_u32 addstr(TrapContext *ctx, uae_u32 * dst, const TCHAR *src)
 	strcpyha_safe (*dst, s);
 	(*dst) += len;
 	xfree (s);
-	return res;
-}
-uae_u32 addstr_ansi(TrapContext *ctx, uae_u32 * dst, const uae_char *src)
-{
-	uae_u32 res = *dst;
-	int len;
-	len = strlen (src) + 1;
-	strcpyha_safe (*dst, src);
-	(*dst) += len;
 	return res;
 }
 
@@ -141,7 +125,7 @@ void bsdsocklib_setherrno(TrapContext *ctx, SB, int sb_herrno)
 	}
 }
 
-uae_u32 callfdcallback (TrapContext *ctx, SB, uae_u32 fd, uae_u32 action)
+static uae_u32 callfdcallback (TrapContext *ctx, SB, uae_u32 fd, uae_u32 action)
 {
 	uae_u32 v;
 	if (!sb->fdcallback)
@@ -276,54 +260,6 @@ void releasesock (TrapContext *ctx, SB, int sd)
 
 /* Signal queue */
 /* @@@ TODO: ensure proper interlocking */
-#if 1
-static struct socketbase *sbsigqueue;
-volatile int bsd_int_requested;
-#endif
-
-void addtosigqueue (SB, int events)
-{
-	locksigqueue ();
-
-	if (events)
-		sb->sigstosend |= sb->eventsigs;
-	else
-		sb->sigstosend |= ((uae_u32) 1) << sb->signal;
-
-	if (!sb->dosignal) {
-		sb->nextsig = sbsigqueue;
-		sbsigqueue = sb;
-	}
-	sb->dosignal = 1;
-
-	bsd_int_requested |= 1;
-
-	unlocksigqueue ();
-}
-
-
-void bsdsock_fake_int_handler(void)
-{
-	locksigqueue ();
-
-	bsd_int_requested = 0;
-
-	if (sbsigqueue != NULL) {
-		SB;
-
-		for (sb = sbsigqueue; sb; sb = sb->nextsig) {
-			if (sb->dosignal == 1) {
-				uae_Signal (sb->ownertask, sb->sigstosend);
-				sb->sigstosend = 0;
-			}
-			sb->dosignal = 0;
-		}
-
-		sbsigqueue = NULL;
-	}
-
-	unlocksigqueue ();
-}
 
 void waitsig (TrapContext *ctx, SB)
 {
@@ -341,18 +277,6 @@ void waitsig (TrapContext *ctx, SB)
 		sb->eintr = 1;
 	} else
 		sb->eintr = 0;
-}
-
-void cancelsig (TrapContext *ctx, SB)
-{
-	locksigqueue ();
-	if (sb->dosignal)
-		sb->dosignal = 2;
-	unlocksigqueue ();
-
-	trap_call_add_dreg(ctx, 0, 0);
-	trap_call_add_dreg(ctx, 1, ((uae_u32) 1) << sb->signal);
-	trap_call_lib(ctx, sb->sysbase, -0x132); /* SetSignal() */
 }
 
 /* Allocate and initialize per-task state structure */
@@ -453,19 +377,6 @@ static void free_socketbase (TrapContext *ctx)
 				}
 			}
 		}
-
-#if 1
-		if (sb == sbsigqueue)
-			sbsigqueue = sb->next;
-		else {
-			for (nsb = sbsigqueue; nsb; nsb = nsb->next) {
-				if (sb == nsb->next) {
-					nsb->next = sb->next;
-					break;
-				}
-			}
-		}
-#endif
 
 		unlocksigqueue ();
 
@@ -1230,7 +1141,6 @@ static const TCHAR *io_errlist[] =
 };
 
 static uae_u32 iotextptrs[sizeof (io_errlist) / sizeof (*io_errlist)];
-static const uae_u32 number_io_error = sizeof (io_errlist) / sizeof (*io_errlist);
 
 
 static const TCHAR * const strErr = _T("Errlist lookup error");
@@ -1504,7 +1414,7 @@ done:
 
 static uae_u32 REGPARAM2 bsdsocklib_GetSocketEvents(TrapContext *ctx)
 {
-#ifdef _WIN32_
+#ifdef _WIN32
 	struct socketbase *sb = get_socketbase(ctx);
 	int i;
 	int flags;
@@ -1619,9 +1529,6 @@ void bsdlib_reset (void)
 	write_log (_T("BSDSOCK: cleanup end\n"));
 
 	socketbases = NULL;
-#if 1
-	sbsigqueue = NULL;
-#endif
 
 	for (i = 0; i < SOCKPOOLSIZE; i++) {
 		if (sockdata->sockpoolids[i] != UNIQUE_ID) {

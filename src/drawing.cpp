@@ -26,11 +26,7 @@
    To prevent extremely bad things (think pixels cut in half by window borders) from
    happening, all ports should restrict window widths to be multiples of 16 pixels.  */
 
-#include "sysconfig.h"
 #include "sysdeps.h"
-
-#include <ctype.h>
-#include <assert.h>
 
 #include "options.h"
 #include "threaddep/thread.h"
@@ -39,7 +35,6 @@
 #include "custom.h"
 #include "newcpu.h"
 #include "xwin.h"
-#include "autoconf.h"
 #include "gui.h"
 #include "picasso96.h"
 #include "drawing.h"
@@ -178,7 +173,7 @@ uae_u8 line_data[(MAXVPOS + 2) * 2][MAX_PLANES * MAX_WORDS_PER_LINE * 2];
    area, VISIBLE_RIGHT_BORDER the right border.  These are in window coordinates.  */
 static int visible_left_border, visible_right_border;
 
-static int linetoscr_x_adjust_pixbytes, linetoscr_x_adjust_pixels;
+static int linetoscr_x_adjust_pixbytes;
 static int thisframe_y_adjust;
 static int thisframe_y_adjust_real, max_ypos_thisframe, min_ypos_for_screen;
 
@@ -2011,7 +2006,7 @@ static void center_image (void)
   visible_left_border <<= lores_shift;
   visible_right_border <<= lores_shift;
 
-  linetoscr_x_adjust_pixels	= visible_left_border;
+  int linetoscr_x_adjust_pixels	= visible_left_border;
 	linetoscr_x_adjust_pixbytes = linetoscr_x_adjust_pixels * vidinfo->drawbuffer.pixbytes;
 
 	int max_drawn_amiga_line_tmp = max_drawn_amiga_line;

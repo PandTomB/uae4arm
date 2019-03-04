@@ -110,11 +110,6 @@ void logging_cleanup( void )
 }
 
 
-void stripslashes (TCHAR *p)
-{
-	while (_tcslen (p) > 0 && (p[_tcslen (p) - 1] == '\\' || p[_tcslen (p) - 1] == '/'))
-		p[_tcslen (p) - 1] = 0;
-}
 void fixtrailing (TCHAR *p)
 {
 	if (_tcslen(p) == 0)
@@ -264,7 +259,7 @@ int target_cfgfile_load (struct uae_prefs *p, const char *filename, int type, in
   default_prefs(p, true, 0);
   
 	const char *ptr = strstr((char *)filename, ".rp9");
-  if(ptr > 0)
+  if(ptr != NULL)
   {
     // Load rp9 config
     result = rp9_parse_file(p, filename);
@@ -274,7 +269,7 @@ int target_cfgfile_load (struct uae_prefs *p, const char *filename, int type, in
   else 
 	{
   	ptr = strstr((char *)filename, ".uae");
-    if(ptr > 0)
+    if(ptr != NULL)
     {
       int type = 0;
       result = cfgfile_load(p, filename, &type, isdefault ? 0 : 1);
@@ -301,35 +296,6 @@ int target_cfgfile_load (struct uae_prefs *p, const char *filename, int type, in
   }
 
   return result;
-}
-
-
-int check_configfile(char *file)
-{
-  char tmp[MAX_PATH];
-  
-  FILE *f = fopen(file, "rt");
-  if(f)
-  {
-    fclose(f);
-    return 1;
-  }
-  
-  strncpy(tmp, file, MAX_PATH - 1);
-	char *ptr = strstr(tmp, ".uae");
-	if(ptr > 0)
-  {
-    *(ptr + 1) = '\0';
-    strncat(tmp, "conf", MAX_PATH - 1);
-    f = fopen(tmp, "rt");
-    if(f)
-    {
-      fclose(f);
-      return 2;
-    }
-  }
-
-  return 0;
 }
 
 
@@ -455,18 +421,6 @@ void saveAdfDir(void)
 }
 
 
-void get_string(FILE *f, char *dst, int size)
-{
-  char buffer[MAX_PATH];
-  fgets(buffer, MAX_PATH, f);
-  int i = strlen (buffer);
-  while (i > 0 && (buffer[i - 1] == '\t' || buffer[i - 1] == ' ' 
-  || buffer[i - 1] == '\r' || buffer[i - 1] == '\n'))
-	  buffer[--i] = '\0';
-  strncpy(dst, buffer, size - 1);
-}
-
-
 static void trimwsa (char *s)
 {
   /* Delete trailing whitespace.  */
@@ -560,12 +514,6 @@ void target_addtorecent (const TCHAR *name, int t)
 
 void target_reset (void)
 {
-}
-
-
-bool target_can_autoswitchdevice(void)
-{
-	return true;
 }
 
 
@@ -690,37 +638,4 @@ int generic_main (int argc, char *argv[])
 	  target_shutdown();
 
   return 0;
-}
-
-static uaecptr clipboard_data;
-
-void amiga_clipboard_die (void)
-{
-}
-
-void amiga_clipboard_init (void)
-{
-}
-
-void amiga_clipboard_task_start (uaecptr data)
-{
-  clipboard_data = data;
-}
-
-uae_u32 amiga_clipboard_proc_start (void)
-{
-  return clipboard_data;
-}
-
-void amiga_clipboard_got_data (uaecptr data, uae_u32 size, uae_u32 actual)
-{
-}
-
-int amiga_clipboard_want_data (void)
-{
-  return 0;
-}
-
-void clipboard_vsync (void)
-{
 }
