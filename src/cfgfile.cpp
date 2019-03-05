@@ -399,6 +399,10 @@ static TCHAR *cfgfile_subst_path2 (const TCHAR *path, const TCHAR *subst, const 
     _tcscat (p, file + l);
 		p2 = target_expand_environment (p, NULL, 0);
 		xfree (p);
+		if (p2 && p2[0] == '$') {
+			xfree(p2);
+			return NULL;
+		}
 	  return p2;
   }
 	return NULL;
@@ -4017,6 +4021,7 @@ static int cfgfile_searchconfig(const TCHAR *in, int index, TCHAR *out, int outs
 	int joker = 0;
 	uae_u32 err = 0;
 	bool configsearchfound = false;
+	int index2 = index;
 
 	if (in[inlen - 1] == '*') {
 		joker = 1;
@@ -4044,7 +4049,7 @@ static int cfgfile_searchconfig(const TCHAR *in, int index, TCHAR *out, int outs
 
 		if (zfile_fread (&b, 1, 1, configstore) != 1) {
 			err = 10;
-			if (configsearchfound)
+			if (configsearchfound || index2 > 0)
 				err = 0;
 			goto end;
 		}
@@ -4052,7 +4057,7 @@ static int cfgfile_searchconfig(const TCHAR *in, int index, TCHAR *out, int outs
 			j = sizeof (tmp) / sizeof (TCHAR) - 1;
 		if (b == 0) {
 			err = 10;
-			if (configsearchfound)
+			if (configsearchfound || index2 > 0)
 				err = 0;
 			goto end;
 		}

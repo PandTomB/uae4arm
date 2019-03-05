@@ -901,16 +901,20 @@ static int iswritefileempty (struct uae_prefs *p, const TCHAR *name)
   int tracks, ddhd, i, ret;
 
 	zf = getexistingwritefile (p, name, &wrprot);
-  if (!zf) return 1;
+  if (!zf) 
+    return 1;
   zfile_fread (buffer, sizeof (char), 8, zf);
-  if (strncmp ((uae_char*)buffer, "UAE-1ADF", 8))
+  if (strncmp ((uae_char*)buffer, "UAE-1ADF", 8)) {
+    zfile_fclose(zf);
   	return 0;
+  }
   ret = read_header_ext2 (zf, td, &tracks, &ddhd);
   zfile_fclose (zf);
   if (!ret)
   	return 1;
   for (i = 0; i < tracks; i++) {
-  	if (td[i].bitlen) return 0;
+  	if (td[i].bitlen) 
+  	  return 0;
   }
   return 1;
 }
@@ -1024,7 +1028,7 @@ static int drive_insert (drive * drv, struct uae_prefs *p, int dnum, const TCHAR
     drv->dskready_down_time = 0;
   }
 
-  if (drv->diskfile == 0) {
+  if (drv->diskfile == NULL) {
   	track_reset (drv);
   	return 0;
   }
@@ -2171,6 +2175,7 @@ static bool convert_adf_to_ext2 (drive *drv, int mode)
 			zfile_fclose (tmp);
 			return false;
 		}
+		zfile_fclose(tmp);
 	} else {
 		return false;
 	}
@@ -2254,6 +2259,7 @@ static void drive_eject (drive * drv)
   drv->dskready = 0;
   drv->dskready_up_time = 0;
   drv->dskready_down_time = 0;
+	drv->forcedwrprot = false;
   drv->crc32 = 0;
   drive_settype_id (drv); /* Back to 35 DD */
 }
@@ -2464,15 +2470,17 @@ int disk_setwriteprotect (struct uae_prefs *p, int num, const TCHAR *fname_in, b
 
 	write_log(_T("old = %d writeprot = %d master = %d\n"), oldprotect, wrprot1, p->floppy_read_only);
 
-	if (wrprot1 && p->floppy_read_only)
+	if (wrprot1 && p->floppy_read_only) {
+		zfile_fclose(zf1);
 		return 0;
+	}
   if (zfile_iscompressed (zf1)) 
     wrprot1 = 1;
   zfile_fclose (zf1);
 	zf2 = getexistingwritefile(p, fname_in, &wrprot2);
 	name2 = DISK_get_saveimagepath(fname_in, -2);
 
-  if (needwritefile && zf2 == 0)
+  if (needwritefile && zf2 == NULL)
 		disk_creatediskfile (p, name2, 1, drvtype, -1, NULL, false, false, NULL);
   zfile_fclose (zf2);
 	if (writeprotected && iswritefileempty (p, fname_in)) {
@@ -2486,6 +2494,10 @@ int disk_setwriteprotect (struct uae_prefs *p, int num, const TCHAR *fname_in, b
   if (!needwritefile)
 		diskfile_readonly (outfname, writeprotected);
   diskfile_readonly (name2, writeprotected);
+
+	floppy[num].forcedwrprot = false;
+	floppy[num].newnamewriteprotected = false;
+
   return 1;
 }
 
@@ -3847,7 +3859,7 @@ uae_u8 *restore_disk(int num,uae_u8 *src)
 		} else if (newis) {
 			drive_insert (floppy + num, &currprefs, num, changed_prefs.floppyslots[num].df, false, false);
       if (drive_empty (floppy + num)) {
-      	if (newis && old[0]) {
+      	if (newis && zfile_exists(old)) {
     	    _tcscpy (changed_prefs.floppyslots[num].df, old);
 					drive_insert (floppy + num, &currprefs, num, changed_prefs.floppyslots[num].df, false, false);
     	    if (drive_empty (floppy + num))

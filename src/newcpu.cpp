@@ -1061,6 +1061,7 @@ static void m68k_reset (bool hardreset)
   fake_mmusr_030 = 0;
 
 	regs.pcr = 0;
+	
   fill_prefetch ();
 }
 

@@ -119,6 +119,13 @@ void fixtrailing (TCHAR *p)
 	_tcscat(p, "/");
 }
 
+bool samepath(const TCHAR *p1, const TCHAR *p2)
+{
+  if (!_tcsicmp(p1, p2))
+		return true;
+  return false;
+}
+
 void getpathpart (TCHAR *outpath, int size, const TCHAR *inpath)
 {
 	_tcscpy (outpath, inpath);

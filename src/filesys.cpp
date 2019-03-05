@@ -535,7 +535,7 @@ static int set_filesys_unit_1 (int nr, struct uaedev_config_info *ci, bool custo
   for (i = 0; i < MAX_FILESYSTEM_UNITS; i++) {
 		if (nr == i || !mountinfo.ui[i].open || mountinfo.ui[i].rootdir == NULL)
 	    continue;
-		if (_tcslen (c.rootdir) > 0 && !_tcsicmp (mountinfo.ui[i].rootdir, c.rootdir)) {
+		if (_tcslen(c.rootdir) > 0 && samepath(mountinfo.ui[i].rootdir, c.rootdir)) {
 			error_log (_T("directory/hardfile '%s' already added."), c.rootdir);
       return -1;
 	  }
@@ -6957,11 +6957,15 @@ static int dofakefilesys (TrapContext *ctx, UnitInfo *uip, uaecptr parmpacket, s
 /* Fill in per-unit fields of a parampacket */
 static uae_u32 REGPARAM2 filesys_dev_storeinfo (TrapContext *ctx)
 {
-  UnitInfo *uip = mountinfo.ui;
 	int no = trap_get_dreg(ctx, 6) & 0x7fffffff;
   int unit_no = no & 65535;
   int sub_no = no >> 16;
   int type;
+
+	if (unit_no >= MAX_FILESYSTEM_UNITS)
+		return -2;
+
+  UnitInfo *uip = mountinfo.ui;
 	uaecptr parmpacket = trap_get_areg(ctx, 0);
 	struct uaedev_config_info *ci = &uip[unit_no].hf.ci;
 

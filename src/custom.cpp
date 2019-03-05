@@ -90,7 +90,6 @@ static int frameskiptime;
 static frame_time_t vsyncmaxtime, vsyncwaittime;
 static int cia_hsync;
 static bool toscr_scanline_complex_bplcon1;
-static bool spr_width_64_seen;
 
 #define LOF_TOGGLES_NEEDED 3
 static int lof_togglecnt_lace, lof_togglecnt_nlace;
@@ -2601,10 +2600,15 @@ static bool isbrdblank (int hpos, uae_u16 bplcon0, uae_u16 bplcon3)
 	return brdblank;
 }
 
+static bool brdspractive(void)
+{
+	return (bplcon3 & 2) && (bplcon0 & 1);
+}
+
 static bool issprbrd (int hpos, uae_u16 bplcon0, uae_u16 bplcon3)
 {
 	bool brdsprt;
-	brdsprt = (aga_mode) && (bplcon0 & 1) && (bplcon3 & 0x02);
+	brdsprt = (aga_mode) && brdspractive();
 	if (hpos >= 0 && ce_is_bordersprite(current_colors.extra) != brdsprt) {
 		record_color_change (hpos, 0, COLOR_CHANGE_BRDBLANK | (ce_is_borderblank(current_colors.extra) ? 1 : 0) | (brdsprt ? 2 : 0));
 		current_colors.extra &= ~(1 << CE_BORDERSPRITE);
@@ -2801,7 +2805,7 @@ static void record_sprite_1 (int sprxp, uae_u16 *buf, uae_u32 datab, int num, in
 	  unsigned int col = 0;
     unsigned int coltmp = 0;
 		
-	  if ((sprxp >= sprite_minx && sprxp < sprite_maxx) || (bplcon3 & 2))
+	  if ((sprxp >= sprite_minx && sprxp < sprite_maxx) || brdspractive())
       col = (datab & 3) << (2 * num);
 		if ((j & mask) == 0) {
  	    unsigned int tmp = (*buf) | col;
@@ -2942,7 +2946,6 @@ static void record_sprite (int line, int num, int sprxp, uae_u16 *data, uae_u16 
 			stbfm[7] |= state;
 			stbfm += 8;
 		}
-		spr_width_64_seen = true;
 	}
 }
 
@@ -3005,15 +3008,14 @@ static void calcsprite (void)
   }
 }
 
-static void decide_sprites(int spnr, int hpos, bool usepointx, bool quick)
+static void decide_sprites(int hpos, bool usepointx, bool quick)
 {
 	int nrs[MAX_SPRITES * 2], posns[MAX_SPRITES * 2];
 	int count, i;
 	int point;
   int sscanmask = 0x100 << sprite_buffer_res;
-	int startnr = 0, endnr = MAX_SPRITES - 1;
 
-	if (thisline_decision.plfleft < 0 && !(bplcon3 & 2))
+	if (thisline_decision.plfleft < 0 && !brdspractive() && !quick)
 	  return;
 
 	// let sprite shift register empty completely
@@ -3025,10 +3027,6 @@ static void decide_sprites(int spnr, int hpos, bool usepointx, bool quick)
   if (nodraw () || hpos < 0x14 || nr_armed == 0 || point == last_sprite_point)
 		return;
 	
-	if (spnr >= 0) {
-		startnr = spnr;
-		endnr = spnr;
-	}
 	if (!quick) {
 	  decide_diw (hpos);
 	  decide_line (hpos);
@@ -3036,7 +3034,7 @@ static void decide_sprites(int spnr, int hpos, bool usepointx, bool quick)
 	}
 	
 	count = 0;
-	for (i = startnr; i <= endnr; i++) {
+	for (i = 0; i < MAX_SPRITES; i++) {
 		struct sprite *s = &spr[i];
 		int xpos = spr[i].xpos;
 		int sprxp = (fmode & 0x8000) ? (xpos & ~sscanmask) : xpos;
@@ -3078,9 +3076,9 @@ static void decide_sprites(int spnr, int hpos, bool usepointx, bool quick)
 	}
 	last_sprite_point = point;
 }
-STATIC_INLINE void decide_sprites(int spnr, int hpos)
+STATIC_INLINE void decide_sprites(int hpos)
 {
-	decide_sprites(spnr, hpos, false, false);
+	decide_sprites(hpos, false, false);
 }
 STATIC_INLINE void maybe_decide_sprites(int spnr, int hpos)
 {
@@ -3089,7 +3087,7 @@ STATIC_INLINE void maybe_decide_sprites(int spnr, int hpos)
 		return;
 	if (!s->data && !s->datb)
 		return;
-	decide_sprites(spnr, hpos, true, true);
+	decide_sprites(hpos, true, true);
 }
 
 /* End of a horizontal scan line. Finish off all decisions that were not
@@ -3131,7 +3129,7 @@ STATIC_INLINE void finish_decisions (void)
 	dip = curr_drawinfo + next_lineno;
 	dp = line_decisions + next_lineno;
 
-	decide_sprites(-1, hpos + 1);
+	decide_sprites(hpos + 1);
 	
 	dip->last_sprite_entry = next_sprite_entry;
 	dip->last_color_change = next_color_change;
@@ -4138,6 +4136,7 @@ static void BPLCON0_Denise (int hpos, uae_u16 v, bool immediate)
 		v &= ~0x00F1;
 	else if (! (aga_mode))
 		v &= ~0x00B0;
+		
 	v &= ~(0x0200 | 0x0100 | 0x0080 | 0x0020);
 
 	if (bplcon0d == v && !immediate)
@@ -4153,7 +4152,7 @@ static void BPLCON0_Denise (int hpos, uae_u16 v, bool immediate)
 	bplcon0d = v;
 
 	if (currprefs.chipset_mask & CSMASK_ECS_DENISE) {
-		decide_sprites(-1, hpos);
+		decide_sprites(hpos);
 		sprres = expand_sprres (v, bplcon3);
 	}
 	if (thisline_decision.plfleft < 0)
@@ -4230,7 +4229,7 @@ STATIC_INLINE void BPLCON3 (int hpos, uae_u16 v)
 	if (bplcon3 == v)
 		return;
 	decide_line (hpos);
-	decide_sprites(-1, hpos);
+	decide_sprites(hpos);
 	bplcon3 = v;
   sprres = expand_sprres (bplcon0, bplcon3);
   record_register_change (hpos, 0x106, v);
@@ -4675,7 +4674,7 @@ static void sprite_get_bpl_data(int hpos, struct sprite *s, uae_u16 *dat)
 STATIC_INLINE void SPRxDATA (int hpos, uae_u16 v, int num) 
 { 
 	struct sprite *s = &spr[num];
-	decide_sprites(-1, hpos, true, false);
+	decide_sprites(hpos, true, false);
   SPRxDATA_1 (v, num); 
 	// if 32 (16-bit double CAS only) or 64 pixel wide sprite and SPRxDATx write:
 	// - first 16 pixel part: previous chipset bus data
@@ -4691,7 +4690,7 @@ STATIC_INLINE void SPRxDATA (int hpos, uae_u16 v, int num)
 STATIC_INLINE void SPRxDATB (int hpos, uae_u16 v, int num) 
 { 
 	struct sprite *s = &spr[num];
-	decide_sprites(-1, hpos, true, false);
+	decide_sprites(hpos, true, false);
   SPRxDATB_1 (v, num); 
 	// See above
 	if (fmode & 8) {
@@ -4705,14 +4704,14 @@ STATIC_INLINE void SPRxDATB (int hpos, uae_u16 v, int num)
 
 STATIC_INLINE void SPRxCTL (int hpos, uae_u16 v, int num) 
 { 
-	decide_sprites(-1, hpos);
+	decide_sprites(hpos);
   SPRxCTL_1 (v, num, hpos); 
 }
 STATIC_INLINE void SPRxPOS (int hpos, uae_u16 v, int num)
 {
 	struct sprite *s = &spr[num];
 	int oldvpos;
-	decide_sprites(-1, hpos);
+	decide_sprites(hpos);
 	oldvpos = s->vstart;
   SPRxPOS_1 (v, num, hpos);
 	// Superfrog flashing intro bees fix.
@@ -4726,7 +4725,7 @@ STATIC_INLINE void SPRxPOS (int hpos, uae_u16 v, int num)
 
 static void SPRxPTH (int hpos, uae_u16 v, int num)
 {
-	decide_sprites(-1, hpos);
+	decide_sprites(hpos);
 	if (hpos - 1 != MAXHPOS) {
     spr[num].pt &= 0xffff;
     spr[num].pt |= (uae_u32)v << 16;
@@ -4734,7 +4733,7 @@ static void SPRxPTH (int hpos, uae_u16 v, int num)
 }
 static void SPRxPTL (int hpos, uae_u16 v, int num)
 {
-	decide_sprites(-1, hpos);
+	decide_sprites(hpos);
 	if (hpos - 1 != MAXHPOS) {
     spr[num].pt &= ~0xffff;
 		spr[num].pt |= v & ~1;
@@ -5712,9 +5711,8 @@ void init_hardware_for_drawing_frame (void)
 		int npixels = curr_sprite_entries[next_sprite_entry].first_pixel;
 		memset(spixels, 0, npixels * sizeof *spixels);
 		memset(spixstate.stb, 0, npixels * sizeof *spixstate.stb);
-		if (spr_width_64_seen) {
+		if (aga_mode) {
 			memset(spixstate.stbfm, 0, npixels * sizeof *spixstate.stbfm);
-			spr_width_64_seen = false;
 		}
 	}
 	
@@ -6749,7 +6747,9 @@ STATIC_INLINE uae_u32 REGPARAM2 custom_wget_1 (int hpos, uaecptr addr, int noput
 {
   uae_u16 v;
 	int missing;
-	addr &= 0xfff;
+	
+  addr &= 0xfff;
+
   switch (addr & 0x1fe) {
     case 0x000: v = 0xffff; break; /* BPLDDAT */
 	  case 0x002: v = DMACONR (hpos); break;

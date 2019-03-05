@@ -1635,15 +1635,15 @@ uae_u8 *save_rom (int first, int *len, uae_u8 *dstptr)
 	    path = currprefs.romfile;
 	    /* 256KB or 512KB ROM? */
 	    for (i = 0; i < mem_size / 2 - 4; i++) {
-    		if (longget (i + mem_start) != longget (i + mem_start + mem_size / 2))
+    		if (get_long (i + mem_start) != get_long (i + mem_start + mem_size / 2))
   		    break;
 	    }
 	    if (i == mem_size / 2 - 4) {
     		mem_size /= 2;
     		mem_start += ROM_SIZE_256;
 	    }
-	    version = longget (mem_start + 12); /* version+revision */
-			_stprintf (tmpname, _T("Kickstart %d.%d"), wordget (mem_start + 12), wordget (mem_start + 14));
+	    version = get_long (mem_start + 12); /* version+revision */
+			_stprintf (tmpname, _T("Kickstart %d.%d"), get_word (mem_start + 12), get_word (mem_start + 14));
 	    break;
 	  case 1: /* Extended ROM */
 	    if (!extendedkickmem_type)
@@ -1652,9 +1652,9 @@ uae_u8 *save_rom (int first, int *len, uae_u8 *dstptr)
 	    mem_real_start = extendedkickmem_bank.baseaddr;
 	    mem_size = extendedkickmem_bank.allocated_size;
 	    path = currprefs.romextfile;
-			version = longget (mem_start + 12); /* version+revision */
+			version = get_long (mem_start + 12); /* version+revision */
 			if (version == 0xffffffff)
-				version = longget (mem_start + 16);
+				version = get_long (mem_start + 16);
 			_stprintf (tmpname, _T("Extended"));
 	    break;
 	  default:
@@ -1677,7 +1677,7 @@ uae_u8 *save_rom (int first, int *len, uae_u8 *dstptr)
   save_string (path);
   if (saverom) {
     for (i = 0; i < mem_size; i++)
-      *dst++ = byteget (mem_start + i);
+      *dst++ = get_byte (mem_start + i);
   }
   *len = dst - dstbak;
   return dstbak;
