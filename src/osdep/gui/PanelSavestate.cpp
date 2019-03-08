@@ -262,6 +262,6 @@ bool HelpPanelSavestate(std::vector<std::string> &helptext)
   helptext.push_back("loaded. Hold left shoulder button and press 's' to save the current state in the last active slot.");
 #endif
   helptext.push_back("");
-  helptext.push_back("Note: Savestates will not work with HDDs.");
+  helptext.push_back("Note: Savestates with HDDs may not work.");
   return true;
 }
