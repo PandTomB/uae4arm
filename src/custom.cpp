@@ -244,7 +244,6 @@ struct copper {
   /* When we schedule a copper event, knowing a few things about the future
      of the copper list can reduce the number of sync_with_cpu calls
      dramatically.  */
-  unsigned int first_sync;
   unsigned int regtypes_modified;
 
   int strobe; /* COPJMP1 / COPJMP2 accessed */
@@ -4908,113 +4907,135 @@ static void predict_copper (void)
 	enum copper_states state = cop_state.state;
 	unsigned int w1, w2, cycle_count;
 	unsigned int modified = REGTYPE_FORCE;
+  unsigned int vcmp;
+  int vp;
 
-	switch (state) {
-		case COP_read1:
-		  break;
-		  
-		case COP_read2:
-			w1 = cop_state.i1;
-			w2 = chipmem_wget_indirect (ip);
-  		if (w1 & 1) {
-  			if (w2 & 1)
-  				return; // SKIP
-  			state = COP_wait; // WAIT
-  			c_hpos += 4;
-  		} else { // MOVE
-  			modified |= regtypes[w1 & 0x1FE];
-  			state = COP_read1;
-  			c_hpos += 2;
-  		}
-  		ip += 2;	
-			break;
-			
-		case COP_strobe_delay2:
-		case COP_strobe_delay2x:
-    case COP_start_delay:
-			c_hpos += 2;
-			state = COP_read1;
-			break;
-			
-    case COP_strobe_extra:
-			c_hpos += 6;
-			state = COP_read1;
-			break;
+  if (cop_state.ignore_next || cop_state.movedelay)
+    return;
 
-    case COP_strobe_delay1:
-    case COP_strobe_delay1x:
-			c_hpos += 4;
-			state = COP_read1;
-			break;
+  int until_hpos = maxhpos - 3;
+  int force_exit = 0;
 
+  w1 = cop_state.saved_i1;
+  w2 = cop_state.saved_i2;
+  
+  switch(state) {
 		case COP_stop:
     case COP_waitforever:
 		case COP_bltwait:
 		case COP_skip_in2:
     case COP_skip1:
 			return;
-			
-		case COP_wait_in2:
-			c_hpos += 2;
-		case COP_wait1:
-		  w1 = cop_state.i1;
-		  w2 = cop_state.i2;
-			state = COP_wait;
-			break;
-			
-		case COP_wait:
-		  w1 = cop_state.i1;
-		  w2 = cop_state.i2;
-			break;
 
-		default:
-		  return;
-	}
-	/* Only needed for COP_wait, but let's shut up the compiler.  */
-	cop_state.first_sync = c_hpos;
-	
-	while (c_hpos < maxhpos - 1) {
-		if (state == COP_read1) {
-			w1 = chipmem_wget_indirect (ip);
-			if (w1 & 1) {
-				w2 = chipmem_wget_indirect (ip + 2);
-				if (w2 & 1)
-					break; // SKIP
-				state = COP_wait; // WAIT
-				c_hpos += 6;
-			} else { // MOVE
-				modified |= regtypes[w1 & 0x1FE];
-				c_hpos += 4;
-			}
-			ip += 4;
-		} else { // state is COP_wait
-			if ((w2 & 0xFE) != 0xFE)
-				break;
-			else {
-				unsigned int vcmp = (w1 & (w2 | 0x8000)) >> 8;
-				unsigned int hcmp = (w1 & 0xFE);
-				
-				unsigned int vp = vpos & (((w2 >> 8) & 0x7F) | 0x80);
-				if (vp < vcmp) {
-					/* Whee.  We can wait until the end of the line!  */
-					c_hpos = maxhpos;
-		    } else if (vp > vcmp || hcmp <= c_hpos) {
-					state = COP_read1;
-					/* minimum wakeup time */
-					c_hpos += 2;
-				} else {
-					state = COP_read1;
-					c_hpos = hcmp + 2;
-				}
-				/* If this is the current instruction, remember that we don't
-		       need to sync CPU and copper anytime soon.  */
-				if (cop_state.ip == ip) {
-					cop_state.first_sync = c_hpos;
-				}
-			}
-		}
-	}
-	
+    case COP_wait:
+      vcmp = (w1 & (w2 | 0x8000)) >> 8;
+      vp = vpos & (((w2 >> 8) & 0x7F) | 0x80);
+      if (vp < cop_state.vcmp)
+        c_hpos = until_hpos; // run till end of line
+      break;
+  }
+  
+  while(c_hpos < until_hpos && !force_exit) {
+    c_hpos += 2;
+    
+    switch(state) {
+      case COP_wait_in2:
+        state = COP_wait1;
+        break;
+      
+      case COP_skip_in2:
+        state = COP_skip1;
+        break;
+      
+      case COP_strobe_extra:
+        state = COP_strobe_delay1;
+        break;
+      
+      case COP_strobe_delay1:
+        state = COP_strobe_delay2;
+        break;
+      
+      case COP_strobe_delay1x:
+        state = COP_strobe_delay2x;
+        break;
+
+      case COP_strobe_delay2:
+      case COP_strobe_delay2x:
+        state = COP_read1;
+        if(cop_state.strobe == 1)
+          ip = cop1lc;
+        else
+          ip = cop2lc;
+        break;
+        
+      case COP_start_delay:
+        state = COP_read1;
+        ip = cop1lc;
+        break;
+      
+      case COP_read1:
+        w1 = chipmem_wget_indirect (ip);
+        ip += 2;
+        state = COP_read2;
+        break;
+      
+      case COP_read2:
+        w2 = chipmem_wget_indirect (ip);
+        ip += 2;
+        if (w1 & 1) { // WAIT or SKIP
+          if (w2 & 1)
+            state = COP_skip_in2;
+          else
+            state = COP_wait_in2;
+        } else { // MOVE
+          unsigned int reg = w1 & 0x1FE;
+          state = COP_read1;
+          // check from test_copper_dangerous()
+          if (reg < ((copcon & 2) ? ((currprefs.chipset_mask & CSMASK_ECS_AGNUS) ? 0 : 0x40) : 0x80)) {
+            force_exit = 1;
+            break;
+          }
+          if(reg == 0x88 || reg == 0x8a) { // next is strobe
+            force_exit = 1; 
+            break;
+          }
+          modified |= regtypes[reg];
+        }
+        break;
+
+      case COP_wait1:
+				if (w1 == 0xFFFF && w2 == 0xFFFE) {
+				  c_hpos = until_hpos; // new state is COP_waitforever -> run till end of line
+				  break; 
+        }
+
+        state = COP_wait;
+
+  			vcmp = (w1 & (w2 | 0x8000)) >> 8;
+        vp = vpos & (((w2 >> 8) & 0x7F) | 80);
+
+        if(vp < vcmp)
+          c_hpos = until_hpos; // run till end of line
+        break;
+
+      case COP_wait:
+        {
+          unsigned int hcmp = (w1 & w2 & 0xFE);
+          
+          int hp = c_hpos & (w2 & 0xFE);
+          if(vp == vcmp && hp < hcmp)
+            break; // position not reached
+          state = COP_read1;
+        }
+        break;
+
+      case COP_skip1:
+        // must be handled by real code
+        force_exit = 1;
+        break;
+    }
+  }
+  
 	cycle_count = c_hpos - cop_state.hpos;
 	if (cycle_count >= 8) {
   	cop_state.regtypes_modified = modified;
@@ -5305,16 +5326,21 @@ static void update_copper (int until_hpos)
 	        if (vp == cop_state.vcmp && hp < cop_state.hcmp) {
 					  /* Position not reached yet.  */
             if(currprefs.fast_copper) {
-    					if ((cop_state.i2 & 0xFE) == 0xFE) {
-    						int wait_finish = cop_state.hcmp - 2;
-    						/* This will leave c_hpos untouched if it's equal to wait_finish.  */
-    						if (wait_finish < c_hpos)
-    							return;
-    						else if (wait_finish <= until_hpos) {
-    							c_hpos = wait_finish;
-    						} else
-    							c_hpos = until_hpos;
-    					}
+  						while(c_hpos < until_hpos) {
+            		if (c_hpos == maxhpos - 3)
+            			c_hpos += 1;
+            		else
+            		  c_hpos += 2;
+            		
+            		ch_comp = c_hpos;
+      				  if (ch_comp & 1)
+      					  ch_comp = 0;
+				        hp = ch_comp & (cop_state.saved_i2 & 0xFE);
+				        if(hp >= cop_state.hcmp) {
+				          cop_state.state = COP_read1;
+				          break;
+				        }
+  						}
     				}
 					  break;
 				  }
@@ -5452,11 +5478,6 @@ STATIC_INLINE void sync_copper_with_cpu (int hpos, int do_schedule, unsigned int
 {
 	if (eventtab[ev_copper].active) {
 		if (hpos != maxhpos) {
-			/* There might be reasons why we don't actually need to bother
-	       updating the copper.  */
-			if (hpos < cop_state.first_sync)
-				return;
-			
 			if ((cop_state.regtypes_modified & regtypes[addr & 0x1FE]) == 0)
 				return;
 		}
@@ -6328,78 +6349,104 @@ static void hsync_handler_post (bool onvsync)
 	compute_spcflag_copper (maxhpos);
 }
 
+
+//#define FORCE_HPOS 0
+#define FORCE_HPOS REGTYPE_FORCE
+
 static void init_regtypes (void)
 {
   int i;
   for (i = 0; i < 512; i += 2) {
-  	regtypes[i] = REGTYPE_ALL;
-  	if ((i >= 0x20 && i < 0x26) || i == 0x7E)
-	    regtypes[i] = REGTYPE_DISK;
-  	else if (i >= 0x68 && i < 0x70)
-	    regtypes[i] = REGTYPE_NONE;
-  	else if (i >= 0x40 && i < 0x76)
-	    regtypes[i] = REGTYPE_BLITTER;
-  	else if (i >= 0xA0 && i < 0xE0 && (i & 0xF) < 0xC)
-	    regtypes[i] = REGTYPE_AUDIO;
-  	else if ((i >= 0xA0 && i < 0xE0) || (i >= 0x1C0 && i < 0x1E4) || (i >= 0x1E6 && i < 0x1FC))
-	    regtypes[i] = REGTYPE_NONE;
-  	else if ((i >= 0xE0 && i < 0x100) || (i >= 0x110 && i < 0x120))
-	    regtypes[i] = REGTYPE_PLANE;
-  	else if (i >= 0x120 && i < 0x180)
-	    regtypes[i] = REGTYPE_SPRITE;
-  	else if (i >= 0x180 && i < 0x1C0)
-	    regtypes[i] = REGTYPE_COLOR;
-  	else switch (i) {
-  		case 0x00:
-  		case 0x08:
-  		case 0x18:
-  		case 0x26: case 0x28:
-  		case 0x30: case 0x32:
-  		case 0x38: case 0x3A: case 0x3C: case 0x3E:
-  		case 0x76: case 0x78: case 0x7A: case 0x7C:
-  		case 0x8C:
-  		case 0x1FE:
-  		  regtypes[i] = REGTYPE_NONE;
-  		  break;
-  		case 0x02:
-  			/* DMACONR - setting this to REGTYPE_BLITTER will cause it to
-	       conflict with DMACON (since that is REGTYPE_ALL), and the
-	       blitter registers (for the BBUSY bit), but nothing else,
-	       which is (I think) what we want. */
-  			regtypes[i] = REGTYPE_BLITTER;
-  			break;
-  		case 0x04: case 0x06: case 0x2A: case 0x2C:
-  		case 0x0A: case 0x0C: /* Mouse position is calculated with vpos */
-  			regtypes[i] = REGTYPE_POS;
-  			break;
-  		case 0x0E:
-  		  regtypes[i] = REGTYPE_SPRITE;
-  		  break;
-  		case 0x10: case 0x9E:
-  		  regtypes[i] = REGTYPE_AUDIO | REGTYPE_DISK;
-  		  break;
-  		case 0x12: case 0x14: case 0x16:
-  		case 0x34: case 0x36:
-  			regtypes[i] = REGTYPE_JOYPORT;
-  			break;
-  		case 0x1A:
-  		  regtypes[i] = REGTYPE_DISK;
-  		  break;
-  		case 0x102:	case 0x104:	case 0x106:	case 0x108:
-  		case 0x10A:
-  			regtypes[i] = REGTYPE_PLANE;
-  			break;
-  	  case 0x10C:
-  	    regtypes[i] = REGTYPE_PLANE | REGTYPE_SPRITE;
-  			break;
-  		case 0x88: case 0x8A:
-  		case 0x8E: case 0x90: case 0x92: case 0x94:
-  		case 0x96:
-  		case 0x100:
-  		case 0x1FC:
-  			regtypes[i] |= REGTYPE_FORCE;
-  			break;
-  	}
+    if((i >= 0x40 && i <= 0x66) || (i >= 0x70 && i <= 0x74))
+      regtypes[i] = REGTYPE_BLITTER | FORCE_HPOS;
+      
+    else if((i >= 0xA0 && i <= 0xAA) || (i >= 0xB0 && i <= 0xBA) || (i >= 0xC0 && i <= 0xCA) || (i >= 0xD0 && i <= 0xDA))
+      regtypes[i] = REGTYPE_AUDIO;
+    
+    else if ((i >= 0xE0 && i <= 0xFE) || (i >= 0x110 && i <= 0x11E))
+      regtypes[i] = REGTYPE_PLANE | FORCE_HPOS;
+    
+    else if (i >= 0x120 && i <= 0x17E)
+      regtypes[i] = REGTYPE_SPRITE | FORCE_HPOS;
+
+    else if (i >= 0x180 && i <= 0x1BE)
+      regtypes[i] = REGTYPE_COLOR | FORCE_HPOS;
+
+    else if ((i >= 0x1C0 && i <= 0x1DA) || (i >= 0x1E6 && i <= 0x1FA))
+      regtypes[i] = REGTYPE_NONE;
+
+    else {
+      switch(i) {
+        case 0x00: case 0x08: case 0x18: case 0x26: /* BPLDDAT, DSKDATR, SERDATR, DSKDAT */
+        case 0x30: case 0x32: /* SERDAT, SERPER */
+        case 0x38: case 0x3A: case 0x3C: case 0x3E: /* STREQU, STRVBL, STRHOR, STRLONG */
+        case 0x68: case 0x6A: case 0x6C: case 0x6E: /* ?, ?, ?, ? */
+        case 0x76: case 0x78: case 0x7A: case 0x7C: /* ?, ?, ?, DENISEID */
+        case 0x8C: /* COPINS */
+        case 0xAC: case 0xAE: case 0xBC: case 0xBE: /* ?, ?, ?, ? */
+        case 0xCC: case 0xCE: case 0xDC: case 0xDE: /* ?, ?, ?, ? */
+        case 0x1DE: case 0x1E0: case 0x1E2: /* HSSTRT, VSSTRT, HCENTER */
+        case 0x1FE: /* ? */
+          regtypes[i] = REGTYPE_NONE;
+          break;
+        
+        case 0x02: /* DMACONR */
+        case 0x1C: case 0x1E: case 0x9A: case 0x9C: /* INTENAR, INTREQR, INTENA, INTREQ */
+          regtypes[i] = REGTYPE_ALL;
+          break;
+
+        case 0x2E: /* COPCON */
+        case 0x80: case 0x82: case 0x84: case 0x86: /* COP1LCH, COP1LCL, COP2LCH, COP2LCL */
+        case 0x88: case 0x8A: /* COPJMP1, COPJMP2 */
+        case 0x8E: case 0x90: case 0x92: case 0x94: /* DIWSTRT, DIWSTOP, DDFSTRT, DDFSTOP */
+        case 0x96: /* DMACON */
+        case 0x100: /* BPLCON0 */
+        case 0x1DC: /* BEAMCON0 */
+        case 0x1E4: /* DIWHIGH */
+        case 0x1FC: /* FMODE */
+          regtypes[i] = REGTYPE_FORCE;
+          break;
+                
+        case 0x04: case 0x06: case 0x2A: case 0x2C: /* VPOSR, VHPOSR, VPOSW, VHPOSW */
+          regtypes[i] = REGTYPE_POS;
+          break;
+        
+        case 0x0A: case 0x0C: /* JOY0DAT, JOY1DAT */
+    		case 0x12: case 0x14: case 0x16: /* POT0DAT, POT1DAT, POTGOR */
+    	  case 0x34: case 0x36: /* POTGO, JOYTEST */
+          regtypes[i] = REGTYPE_JOYPORT | REGTYPE_POS;
+          break;
+
+        case 0x0E: case 0x98: case 0x10E: /* CLXDAT, CLXCON, CLXCON2 */
+          regtypes[i] = REGTYPE_SPRITE | REGTYPE_PLANE;
+          break;
+                
+  		  case 0x10: /* ADKCONR */
+  		    regtypes[i] = REGTYPE_AUDIO | REGTYPE_DISK;
+  		    break;
+
+  		  case 0x9E: /* ADKCON */
+  		    regtypes[i] = REGTYPE_AUDIO | REGTYPE_DISK | REGTYPE_POS | FORCE_HPOS;
+  		    break;
+
+    		case 0x1A: case 0x24: case 0x7E: /* DSKBYTR, DSKLEN, DSKSYNC */
+    		  regtypes[i] = REGTYPE_DISK | FORCE_HPOS;
+    		  break;
+    		case 0x20: case 0x22: /* DSKPTH, DSKPTL */
+    		  regtypes[i] = REGTYPE_DISK;
+    		  break;
+    		  
+    		case 0x28: /* REFPTR */
+    		case 0x102: case 0x104: case 0x106: /* BPLCON1, BPLCON2, BPLCON3 */
+    		case 0x108: case 0x10A: /* BPL1MOD, BPL2MOD */
+    		  regtypes[i] = REGTYPE_PLANE | FORCE_HPOS;
+    		  break;
+
+    		case 0x10C: /* BPLCON4 */
+    		  regtypes[i] = REGTYPE_PLANE | REGTYPE_SPRITE | FORCE_HPOS;
+    		  break;
+      }
+    }
   }
 }
 
