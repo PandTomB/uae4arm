@@ -4881,7 +4881,7 @@ STATIC_INLINE int copper_cant_read (int hpos)
 	if (hpos >= maxhpos - 1) // first refresh slot
     return 1;
 	if (hpos == maxhpos - 3) {
-		return -1;
+		return 1;
 	}
   return is_bitplane_dma (hpos);
 }
@@ -5327,17 +5327,20 @@ static void update_copper (int until_hpos)
 					  /* Position not reached yet.  */
             if(currprefs.fast_copper) {
   						while(c_hpos < until_hpos) {
+                int redo_hpos = c_hpos;
+            
             		if (c_hpos == maxhpos - 3)
             			c_hpos += 1;
             		else
             		  c_hpos += 2;
-            		
-            		ch_comp = c_hpos;
+
+                ch_comp = c_hpos;
       				  if (ch_comp & 1)
       					  ch_comp = 0;
+
 				        hp = ch_comp & (cop_state.saved_i2 & 0xFE);
 				        if(hp >= cop_state.hcmp) {
-				          cop_state.state = COP_read1;
+				          c_hpos = redo_hpos; // run outer loop with last c_hpos
 				          break;
 				        }
   						}
