@@ -580,7 +580,7 @@ extern void picasso_enablescreen (int on);
 extern void picasso_refresh (void);
 extern void picasso_handle_vsync (void);
 extern void picasso_reset (void);
-extern int picasso_palette (struct MyCLUTEntry *CLUT);
+extern int picasso_palette (struct MyCLUTEntry *CLUT, uae_u32 *clut);
 
 /* This structure describes the UAE-side framebuffer for the Picasso
  * screen.  */

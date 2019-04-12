@@ -1,3 +1,4 @@
+2019-04-12 - Merged WinUAE 4.2.0
 2019-03-29 - Merged WinUAE 4.2.0 beta 6
 2019-03-09 - Another fast copper update
 2019-03-08 - Fast copper update (bit slower but more compatible)
