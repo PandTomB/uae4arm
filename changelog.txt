@@ -1,3 +1,10 @@
+2019-05-17   First version for aarch64
+ - Tested on Raspberry Pi 3B with Ubuntu Mate 64Bit.
+ - Compiled native on Raspberry (GCC 7.4.0) or using cross-compiler on Ubuntu PC (GCC 8.3.0).
+ - There is still work to do:
+    * No JIT (rewrite of code generator needed, because of different instruction set and instruction encoding)
+    * Fix for atomic functions (get segfaults when using GCC builtins)
+    * Optimize for aarch64
 2019-04-12 - Merged WinUAE 4.2.0
 2019-03-29 - Merged WinUAE 4.2.0 beta 6
 2019-03-09 - Another fast copper update

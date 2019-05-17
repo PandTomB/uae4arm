@@ -1,10 +1,10 @@
 ifeq ($(PLATFORM),)
-	PLATFORM = rpi3
+	PLATFORM = rpiA64
 endif
 
 ifeq ($(PLATFORM),rpi3)
   CPU_FLAGS += -march=armv8-a -mfpu=neon-fp-armv8 -mfloat-abi=hard -mtune=cortex-a53
-  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DARM_HAS_DIV
+  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DARM_HAS_DIV -DARMV6_ASSEMBLY
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
   LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11 -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
@@ -13,7 +13,7 @@ ifeq ($(PLATFORM),rpi3)
   endif
 else ifeq ($(PLATFORM),rpi2)
 	CPU_FLAGS += -march=armv7-a -mfpu=neon -mfloat-abi=hard -mtune=cortex-a8
-	MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY
+	MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DARMV6_ASSEMBLY
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
   LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11 -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
@@ -22,7 +22,7 @@ else ifeq ($(PLATFORM),rpi2)
   endif
 else ifeq ($(PLATFORM),rpi1)
 	CPU_FLAGS += -march=armv6zk -mfpu=vfp -mfloat-abi=hard
-  MORE_CFLAGS += -DRASPBERRY
+  MORE_CFLAGS += -DRASPBERRY -DARMV6_ASSEMBLY
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
   LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11 -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
@@ -31,8 +31,27 @@ else ifeq ($(PLATFORM),rpi1)
   endif
 else ifeq ($(PLATFORM),Pandora)
   CPU_FLAGS += -march=armv7-a -mfpu=neon -mfloat-abi=softfp -mtune=cortex-a8
-  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DPANDORA -msoft-float
+  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON  -DARMV6_ASSEMBLY -DPANDORA -msoft-float
   PROFILER_PATH = /media/MAINSD/pandora/test
+  ifeq ($(USE_SDL_VERSION),)
+    USE_SDL_VERSION = sdl1
+  endif
+else ifeq ($(PLATFORM),rpiA64sdl1)
+  AARCH64 = 1
+  CPU_FLAGS += -march=armv8.1-a -mtune=cortex-a53
+  MORE_CFLAGS += -DRASPBERRY -DCPU_AARCH64
+  LDFLAGS += -lX11
+  PROFILER_PATH = /home/pi/test/uae4arm
+  ifeq ($(USE_SDL_VERSION),)
+    USE_SDL_VERSION = sdl1
+  endif
+else ifeq ($(PLATFORM),rpiA64)
+  AARCH64 = 1
+  CPU_FLAGS += -march=armv8.1-a -mtune=cortex-a53
+  MORE_CFLAGS += -DRASPBERRY -DCPU_AARCH64
+  MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
+  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11  -L/opt/vc/lib
+  PROFILER_PATH = /home/pi/test/uae4arm
   ifeq ($(USE_SDL_VERSION),)
     USE_SDL_VERSION = sdl1
   endif
@@ -72,7 +91,7 @@ SDL_CFLAGS = `sdl2-config --cflags --libs`
 endif
 
 DEFS += `xml2-config --cflags`
-DEFS += -DCPU_arm -DARMV6_ASSEMBLY
+DEFS += -DCPU_arm
 DEFS += -DUSE_SDL
 #DEFS += -DWITH_LOGGING
 
@@ -99,7 +118,7 @@ ifndef DEBUG
   MORE_CFLAGS += -funroll-loops -ftracer
 else
   MORE_CFLAGS += -O2
-  MORE_CFLAGS += -g -rdynamic -funwind-tables -mapcs-frame -DDEBUG -Wl,--export-dynamic
+  MORE_CFLAGS += -g -rdynamic -funwind-tables -DDEBUG -Wl,--export-dynamic
   ifdef TRACER
     TRACE_CFLAGS = -DTRACER -finstrument-functions -Wall -rdynamic
   endif
@@ -278,6 +297,8 @@ else
 OBJS += src/osdep/raspi.o
 ifeq ($(USE_SDL_VERSION),sdl2)
 OBJS += src/osdep/raspi_gfxsdl2.o
+else ifeq ($(PLATFORM),rpiA64sdl1)
+OBJS += src/osdep/raspi_gfxsdl1.o
 else
 OBJS += src/osdep/raspi_gfx.o
 endif
@@ -286,7 +307,9 @@ OBJS += src/sounddep/sound_sdl.o
 OBJS += src/osdep/gui/PanelGamePortRaspi.o
 endif
 
-ifeq ($(PLATFORM),rpi1)
+ifdef AARCH64
+	OBJS += src/osdep/aarch64_helper.o
+else ifeq ($(PLATFORM),rpi1)
 	OBJS += src/osdep/arm_helper.o
 else
 	OBJS += src/osdep/neon_helper.o
@@ -313,6 +336,9 @@ src/osdep/neon_helper.o: src/osdep/neon_helper.s
 src/osdep/arm_helper.o: src/osdep/arm_helper.s
 	$(CXX) $(ASFLAGS) -Wall -o src/osdep/arm_helper.o -c src/osdep/arm_helper.s
 
+src/osdep/aarch64_helper.o: src/osdep/aarch64_helper.s
+	$(CXX) $(ASFLAGS) -Wall -o src/osdep/aarch64_helper.o -c src/osdep/aarch64_helper.s
+
 ifdef TRACER
 src/trace.o: src/trace.c
 	$(CC) $(MORE_CFLAGS) -c src/trace.c -o src/trace.o
@@ -333,6 +359,7 @@ ifndef DEBUG
 endif
 
 ASMS = \
+	src/ar.s \
 	src/audio.s \
 	src/autoconf.s \
 	src/blitfunc.s \

@@ -19,7 +19,9 @@
 #include <SDL/SDL_gfxPrimitives.h>
 #include <SDL/SDL_ttf.h>
 #include "threaddep/thread.h"
-#include "bcm_host.h"
+#include <sys/ioctl.h>
+#include <linux/fb.h>
+
 
 #define DISPLAY_SIGNAL_SETUP 				1
 #define DISPLAY_SIGNAL_SUBSHUTDOWN 	2
@@ -32,7 +34,8 @@ static uae_sem_t display_sem = 0;
 static bool volatile display_thread_busy = false;
 static int display_width;
 static int display_height;
-
+static uae_thread_id vsync_tid = 0;
+static bool volatile vsync_term = false;
 
 /* SDL surface variable for output of emulation */
 SDL_Surface *prSDLScreen = NULL;
@@ -62,19 +65,6 @@ static void CreateScreenshot(void);
 static int save_thumb(char *path);
 int delay_savestate_frame = 0;
 
-DISPMANX_DISPLAY_HANDLE_T   dispmanxdisplay;
-DISPMANX_MODEINFO_T         dispmanxdinfo;
-DISPMANX_RESOURCE_HANDLE_T  dispmanxresource_amigafb_1 = 0;
-DISPMANX_RESOURCE_HANDLE_T  dispmanxresource_amigafb_2 = 0;
-DISPMANX_ELEMENT_HANDLE_T   dispmanxelement;
-DISPMANX_UPDATE_HANDLE_T    dispmanxupdate;
-VC_RECT_T       src_rect;
-VC_RECT_T       dst_rect;
-VC_RECT_T       blit_rect;
-
-static int DispManXElementpresent = 0;
-static unsigned char current_resource_amigafb = 0;
-
 static bool calibrate_done = false;
 static const int calibrate_seconds = 5;
 static int calibrate_frames = -1;
@@ -91,7 +81,7 @@ static unsigned long next_amiga_frame_ends = 0;
 extern void sound_adjust(float factor);
 
 
-static void vsync_callback(unsigned int a, void* b)
+static void vsync_callback(void)
 {
   atomic_inc(&host_frame);
 
@@ -168,14 +158,31 @@ void reset_sync(void)
 }
 
 
+static void *vsync_thread (void *unused)
+{
+	int fbdev_sync = open("/dev/fb0", O_RDWR);
+	if (fbdev_sync == -1) {
+    write_log("failed to open /dev/fb0: %d\n", errno);
+    return 0;
+  }
+
+  while(!vsync_term) {
+    int zero = 0;
+    if (ioctl(fbdev_sync, FBIO_WAITFORVSYNC, &zero) == -1) {
+      write_log("fbdev_sync ioctl failed: %d\n", errno);
+      break;
+    }
+    vsync_callback();
+    usleep(1000);
+  }
+  close(fbdev_sync);
+  vsync_tid = 0;
+  return NULL;
+}
+
+
 static int display_thread (void *unused)
 {
-	VC_DISPMANX_ALPHA_T alpha = {
-		(DISPMANX_FLAGS_ALPHA_T)(DISPMANX_FLAGS_ALPHA_FROM_SOURCE | DISPMANX_FLAGS_ALPHA_FIXED_ALL_PIXELS), 
-		255 /*alpha 0->255*/ , 	0
-	};
-	uint32_t vc_image_ptr;
-	SDL_Surface *Dummy_prSDLScreen;
 	int width, height;
 	bool callback_registered = false;
 	
@@ -185,31 +192,9 @@ static int display_thread (void *unused)
     display_thread_busy = true;
     switch(signal) {
       case DISPLAY_SIGNAL_SETUP:
-        if(!callback_registered) {
-  				bcm_host_init();
-  				dispmanxdisplay = vc_dispmanx_display_open(0);
-  			  vc_dispmanx_vsync_callback(dispmanxdisplay, vsync_callback, NULL);
-  			  callback_registered = true;
-  			}
 			  break;
 
 			case DISPLAY_SIGNAL_SUBSHUTDOWN:
-				if (DispManXElementpresent == 1) {
-					DispManXElementpresent = 0;
-					dispmanxupdate = vc_dispmanx_update_start(0);
-					vc_dispmanx_element_remove(dispmanxupdate, dispmanxelement);
-					vc_dispmanx_update_submit_sync(dispmanxupdate);
-				}
-			
-				if (dispmanxresource_amigafb_1 != 0) {
-					vc_dispmanx_resource_delete(dispmanxresource_amigafb_1);
-					dispmanxresource_amigafb_1 = 0;
-			  }
-				if (dispmanxresource_amigafb_2 != 0) {
-					vc_dispmanx_resource_delete(dispmanxresource_amigafb_2);
-					dispmanxresource_amigafb_2 = 0;
-			  }
-			  
 			  if(prSDLScreen != NULL) {
 			    SDL_FreeSurface(prSDLScreen);
 			    prSDLScreen = NULL;
@@ -221,68 +206,16 @@ static int display_thread (void *unused)
 				width = display_width;
 				height = display_height;
 				
-				Dummy_prSDLScreen = SDL_SetVideoMode(width, height, 16, SDL_SWSURFACE | SDL_FULLSCREEN);
-				prSDLScreen = SDL_CreateRGBSurface(SDL_HWSURFACE, width, height, 16,
-					Dummy_prSDLScreen->format->Rmask,	Dummy_prSDLScreen->format->Gmask, Dummy_prSDLScreen->format->Bmask, Dummy_prSDLScreen->format->Amask);
-				SDL_FreeSurface(Dummy_prSDLScreen);
+				prSDLScreen = SDL_SetVideoMode(width, height, 16, SDL_HWSURFACE | SDL_FULLSCREEN);
 			
-				vc_dispmanx_display_get_info(dispmanxdisplay, &dispmanxdinfo);
-			
-				dispmanxresource_amigafb_1 = vc_dispmanx_resource_create(VC_IMAGE_RGB565, width, height, &vc_image_ptr);
-				dispmanxresource_amigafb_2 = vc_dispmanx_resource_create(VC_IMAGE_RGB565, width, height, &vc_image_ptr);
-			
-				vc_dispmanx_rect_set(&blit_rect, 0, 0, width, height);
-				vc_dispmanx_resource_write_data(dispmanxresource_amigafb_1, VC_IMAGE_RGB565, prSDLScreen->pitch, prSDLScreen->pixels, &blit_rect);
-				vc_dispmanx_rect_set(&src_rect, 0, 0, width << 16, height << 16);
-			
-				// 16/9 to 4/3 ratio adaptation.
-				if (currprefs.gfx_correct_aspect == 0 || screen_is_picasso) {
-				  // Fullscreen.
-					int scaled_width = dispmanxdinfo.width * currprefs.gfx_fullscreen_ratio / 100;
-					int scaled_height = dispmanxdinfo.height * currprefs.gfx_fullscreen_ratio / 100;
-					vc_dispmanx_rect_set( &dst_rect, (dispmanxdinfo.width - scaled_width)/2, (dispmanxdinfo.height - scaled_height)/2,
-						scaled_width,	scaled_height);
-				}	else {
-				  // 4/3 shrink.
-					int scaled_width = dispmanxdinfo.width * currprefs.gfx_fullscreen_ratio / 100;
-					int scaled_height = dispmanxdinfo.height * currprefs.gfx_fullscreen_ratio / 100;
-					vc_dispmanx_rect_set( &dst_rect, (dispmanxdinfo.width - scaled_width / 16 * 12)/2, (dispmanxdinfo.height - scaled_height)/2,
-						scaled_width/16*12,	scaled_height);
-				}
-			
-				if (DispManXElementpresent == 0) {
-					DispManXElementpresent = 1;
-					dispmanxupdate = vc_dispmanx_update_start(0);
-					dispmanxelement = vc_dispmanx_element_add(dispmanxupdate, dispmanxdisplay,	2,               // layer
-						&dst_rect, dispmanxresource_amigafb_1, &src_rect,	DISPMANX_PROTECTION_NONE,	&alpha,	NULL, DISPMANX_NO_ROTATE);
-			
-					vc_dispmanx_update_submit(dispmanxupdate, NULL, NULL);
-				}
         uae_sem_post (&display_sem);
         break;
 
 			case DISPLAY_SIGNAL_SHOW:
-				if (current_resource_amigafb == 1) {
-					current_resource_amigafb = 0;
-				  vc_dispmanx_resource_write_data(dispmanxresource_amigafb_1, VC_IMAGE_RGB565,
-					  adisplays.gfxvidinfo.drawbuffer.rowbytes, adisplays.gfxvidinfo.drawbuffer.bufmem, &blit_rect);
-				  dispmanxupdate = vc_dispmanx_update_start(0);
-				  vc_dispmanx_element_change_source(dispmanxupdate, dispmanxelement, dispmanxresource_amigafb_1);
-				} else {
-					current_resource_amigafb = 1;
-					vc_dispmanx_resource_write_data(dispmanxresource_amigafb_2,	VC_IMAGE_RGB565,
-						adisplays.gfxvidinfo.drawbuffer.rowbytes,	adisplays.gfxvidinfo.drawbuffer.bufmem,	&blit_rect);
-					dispmanxupdate = vc_dispmanx_update_start(0);
-					vc_dispmanx_element_change_source(dispmanxupdate, dispmanxelement, dispmanxresource_amigafb_2);
-				}
-			  vc_dispmanx_update_submit(dispmanxupdate, NULL, NULL);
+			  SDL_Flip(prSDLScreen);
 				break;
 								
       case DISPLAY_SIGNAL_QUIT:
-        callback_registered = false;
-			  vc_dispmanx_vsync_callback(dispmanxdisplay, NULL, NULL);
-				vc_dispmanx_display_close(dispmanxdisplay);
-				bcm_host_deinit();
 				SDL_VideoQuit();
         display_tid = 0;
         return 0;
@@ -297,25 +230,9 @@ int graphics_setup(void)
 	picasso_InitResolutions();
 	InitPicasso96();
 #endif
-  VCHI_INSTANCE_T vchi_instance;
-  VCHI_CONNECTION_T *vchi_connection;
-  TV_DISPLAY_STATE_T tvstate;
 
-  if(vchi_initialise(&vchi_instance) == 0) {
-    if(vchi_connect(NULL, 0, vchi_instance) == 0) {
-      vc_vchi_tv_init(vchi_instance, &vchi_connection, 1);
-      if(vc_tv_get_display_state(&tvstate) == 0) {
-        HDMI_PROPERTY_PARAM_T property;
-        property.property = HDMI_PROPERTY_PIXEL_CLOCK_TYPE;
-        vc_tv_hdmi_get_property(&property);
-        float frame_rate = property.param1 == HDMI_PIXEL_CLOCK_TYPE_NTSC ? tvstate.display.hdmi.frame_rate * (1000.0f/1001.0f) : tvstate.display.hdmi.frame_rate;
-        host_hz = (int)frame_rate;
-        time_per_host_frame = time_for_host_hz_frames / host_hz;
-      }
-      vc_vchi_tv_stop();
-      vchi_disconnect(vchi_instance);
-    }
-  }
+  host_hz = 60;
+  time_per_host_frame = time_for_host_hz_frames / host_hz;
 
   if(display_pipe == 0) {
     display_pipe = xmalloc (smp_comm_pipe, 1);
@@ -326,6 +243,7 @@ int graphics_setup(void)
   }
   if(display_tid == 0 && display_pipe != 0 && display_sem != 0) {
     uae_start_thread(_T("render"), display_thread, NULL, &display_tid);
+    uae_start_thread(_T("vsync"), vsync_thread, NULL, &vsync_tid);
   }
 	write_comm_pipe_u32(display_pipe, DISPLAY_SIGNAL_SETUP, 1);
 	
@@ -417,6 +335,10 @@ void graphics_thread_leave(void)
 	  while(display_tid != 0) {
 	    sleep_millis(10);
 	  }
+	  vsync_term = true;
+	  while(vsync_tid != 0) {
+	    sleep_millis(10);
+	  }
 	  destroy_comm_pipe(display_pipe);
 	  xfree(display_pipe);
 	  display_pipe = 0;
@@ -430,8 +352,6 @@ static void open_screen(struct uae_prefs *p)
 {
   graphics_subshutdown();
   
-  current_resource_amigafb = 0;
-
 	currprefs.gfx_correct_aspect = changed_prefs.gfx_correct_aspect;
 	currprefs.gfx_fullscreen_ratio = changed_prefs.gfx_fullscreen_ratio;
 

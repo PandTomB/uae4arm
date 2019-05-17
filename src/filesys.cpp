@@ -2360,7 +2360,7 @@ static Unit *startup_create_unit (TrapContext *ctx, UnitInfo *uinfo, int num)
 }
 
 #ifdef UAE_FILESYS_THREADS
-static void *filesys_thread (void *unit_v);
+static int filesys_thread (void *unit_v);
 #endif
 static void filesys_start_thread (UnitInfo *ui, int nr)
 {
@@ -5602,7 +5602,7 @@ static int filesys_iteration(UnitInfo *ui)
 }
 
 
-static void *filesys_thread (void *unit_v)
+static int filesys_thread (void *unit_v)
 {
 	UnitInfo *ui = (UnitInfo *)unit_v;
 

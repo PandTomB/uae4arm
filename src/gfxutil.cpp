@@ -63,7 +63,7 @@ static unsigned int doColor(int i, int bits, int shift)
   return (i >> shift2) << shift;
 }
 
-#ifndef ARMV6T2
+#if !defined(ARMV6T2) && !defined(CPU_AARCH64)
 static void alloc_colors_rgb (int rw, int gw, int bw, int rs, int gs, int bs,
 	uae_u32 *rc, uae_u32 *gc, uae_u32 *bc)
 {
@@ -96,7 +96,7 @@ void alloc_colors64k (int rw, int gw, int bw, int rs, int gs, int bs)
 		* with a copy of the colour. */
 		xcolors[i] = xcolors[i] * 0x00010001;
 	}
-#ifndef ARMV6T2
+#if !defined(ARMV6T2) && !defined(CPU_AARCH64)
 	alloc_colors_rgb (rw, gw, bw, rs, gs, bs, xredcolors, xgreencolors, xbluecolors);
 #endif
 }

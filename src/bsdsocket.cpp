@@ -1277,7 +1277,7 @@ static uae_u32 REGPARAM2 bsdsocklib_SocketBaseTagList(TrapContext *ctx)
 					break;
 
 				case SBTC_FDCALLBACK:
-					tagcopy(ctx, currtag, currval, tagptr, &sb->fdcallback);
+					tagcopy(ctx, currtag, currval, tagptr, (uae_u32*)&sb->fdcallback);
 					break;
 
 				case SBTC_LOGSTAT:
