@@ -30,7 +30,7 @@ static unsigned int doMask (int p, int bits, int shift)
   return val;
 }
 
-int bits_in_mask (unsigned long mask)
+int bits_in_mask (uae_u32 mask)
 {
 	int n = 0;
 	while (mask)	{
@@ -40,7 +40,7 @@ int bits_in_mask (unsigned long mask)
 	return n;
 }
 
-int mask_shift (unsigned long mask)
+int mask_shift (uae_u32 mask)
 {
 	int n = 0;
 	if (!mask)

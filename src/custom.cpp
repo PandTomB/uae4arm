@@ -273,10 +273,10 @@ static int copper_enabled_thisline;
 /*
  * Statistics
  */
-static unsigned long lastframetime = 0;
-unsigned long timeframes = 0;
-unsigned long hsync_counter = 0;
-unsigned long int idletime;
+static uae_u32 lastframetime = 0;
+uae_u32 timeframes = 0;
+uae_u32 hsync_counter = 0;
+uae_u32 idletime;
 
 /* Recording of custom chip register changes.  */
 struct decision line_decisions[2 * (MAXVPOS + 2) + 1];
@@ -1389,7 +1389,7 @@ STATIC_INLINE void flush_display (int fm)
   toscr_nbits = 0;
 }
 
-static void record_color_change(int hpos, int regno, unsigned long value);
+static void record_color_change(int hpos, int regno, uae_u32 value);
 
 static void hack_shres_delay(int hpos)
 {
@@ -2544,7 +2544,7 @@ static void decide_line (int hpos)
 
 /* Called when a color is about to be changed (write to a color register),
  * but the new color has not been entered into the table yet. */
-static void record_color_change (int hpos, int regno, unsigned long value)
+static void record_color_change (int hpos, int regno, uae_u32 value)
 {
 	if (regno < 0x1000 && nodraw ())
 		return;
