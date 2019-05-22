@@ -352,10 +352,9 @@ LOWFUNC(WRITE,RMW,2,compemu_raw_sub_l_mi,(MEMRW d, IM32 s))
   uintptr idx = d - (uintptr) & regs;
   LDR_wXi(REG_WORK2, R_REGSTRUCT, idx);
 
-  if((s & 0xfff) == 0) {
+  if((s & ~0xfff) == 0) {
     SUBS_wwi(REG_WORK2, REG_WORK2, s);
   } else {
-
     LOAD_U32(REG_WORK1, s);
 	  SUBS_www(REG_WORK2, REG_WORK2, REG_WORK1);
   }
@@ -498,7 +497,7 @@ STATIC_INLINE void compemu_raw_handle_except(IM32 cycles)
   // countdown -= scaled_cycles(totcycles);
   offs = (uintptr)&countdown - (uintptr)&regs;
 	LDR_wXi(REG_WORK1, R_REGSTRUCT, offs);
-  if((cycles & 0xfff) == 0) {
+  if((cycles & ~0xfff) == 0) {
 	  SUBS_wwi(REG_WORK1, REG_WORK1, cycles);
 	} else {
     LOAD_U32(REG_WORK2, cycles);
@@ -575,7 +574,7 @@ LOWFUNC(NONE,NONE,2,compemu_raw_endblock_pc_inreg,(RR4 rr_pc, IM32 cycles))
   // countdown -= scaled_cycles(totcycles);
   uintptr offs = (uintptr)&countdown - (uintptr)&regs;
 	LDR_wXi(REG_WORK1, R_REGSTRUCT, offs);
-  if((cycles & 0xfff) == 0) {
+  if((cycles & ~0xfff) == 0) {
 	  SUBS_wwi(REG_WORK1, REG_WORK1, cycles);
 	} else {
 	  LOAD_U32(REG_WORK2, cycles);
@@ -607,7 +606,7 @@ STATIC_INLINE uae_u32* compemu_raw_endblock_pc_isconst(IM32 cycles, IMPTR v)
   // countdown -= scaled_cycles(totcycles);
   uintptr offs = (uintptr)&countdown - (uintptr)&regs;
 	LDR_wXi(REG_WORK1, R_REGSTRUCT, offs);
-  if((cycles & 0xfff) == 0) {
+  if((cycles & ~0xfff) == 0) {
 	  SUBS_wwi(REG_WORK1, REG_WORK1, cycles);
 	} else {
 	  LOAD_U32(REG_WORK2, cycles);

@@ -153,6 +153,7 @@ static uae_u8 GetBytesPerPixel (uae_u32 RGBfmt)
   switch (RGBfmt) 
   {
   case RGBFB_CLUT:
+	case RGBFB_Y4U1V1:
   	return 1;
 
   case RGBFB_A8R8G8B8:
@@ -171,6 +172,7 @@ static uae_u8 GetBytesPerPixel (uae_u32 RGBfmt)
   case RGBFB_R5G5B5PC:
   case RGBFB_B5G6R5PC:
   case RGBFB_B5G5R5PC:
+	case RGBFB_Y4U2V2:
   	return 2;
   }
 	return 0;

@@ -873,6 +873,11 @@ static void init_mem_banks (void)
     mem_banks[i] = &dummy_bank;
 }
 
+static void map_banks_set(addrbank *bank, int start, int size, int realsize)
+{
+	map_banks(bank, start, size, realsize);
+}
+
 static void allocate_memory (void)
 {
   if (chipmem_bank.reserved_size != currprefs.chipmem_size) {
@@ -1011,11 +1016,6 @@ void map_overlay (int chip)
   }
   if (!isrestore () && valid_address (regs.pc, 4))
     m68k_setpc_normal (currPC);
-}
-
-static void map_banks_set(addrbank *bank, int start, int size, int realsize)
-{
-	map_banks(bank, start, size, realsize);
 }
 
 void memory_clear (void)

@@ -1,6 +1,6 @@
 Read changelog.txt for the history of development of UAE4ARM for Pandora. 
 
-This version is compiled and tested with Raspbian Stretch.
+This version is compiled and tested with Raspbian Stretch (32 bit) and Ubuntu Mate (64 bit).
 
 Requirements:
  - guichan 0.8.1
@@ -35,6 +35,18 @@ Install the packages to compile uae4arm on Raspberry Pi:
       sudo apt-get install libflac-dev
       sudo apt-get install libmpg123-dev
       sudo apt-get install libmpeg2-4-dev
+
+Aarch64:
+To run on Ubuntu mate, dispmanx is required:
+
+      git clone https://github.com/raspberrypi/userland.git
+      cd userland
+      buildme --aarch64
+
+Use dsp as audio driver:
+
+      export SDL_AUDIODRIVER=dsp
+
 
 Credits
  - Toni Wilen (WinUAE)
