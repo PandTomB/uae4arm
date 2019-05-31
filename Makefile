@@ -47,7 +47,7 @@ else ifeq ($(PLATFORM),rpiA64sdl1)
   endif
 else ifeq ($(PLATFORM),rpiA64)
   AARCH64 = 1
-  CPU_FLAGS += -march=armv8.1-a -mtune=cortex-a53
+  CPU_FLAGS += -march=armv8-a -mtune=cortex-a53
   MORE_CFLAGS += -DRASPBERRY -DCPU_AARCH64
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
   LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11  -L/opt/vc/lib
