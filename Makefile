@@ -38,7 +38,7 @@ else ifeq ($(PLATFORM),Pandora)
   endif
 else ifeq ($(PLATFORM),rpiA64sdl1)
   AARCH64 = 1
-  CPU_FLAGS += -march=armv8.1-a -mtune=cortex-a53
+  CPU_FLAGS += -march=armv8-a -mtune=cortex-a53
   MORE_CFLAGS += -DRASPBERRY -DCPU_AARCH64
   LDFLAGS += -lX11
   PROFILER_PATH = /home/pi/test/uae4arm
@@ -101,7 +101,7 @@ endif
 MORE_CFLAGS += -Isrc -Isrc/osdep -Isrc/include -Isrc/archivers
 MORE_CFLAGS += -Wno-write-strings -Wno-shift-overflow -Wno-narrowing
 MORE_CFLAGS += -fuse-ld=gold -fdiagnostics-color=auto
-MORE_CFLAGS += -falign-functions=16
+MORE_CFLAGS += -falign-functions
 
 LDFLAGS += -lpthread -lz -lpng -lrt -lxml2 -lFLAC -lmpg123 -ldl -lmpeg2convert -lmpeg2
 ifeq ($(USE_SDL_VERSION),sdl1)
@@ -113,9 +113,13 @@ endif
 TRACE_CFLAGS = 
 
 ifndef DEBUG
-  MORE_CFLAGS += -Ofast -pipe
-  MORE_CFLAGS += -frename-registers
+ifdef AARCH64
+  MORE_CFLAGS += -O3 -pipe
+  MORE_CFLAGS += -funroll-loops
+else
+  MORE_CFLAGS += -O3 -pipe
   MORE_CFLAGS += -funroll-loops -ftracer
+endif
 else
   MORE_CFLAGS += -O2
   MORE_CFLAGS += -g -rdynamic -funwind-tables -DDEBUG -Wl,--export-dynamic
@@ -124,7 +128,7 @@ else
   endif
 endif
 
-ASFLAGS += $(CPU_FLAGS) -falign-functions=16
+ASFLAGS += $(CPU_FLAGS) -falign-functions
 
 CXXFLAGS += $(SDL_CFLAGS) $(CPU_FLAGS) $(DEFS) $(MORE_CFLAGS)
 

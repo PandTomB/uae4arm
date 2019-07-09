@@ -37,7 +37,7 @@ Install the packages to compile uae4arm on Raspberry Pi:
       sudo apt-get install libmpeg2-4-dev
 
 Aarch64:
-JIT is not available at the moment.
+JIT needs more testing for aarch64.
 To run on Ubuntu mate, dispmanx is required:
 
       git clone https://github.com/raspberrypi/userland.git
