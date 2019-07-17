@@ -1,6 +1,4 @@
-Read changelog.txt for the history of development of UAE4ARM for Pandora. 
-
-This version is compiled and tested with Raspbian Stretch (32 bit) and Ubuntu Mate (64 bit).
+This version is compiled (GCC 8.3) and tested with Raspbian Stretch (armv7) and Ubuntu Mate (aarch64).
 
 Requirements:
  - guichan 0.8.1
@@ -48,6 +46,8 @@ Use dsp as audio driver:
 
       export SDL_AUDIODRIVER=dsp
 
+
+Read changelog.txt for the history of development of UAE4ARM for Pandora. 
 
 Credits
  - Toni Wilen (WinUAE)
