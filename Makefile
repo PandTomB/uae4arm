@@ -94,6 +94,7 @@ DEFS += `xml2-config --cflags`
 DEFS += -DCPU_arm
 DEFS += -DUSE_SDL
 #DEFS += -DWITH_LOGGING
+#DEFS += -DJIT_DEBUG
 
 ifeq ($(USE_SDL_VERSION),sdl2)
 MORE_CFLAGS += -Isrc/guisan/include -DUSE_SDL2
