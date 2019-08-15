@@ -1,3 +1,5 @@
+2019-08-15 - Merge with current WinUAE (2019-08-14)
+           - Bugfix JIT (armv7 and aarch64)
 2019-08-11 - Performance enhancement for JIT (armv7 and aarch64)
            - Cleanup after profiling
            - LDR/STR handling for aarch64 in sigsev_handler
