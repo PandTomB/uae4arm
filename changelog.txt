@@ -1,3 +1,4 @@
+2019-08-17 - Undone some changes from WinUAE which causes failures
 2019-08-15 - Merge with current WinUAE (2019-08-14)
            - Bugfix JIT (armv7 and aarch64)
 2019-08-11 - Performance enhancement for JIT (armv7 and aarch64)
