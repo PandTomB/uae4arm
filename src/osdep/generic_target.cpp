@@ -57,9 +57,13 @@ char last_loaded_config[MAX_DPATH] = { '\0' };
 int max_uae_width;
 int max_uae_height;
 
-
 extern "C" int main( int argc, char *argv[] );
 
+
+void sleep_micros (int ms)
+{
+  usleep(ms);
+}
 
 void sleep_millis (int ms)
 {
@@ -618,7 +622,8 @@ int generic_main (int argc, char *argv[])
 		printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
 		abort();
 	};
-
+  target_detect_displaysize();
+  
 	keyboard_settrans();
   real_main (argc, argv);
   

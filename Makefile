@@ -2,11 +2,28 @@ ifeq ($(PLATFORM),)
 	PLATFORM = rpiA64
 endif
 
-ifeq ($(PLATFORM),rpi3)
+ifeq ($(PLATFORM),rpi4)
+  CPU_FLAGS += -march=armv8-a -mfpu=neon-fp-armv8 -mfloat-abi=hard -mtune=cortex-a72
+  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DARM_HAS_DIV -DARMV6_ASSEMBLY
+  MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
+  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11 -L/opt/vc/lib
+  PROFILER_PATH = /home/pi/test/uae4arm
+  ifeq ($(USE_SDL_VERSION),)
+    USE_SDL_VERSION = sdl1
+  endif
+else ifeq ($(PLATFORM),rpi3)
   CPU_FLAGS += -march=armv8-a -mfpu=neon-fp-armv8 -mfloat-abi=hard -mtune=cortex-a53
   MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DARM_HAS_DIV -DARMV6_ASSEMBLY
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
   LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11 -L/opt/vc/lib
+  PROFILER_PATH = /home/pi/test/uae4arm
+  ifeq ($(USE_SDL_VERSION),)
+    USE_SDL_VERSION = sdl1
+  endif
+else ifeq ($(PLATFORM),rpi3sdl1)
+  CPU_FLAGS += -march=armv8-a -mfpu=neon-fp-armv8 -mfloat-abi=hard -mtune=cortex-a53
+  MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DARM_HAS_DIV -DARMV6_ASSEMBLY
+  LDFLAGS += -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11 -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
   ifeq ($(USE_SDL_VERSION),)
     USE_SDL_VERSION = sdl1
@@ -36,21 +53,11 @@ else ifeq ($(PLATFORM),Pandora)
   ifeq ($(USE_SDL_VERSION),)
     USE_SDL_VERSION = sdl1
   endif
-else ifeq ($(PLATFORM),rpiA64sdl1)
-  AARCH64 = 1
-  CPU_FLAGS += -march=armv8-a -mtune=cortex-a53
-  MORE_CFLAGS += -DRASPBERRY -DCPU_AARCH64
-  LDFLAGS += -lX11
-  PROFILER_PATH = /home/pi/test/uae4arm
-  ifeq ($(USE_SDL_VERSION),)
-    USE_SDL_VERSION = sdl1
-  endif
 else ifeq ($(PLATFORM),rpiA64)
   AARCH64 = 1
   CPU_FLAGS += -march=armv8-a -mtune=cortex-a53
   MORE_CFLAGS += -DRASPBERRY -DCPU_AARCH64
-  MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
-  LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11  -L/opt/vc/lib
+  LDFLAGS += -lX11
   PROFILER_PATH = /home/pi/test/uae4arm
   ifeq ($(USE_SDL_VERSION),)
     USE_SDL_VERSION = sdl1
@@ -182,6 +189,7 @@ OBJS =	\
 	src/hrtmon.rom.o \
 	src/ide.o \
 	src/inputdevice.o \
+	src/isofs.o \
 	src/keybuf.o \
 	src/main.o \
 	src/memory.o \
@@ -190,6 +198,7 @@ OBJS =	\
 	src/rtc.o \
 	src/savestate.o \
 	src/scsi.o \
+	src/scsiemul.o \
 	src/statusline.o \
 	src/traps.o \
 	src/uaelib.o \
@@ -302,7 +311,9 @@ else
 OBJS += src/osdep/raspi.o
 ifeq ($(USE_SDL_VERSION),sdl2)
 OBJS += src/osdep/raspi_gfxsdl2.o
-else ifeq ($(PLATFORM),rpiA64sdl1)
+else ifeq ($(PLATFORM),rpi3sdl1)
+OBJS += src/osdep/raspi_gfxsdl1.o
+else ifeq ($(PLATFORM),rpiA64)
 OBJS += src/osdep/raspi_gfxsdl1.o
 else
 OBJS += src/osdep/raspi_gfx.o
