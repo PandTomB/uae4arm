@@ -349,6 +349,7 @@ static void pfield_init_linetoscr (bool border)
 	// Sprite hpos don't include DIW_DDF_OFFSET and can appear 1 lores pixel
 	// before first bitplane pixel appears.
 	// This means "bordersprite" condition is possible under OCS/ECS too. Argh!
+
 	if (dip_for_drawing->nr_sprites) {
 		if (!ce_is_borderblank(colors_for_drawing.extra)) {
 			/* bordersprite off or not supported: sprites are visible until diw_end */
@@ -504,18 +505,17 @@ static void pfield_erase_vborder_sprites (void)
 	memset (pixdata.apixels + MAX_PIXELS_PER_LINE - pos, 0, size);
 }
 
-
 STATIC_INLINE void fill_line_16 (uae_u8 *buf, int start, int stop, int blank)
 {
 	uae_u16 *b = (uae_u16 *)buf;
 	unsigned int i;
 	unsigned int rem = 0;
 	xcolnr col = getbgc (blank);
-	if (((uintptr_t)&b[start]) & 3)
+	if (((uintptr_t)&b[start]) & 1)
 		b[start++] = (uae_u16) col;
 	if (start >= stop)
 		return;
-	if (((uintptr_t)&b[stop]) & 3) {
+	if (((uintptr_t)&b[stop]) & 1) {
 		rem++;
 		stop--;
 	}
@@ -964,7 +964,6 @@ static void pfield_set_linetoscr (void)
 	}
 	spritepixels = spritepixels_buffer;
 	pfield_do_linetoscr_spriteonly = pfield_do_nothing;
-
 	if (currprefs.chipset_mask & CSMASK_AGA) {
 		if (res_shift == 0) {
 			switch (vidinfo->drawbuffer.pixbytes) {
@@ -1514,7 +1513,7 @@ STATIC_INLINE void pfield_doline_1 (uae_u32 *pixels, int wordcount, int planes)
       MERGE (b6, b7, 0x00ff00ff, 8);
 
       MERGE (b0, b2, 0x0000ffff, 16);
-      do_put_mem_long (pixels, b0);
+		  do_put_mem_long (pixels + 0, b0);
       do_put_mem_long (pixels + 4, b2);
       MERGE (b1, b3, 0x0000ffff, 16);
       do_put_mem_long (pixels + 2, b1);
@@ -1677,9 +1676,9 @@ static void pfield_expand_dp_bplcon (void)
   if (aga_mode) {
   	bplehb = (dp_for_drawing->bplcon0 & 0x7010) == 0x6000;
     bpldualpf2of = (dp_for_drawing->bplcon3 >> 10) & 7;
-    sbasecol[0] = ((dp_for_drawing->bplcon4 >> 4) & 15) << 4;
-    sbasecol[1] = ((dp_for_drawing->bplcon4 >> 0) & 15) << 4;
-    bplxor = dp_for_drawing->bplcon4 >> 8;
+    sbasecol[0] = ((dp_for_drawing->bplcon4sp >> 4) & 15) << 4;
+    sbasecol[1] = ((dp_for_drawing->bplcon4sp >> 0) & 15) << 4;
+    bplxor = dp_for_drawing->bplcon4bm >> 8;
   } else
   	bplehb = (dp_for_drawing->bplcon0 & 0xFC00) == 0x6000 || (dp_for_drawing->bplcon0 & 0xFC00) == 0x7000;
 	if ((currprefs.chipset_mask & CSMASK_ECS_DENISE) && (dp_for_drawing->bplcon2 & 0x0200)) {
@@ -1768,8 +1767,12 @@ static void pfield_expand_dp_bplconx (int regno, int v)
   	case 0x106: // BPLCON3
       dp_for_drawing->bplcon3 = v;
       break;
-    case 0x10c: // BPLCON4
-      dp_for_drawing->bplcon4 = v;
+    case 0x10c: // BPLCON4 bitplane xor (and sprite if sprite change is not visible)
+		  dp_for_drawing->bplcon4bm = v;
+		  dp_for_drawing->bplcon4sp = v;
+		  break;
+	  case 0x10c+1: // BPLCON4 sprite bank
+		  dp_for_drawing->bplcon4sp = v;
       break;
 	case 0x1fc: // FMODE
 		dp_for_drawing->fmode = v;
@@ -1847,7 +1850,7 @@ static void do_color_changes (line_draw_func worker_border, line_draw_func worke
 
   for (i = dip_for_drawing->first_color_change; i <= dip_for_drawing->last_color_change; i++) {
 		int regno = curr_color_changes[i].regno;
-		unsigned int value = curr_color_changes[i].value;
+		uae_u32 value = curr_color_changes[i].value;
 	  int nextpos, nextpos_in_range;
 
 	  if (i == dip_for_drawing->last_color_change)
@@ -1894,9 +1897,11 @@ static void do_color_changes (line_draw_func worker_border, line_draw_func worke
 		} else if (regno == 0 && (value & COLOR_CHANGE_MASK)) {
 			if (value & COLOR_CHANGE_BRDBLANK) {
 				colors_for_drawing.extra &= ~(1 << CE_BORDERBLANK);
+				colors_for_drawing.extra &= ~(1 << CE_BORDERNTRANS);
 				colors_for_drawing.extra &= ~(1 << CE_BORDERSPRITE);
 				colors_for_drawing.extra |= (value & 1) != 0 ? (1 << CE_BORDERBLANK) : 0;
 				colors_for_drawing.extra |= (value & 3) == 2 ? (1 << CE_BORDERSPRITE) : 0;
+				colors_for_drawing.extra |= (value & 5) == 4 ? (1 << CE_BORDERNTRANS) : 0;
 			} else if (value & COLOR_CHANGE_SHRES_DELAY) {
 				colors_for_drawing.extra &= ~(1 << CE_SHRES_DELAY);
 				colors_for_drawing.extra &= ~(1 << (CE_SHRES_DELAY + 1));
@@ -1918,7 +1923,8 @@ STATIC_INLINE bool is_color_changes(struct draw_info *di)
 
 static void pfield_draw_line (int lineno, int gfx_ypos, int follow_ypos)
 {
-	int border = 0;
+	struct vidbuf_description *vidinfo = &adisplays.gfxvidinfo;
+  int border = 0;
 	int do_double = 0;
 	bool have_color_changes;
 
@@ -1957,7 +1963,8 @@ static void pfield_draw_line (int lineno, int gfx_ypos, int follow_ypos)
 			uae_u16 b0 = dp_for_drawing->bplcon0;
 			uae_u16 b2 = dp_for_drawing->bplcon2;
 			uae_u16 b3 = dp_for_drawing->bplcon3;
-			uae_u16 b4 = dp_for_drawing->bplcon4;
+			uae_u16 b4bm = dp_for_drawing->bplcon4bm;
+			uae_u16 b4sp = dp_for_drawing->bplcon4sp;
 			uae_u16 fm = dp_for_drawing->fmode;
       init_ham_decoding ();
       do_color_changes (dummy_worker, decode_ham);
@@ -1967,7 +1974,8 @@ static void pfield_draw_line (int lineno, int gfx_ypos, int follow_ypos)
 				dp_for_drawing->bplcon0 = b0;
 				dp_for_drawing->bplcon2 = b2;
 				dp_for_drawing->bplcon3 = b3;
-				dp_for_drawing->bplcon4 = b4;
+				dp_for_drawing->bplcon4bm = b4bm;
+				dp_for_drawing->bplcon4bm = b4sp;
 				dp_for_drawing->fmode = fm;
 				pfield_expand_dp_bplcon ();
       }
@@ -1996,7 +2004,7 @@ static void pfield_draw_line (int lineno, int gfx_ypos, int follow_ypos)
 			do_color_changes (pfield_do_fill_line, dip_for_drawing->nr_sprites ? pfield_do_linetoscr_spr : pfield_do_linetoscr);
 
 		if (do_double) {
-			memcpy (row_map[follow_ypos], row_map[gfx_ypos], adisplays.gfxvidinfo.drawbuffer.pixbytes * adisplays.gfxvidinfo.drawbuffer.outwidth);
+			memcpy (row_map[follow_ypos], row_map[gfx_ypos], vidinfo->drawbuffer.pixbytes * vidinfo->drawbuffer.outwidth);
 		}
 
 		if (dip_for_drawing->nr_sprites)
@@ -2008,6 +2016,7 @@ static void pfield_draw_line (int lineno, int gfx_ypos, int follow_ypos)
 
 		adjust_drawing_colors (dp_for_drawing->ctable, 0);
   
+    /* this makes things complex.. */
 		if (dp_for_drawing->bordersprite_seen && !ce_is_borderblank(colors_for_drawing.extra) && dip_for_drawing->nr_sprites) {
 			dosprites = true;
 			pfield_expand_dp_bplcon ();
@@ -2049,7 +2058,7 @@ static void pfield_draw_line (int lineno, int gfx_ypos, int follow_ypos)
 		}
 
 		if (do_double) {
-			memcpy (row_map[follow_ypos], row_map[gfx_ypos], adisplays.gfxvidinfo.drawbuffer.pixbytes * adisplays.gfxvidinfo.drawbuffer.outwidth);
+			memcpy (row_map[follow_ypos], row_map[gfx_ypos], vidinfo->drawbuffer.pixbytes * vidinfo->drawbuffer.outwidth);
 		}
 
 	}
@@ -2101,13 +2110,18 @@ static void init_drawing_frame (void)
   drawing_color_matches = -1;
 }
 
+static uae_u8 *status_line_ptr(int line)
+{
+	xlinebuffer = row_map[line];
+	return xlinebuffer;
+}
+
 static void draw_status_line (int line, int statusy)
 {
 	struct vidbuf_description *vidinfo = &adisplays.gfxvidinfo;
-  uae_u8 *buf;
-
-  xlinebuffer = row_map[line];
-  buf = xlinebuffer;
+  uae_u8 *buf = status_line_ptr(line);
+	if (!buf)
+		return;
   draw_status_line_single (buf, vidinfo->drawbuffer.pixbytes, statusy, vidinfo->drawbuffer.outwidth, xredcolors, xgreencolors, xbluecolors);
 }
 
@@ -2219,6 +2233,12 @@ void check_prefs_picasso(void)
 #endif
 }
 
+void redraw_frame(void)
+{
+  next_line_to_render = 0;
+	finish_drawing_frame();
+}
+
 bool vsync_handle_check (void)
 {
   int changed = check_prefs_changed_gfx ();
@@ -2268,6 +2288,8 @@ void vsync_handle_redraw (void)
 
 	if (ad->framecnt == 0) {
 		init_drawing_frame ();
+	} else if (currprefs.cpu_memory_cycle_exact) {
+		init_hardware_for_drawing_frame();
   }
 
 	gui_flicker_led (-1, 0, 0);

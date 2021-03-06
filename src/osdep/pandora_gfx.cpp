@@ -358,7 +358,7 @@ void reset_sync(void)
 }
 
 
-bool render_screen (bool immediate)
+bool render_screen (void)
 {
 	if (savestate_state == STATE_DOSAVE)
 	{
@@ -878,7 +878,7 @@ void gfx_unlock_picasso (bool dorender)
   SDL_UnlockSurface(prSDLScreen);
   if(dorender)
   {
-    render_screen(true);
+    render_screen();
     show_screen(0);
   }
 }

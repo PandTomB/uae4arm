@@ -1328,7 +1328,6 @@ void alloc_ide_mem (struct ide_hdf **idetable, int max, struct ide_thread_state 
 		struct ide_hdf *ide;
 		if (!idetable[i]) {
 			ide = idetable[i] = xcalloc (struct ide_hdf, 1);
-			ide->cd_unit_num = -1;
 		}
 		ide = idetable[i];
 		ide_grow_buffer(ide, 1024);
@@ -1376,7 +1375,6 @@ struct ide_hdf *add_ide_unit (struct ide_hdf **idetable, int max, int ch, struct
 		ide->lba = true;
 		ide->uae_unitnum = ci->uae_unitnum;
 		gui_flicker_led (LED_HD, ide->uae_unitnum, -1);
-		ide->cd_unit_num = -1;
 		ide->ata_level = ci->unit_feature_level;
 		if (!ide->ata_level && (ide->hdhfd.size >= 4 * (uae_u64)0x40000000))
 			ide->ata_level = 1;

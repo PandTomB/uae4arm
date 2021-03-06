@@ -21,6 +21,7 @@
 #include "audio.h"
 #include "sounddep/sound.h"
 #include "savestate.h"
+#include "driveclick.h"
 #include "gui.h"
 
 #include <math.h>
@@ -798,9 +799,19 @@ static int isirq (int nr)
   return INTREQR() & (0x80 << nr);
 }
 
-static void setirq (int nr, int which)
+static void audio_setirq_event(uae_u32 nr)
 {
   INTREQ_0 (0x8000 | (0x80 << nr));
+}
+
+static void setirq (int nr, int which)
+{
+	// audio interrupts are delayed by 2 cycles
+	if (currprefs.cpu_compatible) {
+		event2_newevent_xx (-1, 2 * CYCLE_UNIT + CYCLE_UNIT / 2, nr, audio_setirq_event);
+	} else {
+		audio_setirq_event(nr);
+	}
 }
 
 static void newsample (int nr, sample8_t sample)
@@ -874,7 +885,7 @@ static void audio_state_channel2 (int nr, bool perfin)
 	}
 	audio_activate ();
 
-	if ((cdp->state == 2 || cdp->state == 3) && usehacks()) {
+	if (cdp->state == 2 || cdp->state == 3) {
     if (!chan_ena && old_dma) {
 		// DMA switched off, state=2/3 and "too fast CPU":  set flag
 			cdp->dmaofftime_active = true;
@@ -962,6 +973,7 @@ static void audio_state_channel2 (int nr, bool perfin)
 		}
 		if (!perfin)
 			return;
+
 		if (audap)
 			loaddat (nr, true);
 		if (chan_ena) {
@@ -985,6 +997,7 @@ static void audio_state_channel2 (int nr, bool perfin)
 		}
 		if (!perfin)
 			return;
+
 		if (chan_ena) {
 			loaddat (nr);
 			if (cdp->intreq2 && napnav)
@@ -1089,24 +1102,6 @@ static float rc_calculate_a0(int sample_rate, int cutoff_freq)
 	omega = tan (omega / 2.0) * 2.0;
 	float out = 1.0 / (1.0 + 1.0 / omega);
 	return out;
-}
-
-static void set_audio(void); 
-
-void check_prefs_changed_audio (void)
-{
-  int ch;
-
- 	if (sound_available) {
-		ch = sound_prefs_changed ();
-		if (ch > 0) {
-			clear_sound_buffers ();
-		}
-		if (ch) {
-			set_audio ();
-			audio_activate ();
-		}
-	}
 }
 
 static void set_audio(void)
@@ -1258,6 +1253,25 @@ static void set_audio(void)
 	cd_audio_mode_changed = true;
 }
 
+void check_prefs_changed_audio (void)
+{
+  int ch;
+
+ 	if (sound_available) {
+		ch = sound_prefs_changed ();
+		if (ch > 0) {
+			clear_sound_buffers ();
+		}
+		if (ch) {
+			set_audio ();
+			audio_activate ();
+		}
+	}
+#ifdef DRIVESOUND
+  driveclick_check_prefs();
+#endif
+}
+
 void update_audio (void)
 {
   uae_u32 n_cycles = 0;
@@ -1294,7 +1308,8 @@ void update_audio (void)
 	  /* Decrease time-to-wait counters */
     next_sample_evtime -= best_evtime;
 
-  	if (sample_prehandler && (currprefs.produce_sound > 1)) {
+		if (currprefs.produce_sound > 1) {
+			if (sample_prehandler)
   		sample_prehandler(best_evtime / CYCLE_UNIT);
     }
 
@@ -1305,12 +1320,14 @@ void update_audio (void)
 
   	n_cycles -= best_evtime;
 
-    /* Test if new sample needs to be outputted */
-  	if ((rounded == best_evtime) && (currprefs.produce_sound > 1)) {
-			/* Before the following addition, next_sample_evtime is in range [-0.5, 0.5) */
-  		next_sample_evtime += scaled_sample_evtime;
-      (*sample_handler) ();
-  	}
+		if (currprefs.produce_sound > 1) {
+      /* Test if new sample needs to be outputted */
+    	if (rounded == best_evtime) {
+			  /* Before the following addition, next_sample_evtime is in range [-0.5, 0.5) */
+    		next_sample_evtime += scaled_sample_evtime;
+        (*sample_handler) ();
+    	}
+		}
 
   	for (i = 0; i < AUDIO_CHANNELS_PAULA; i++) {
 			if (audio_channel[i].evtime == 0) {
@@ -1342,13 +1359,11 @@ void audio_hsync (void)
   update_audio();
 }
 
-void AUDxDAT (int nr, uae_u16 v)
+static void audxdat_func(uae_u32 v)
 {
+	int nr = v & 3;
+	int chan_ena = (v & 0x100) != 0;
 	struct audio_channel_data *cdp = audio_channel + nr;
-	int chan_ena = (dmacon & DMA_MASTER) && (dmacon & (1 << nr));
-
-	cdp->dat = v;
-	cdp->dat_written = true;
 	if (cdp->state == 2 || cdp->state == 3) {
 		if (chan_ena) {
 			if (cdp->wlen == 1) {
@@ -1366,6 +1381,21 @@ void AUDxDAT (int nr, uae_u16 v)
 		events_schedule ();
 	}
 	cdp->dat_written = false;
+}
+
+void AUDxDAT (int nr, uae_u16 v)
+{
+	struct audio_channel_data *cdp = audio_channel + nr;
+	int chan_ena = (dmacon & DMA_MASTER) && (dmacon & (1 << nr));
+
+	cdp->dat = v;
+	cdp->dat_written = true;
+	// AUDxLEN is processed after 2 cycle delay
+	if (cdp->per < 124 * CYCLE_UNIT || currprefs.cpu_compatible) {
+		event2_newevent_xx(-1, 2 * CYCLE_UNIT, nr | (chan_ena ? 0x100 : 0), audxdat_func);
+	} else {
+		audxdat_func(nr | (chan_ena ? 0x100 : 0));
+	}
 }
 
 uaecptr audio_getpt (int nr, bool reset)
@@ -1411,20 +1441,16 @@ void AUDxLCL (int nr, uae_u16 v)
 void AUDxPER (int nr, uae_u16 v)
 {
 	struct audio_channel_data *cdp = audio_channel + nr;
-	uae_u32 per;
 
   audio_activate();
   update_audio ();
 
-	per = v * CYCLE_UNIT;
-  if (per == 0)
-	  per = PERIOD_MAX - 1;
-
+	int per = (v ? v : 65536) * CYCLE_UNIT;
 	if (per < PERIOD_MIN * CYCLE_UNIT) {
     /* smaller values would cause extremely high cpu usage */
 		per = PERIOD_MIN * CYCLE_UNIT;
 	}
-	if (per < PERIOD_MIN_NONCE * CYCLE_UNIT && cdp->dmaenstore) {
+	if (per < PERIOD_MIN_NONCE * CYCLE_UNIT && !currprefs.cpu_memory_cycle_exact && cdp->dmaenstore) {
 		/* DMAL emulation and low period can cause very very high cpu usage on slow performance PCs
 		 * Only do this hack if audio DMA is active.
 		 */

@@ -1,3 +1,14 @@
+2021-03-06 - Merge WinUAE 4.4.0
+           - Added cycle exact emulation for 68000 cpu (slows down also regular emulation a bit)
+           - Added drivesound
+           - Added disk info dialog
+           - Added hardware info panel
+           - Added support for VHD harddrive images
+           - Added pause emualtion
+           - Added turbo mode (warp mode)
+           - Fixed input mapping via dialog
+           - Added emulation of serial port for games/demos using this as timing source (no real serial in/out)
+           - Added on screen message when insert/remove disk or CD
 2020-06-27 - Merge WinUAE 4.3.0
            - Added scsi.device (use CD in A1200/A4000 emulation)
            - Support für 32 bit native display

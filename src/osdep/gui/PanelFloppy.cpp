@@ -140,6 +140,53 @@ static void RefreshDiskListModel(void)
 }
 
 
+static void DisplayDiskInfo(int num)
+{
+	struct diskinfo di;
+	char tmp1[MAX_DPATH];
+  std::vector<std::string> infotext;
+  char title[MAX_DPATH];
+  char nameonly[MAX_DPATH];
+  char linebuffer[128];
+  
+	DISK_examine_image (&workprefs, num, &di);
+	DISK_validate_filename(&workprefs, workprefs.floppyslots[num].df, tmp1, 0, NULL, NULL, NULL);
+  extractFileName(tmp1, nameonly);
+  snprintf(title, MAX_DPATH - 1, "Info for %s", nameonly);
+  
+  snprintf(linebuffer, sizeof(linebuffer) - 1, "Disk readable: %s", di.unreadable ? _T("No") : _T("Yes"));
+  infotext.push_back(linebuffer);
+  snprintf(linebuffer, sizeof(linebuffer) - 1, "CRC32: %08X", di.crc32);
+  infotext.push_back(linebuffer);
+  snprintf(linebuffer, sizeof(linebuffer) - 1, "Boot block checksum valid: %s", di.bb_crc_valid ? _T("Yes") : _T("No"));
+  infotext.push_back(linebuffer);
+  snprintf(linebuffer, sizeof(linebuffer) - 1, "Boot block type: %s", di.bootblocktype == 0 ? _T("Custom") : (di.bootblocktype == 1 ? _T("Standard 1.x") : _T("Standard 2.x+")));
+  infotext.push_back(linebuffer);
+	if (di.diskname[0]) {
+		snprintf (linebuffer, sizeof(linebuffer) - 1,	"Label: '%s'", di.diskname);
+    infotext.push_back(linebuffer);
+	}
+  infotext.push_back("");
+
+	int w = 16;
+	for (int i = 0; i < 1024; i += w) {
+		for (int j = 0; j < w; j++) {
+			uae_u8 b = di.bootblock[i + j];
+			sprintf (linebuffer + j * 3, _T("%02X "), b);
+			if (b >= 32 && b < 127)
+				linebuffer[w * 3 + 1 + j] = (char)b;
+			else
+				linebuffer[w * 3 + 1 + j] = '.';
+		}
+		linebuffer[w * 3] = ' ';
+		linebuffer[w * 3 + 1 + w] = 0;
+		infotext.push_back(linebuffer);
+	}
+  
+  ShowDiskInfo(title, infotext);
+}
+
+
 class DFxActionListener : public gcn::ActionListener
 {
   public:
@@ -237,7 +284,7 @@ class DFxActionListener : public gcn::ActionListener
             // Show info about current disk-image
       	    //---------------------------------------
             if(workprefs.floppyslots[i].dfxtype != DRV_NONE && strlen(workprefs.floppyslots[i].df) > 0)
-            ; // ToDo: Show info dialog
+              DisplayDiskInfo(i);
 
           } else if (actionEvent.getSource() == cmdDFxEject[i]) {
       	    //---------------------------------------
@@ -357,6 +404,8 @@ void InitPanelFloppy(const struct _ConfigCategory& category)
     cmdDFxInfo[i] = new gcn::Button("?");
     cmdDFxInfo[i]->setSize(SMALL_BUTTON_WIDTH, SMALL_BUTTON_HEIGHT);
     cmdDFxInfo[i]->setBaseColor(gui_baseCol);
+	  snprintf(tmp, 20, "cmdInfo%d", i);
+	  cmdDFxInfo[i]->setId(tmp);
     cmdDFxInfo[i]->addActionListener(dfxActionListener);
 
     cmdDFxEject[i] = new gcn::Button("Eject");
@@ -423,7 +472,7 @@ void InitPanelFloppy(const struct _ConfigCategory& category)
 	  posX += cboDFxType[i]->getWidth() + 2 * DISTANCE_NEXT_X;
 	  category.panel->add(chkDFxWriteProtect[i], posX, posY);
 	  posX += chkDFxWriteProtect[i]->getWidth() + 4 * DISTANCE_NEXT_X;
-//	  category.panel->add(cmdDFxInfo[i], posX, posY);
+	  category.panel->add(cmdDFxInfo[i], posX, posY);
 	  posX += cmdDFxInfo[i]->getWidth() + DISTANCE_NEXT_X;
 	  category.panel->add(cmdDFxEject[i], posX, posY);
 	  posX += cmdDFxEject[i]->getWidth() + DISTANCE_NEXT_X;
@@ -489,6 +538,7 @@ bool HelpPanelFloppy(std::vector<std::string> &helptext)
   helptext.push_back("disk file may fail because of missing rights on the host filesystem.");
   helptext.push_back("The button \"...\" opens a dialog to select the required disk file. With the dropdown control, you can select one of");
   helptext.push_back("the disks you recently used.");
+  helptext.push_back("Details of the current floppy can be displayed with \"?\".");
   helptext.push_back("");
   helptext.push_back("You can reduce the loading time for lot of games by increasing the floppy drive emulation speed. A few games");
   helptext.push_back("will not load with higher drive speed and you have to select 100%.");

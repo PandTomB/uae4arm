@@ -1,5 +1,5 @@
 ifeq ($(PLATFORM),)
-	PLATFORM = rpiA64
+	PLATFORM = rpi4A64
 endif
 
 ifeq ($(PLATFORM),rpi4)
@@ -56,6 +56,15 @@ else ifeq ($(PLATFORM),Pandora)
 else ifeq ($(PLATFORM),rpiA64)
   AARCH64 = 1
   CPU_FLAGS += -march=armv8-a -mtune=cortex-a53
+  MORE_CFLAGS += -DRASPBERRY -DCPU_AARCH64
+  LDFLAGS += -lX11
+  PROFILER_PATH = /home/pi/test/uae4arm
+  ifeq ($(USE_SDL_VERSION),)
+    USE_SDL_VERSION = sdl1
+  endif
+else ifeq ($(PLATFORM),rpi4A64)
+  AARCH64 = 1
+  CPU_FLAGS += -march=armv8-a -mtune=cortex-a72
   MORE_CFLAGS += -DRASPBERRY -DCPU_AARCH64
   LDFLAGS += -lX11
   PROFILER_PATH = /home/pi/test/uae4arm
@@ -173,6 +182,7 @@ OBJS =	\
 	src/diskutil.o \
 	src/dlopen.o \
 	src/drawing.o \
+	src/driveclick.o \
 	src/events.o \
 	src/expansion.o \
   src/fdi2raw.o \
@@ -264,6 +274,7 @@ OBJS =	\
 	src/osdep/generic_filesys.o \
 	src/osdep/generic_gui.o \
 	src/osdep/generic_rp9.o \
+	src/osdep/generic_serial.o \
 	src/osdep/generic_mem.o \
 	src/osdep/sigsegv_handler.o \
 	src/osdep/gui/GenericListModel.o \
@@ -274,6 +285,7 @@ OBJS =	\
 	src/osdep/gui/SelectorEntry.o \
 	src/osdep/gui/ShowHelp.o \
 	src/osdep/gui/ShowMessage.o \
+	src/osdep/gui/ShowDiskInfo.o \
 	src/osdep/gui/SelectFolder.o \
 	src/osdep/gui/SelectFile.o \
 	src/osdep/gui/CreateFilesysHardfile.o \
@@ -288,6 +300,7 @@ OBJS =	\
 	src/osdep/gui/PanelRAM.o \
 	src/osdep/gui/PanelFloppy.o \
 	src/osdep/gui/PanelHD.o \
+	src/osdep/gui/PanelHWInfo.o \
 	src/osdep/gui/PanelInput.o \
 	src/osdep/gui/PanelDisplay.o \
 	src/osdep/gui/PanelSound.o \
@@ -315,6 +328,8 @@ else ifeq ($(PLATFORM),rpi3sdl1)
 OBJS += src/osdep/raspi_gfxsdl1.o
 else ifeq ($(PLATFORM),rpiA64)
 OBJS += src/osdep/raspi_gfxsdl1.o
+else ifeq ($(PLATFORM),rpi4A64)
+OBJS += src/osdep/raspi_gfxsdl1.o
 else
 OBJS += src/osdep/raspi_gfx.o
 endif
@@ -339,6 +354,7 @@ OBJS += src/cpustbl.o
 OBJS += src/cpuemu_0.o
 OBJS += src/cpuemu_4.o
 OBJS += src/cpuemu_11.o
+OBJS += src/cpuemu_13.o
 OBJS += src/cpuemu_40.o
 OBJS += src/cpuemu_44.o
 OBJS += src/jit/compemu.o
@@ -417,7 +433,9 @@ ASMS = \
 	src/jit/compemu.s \
 	src/jit/compemu_fpp.s \
 	src/jit/compstbl.s \
-	src/jit/compemu_support.s
+	src/jit/compemu_support.s\
+	src/osdep/raspi_gfx.s
+
 
 genasm: $(ASMS)
 

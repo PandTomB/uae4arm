@@ -208,7 +208,7 @@ void InitPanelRAM(const struct _ConfigCategory& category)
   sldFastmem->addActionListener(memorySliderActionListener);
   lblFastsize = new gcn::Label("None   ");
 
-	lblZ3mem = new gcn::Label("Z3 fast:");
+	lblZ3mem = new gcn::Label("Z3 Fast:");
   sldZ3mem = new gcn::Slider(0, 8);
   sldZ3mem->setSize(110, SLIDER_HEIGHT);
   sldZ3mem->setBaseColor(gui_baseCol);

@@ -206,7 +206,6 @@ struct TrapContext
   /* And this gets set to the return value of the 68k call. */
   uae_u32           call68k_retval;
 
-	/* do not ack automatically */
 	uae_u32 calllib_regs[16];
 	uae_u8 calllib_reg_inuse[16];
 };
@@ -731,8 +730,8 @@ int trap_get_string(TrapContext *ctx, void *haddrp, uaecptr addr, int maxlen)
 		addr++;
 		if (!v)
 			break;
+    len++;
 	}
-	len++;
 	return len;
 }
 uae_char *trap_get_alloc_string(TrapContext *ctx, uaecptr addr, int maxlen)
@@ -842,10 +841,4 @@ void trap_memcpyha_safe(TrapContext *ctx, uaecptr dst, const uae_u8 *src, int si
 	if (size <= 0)
 		return;
 	memcpyha_safe(dst, src, size);
-}
-void trap_memcpyah_safe(TrapContext *ctx, uae_u8 *dst, uaecptr src, int size)
-{
-	if (size <= 0)
-		return;
-	memcpyah_safe(dst, src, size);
 }
