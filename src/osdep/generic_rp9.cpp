@@ -97,9 +97,12 @@ static void set_default_system(struct uae_prefs *p, const char *system, int rom)
     bip_a1200(p, rom);
   else if(strcmp(system, "a-2000") == 0)
     bip_a2000(p, rom);
-  else if(strcmp(system, "a-4000") == 0) {
+  else if(strcmp(system, "a-4000") == 0)
     bip_a4000(p, rom);
-  }
+
+  // Disable JIT as default, will be enabled with
+  // special compatibility flag
+  p->cachesize = 0;
 }
 
 
@@ -123,7 +126,7 @@ static void parse_compatibility(struct uae_prefs *p, xmlNode *node)
           clip_no_hires = true;
         else if(strcmp((const char *) content, "jit") == 0)
         {
-          p->cachesize = 8192;
+          p->cachesize = MAX_JIT_CACHE;
           p->address_space_24 = 0;
           p->compfpu = true;
         }

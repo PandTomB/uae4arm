@@ -1,3 +1,4 @@
+2021-03-07 - Two small bugfixes (rp9 parsing; fmv when line doubling)
 2021-03-06 - Merge WinUAE 4.4.0
            - Added cycle exact emulation for 68000 cpu (slows down also regular emulation a bit)
            - Added drivesound
