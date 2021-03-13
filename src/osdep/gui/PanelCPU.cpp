@@ -211,10 +211,14 @@ class CPUActionListener : public gcn::ActionListener
   	      workprefs.blitter_cycle_exact = 1;
   	      workprefs.cpu_memory_cycle_exact = 1;
   	      workprefs.cachesize = 0;
+  	      workprefs.fast_copper = 0;
         } else {
   	      workprefs.cpu_cycle_exact = 0;
   	      workprefs.blitter_cycle_exact = 0;
   	      workprefs.cpu_memory_cycle_exact = 0;
+#ifdef FAST_COPPER_DEFAULT_ON
+  	      workprefs.fast_copper = 1;
+#endif
         }
 
       } else if (actionEvent.getSource() == chkJIT) {

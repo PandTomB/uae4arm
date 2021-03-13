@@ -147,16 +147,18 @@ static void DisplayDiskInfo(int num)
   std::vector<std::string> infotext;
   char title[MAX_DPATH];
   char nameonly[MAX_DPATH];
-  char linebuffer[128];
+  char linebuffer[512];
   
-	DISK_examine_image (&workprefs, num, &di);
+	DISK_examine_image (&workprefs, num, &di, true);
 	DISK_validate_filename(&workprefs, workprefs.floppyslots[num].df, tmp1, 0, NULL, NULL, NULL);
   extractFileName(tmp1, nameonly);
   snprintf(title, MAX_DPATH - 1, "Info for %s", nameonly);
   
   snprintf(linebuffer, sizeof(linebuffer) - 1, "Disk readable: %s", di.unreadable ? _T("No") : _T("Yes"));
   infotext.push_back(linebuffer);
-  snprintf(linebuffer, sizeof(linebuffer) - 1, "CRC32: %08X", di.crc32);
+  snprintf(linebuffer, sizeof(linebuffer) - 1, "Disk CRC32: %08X", di.imagecrc32);
+  infotext.push_back(linebuffer);
+  snprintf(linebuffer, sizeof(linebuffer) - 1, "Boot block CRC32: %08X", di.bootblockcrc32);
   infotext.push_back(linebuffer);
   snprintf(linebuffer, sizeof(linebuffer) - 1, "Boot block checksum valid: %s", di.bb_crc_valid ? _T("Yes") : _T("No"));
   infotext.push_back(linebuffer);
@@ -168,6 +170,17 @@ static void DisplayDiskInfo(int num)
 	}
   infotext.push_back("");
 
+  if (di.bootblockinfo[0]) {
+		infotext.push_back("Amiga Bootblock Reader database detected:");
+		snprintf(linebuffer, sizeof(linebuffer) - 1, "Name: '%s'", di.bootblockinfo);
+    infotext.push_back(linebuffer);
+		if (di.bootblockclass[0]) {
+  		snprintf(linebuffer, sizeof(linebuffer) - 1, "Class: '%s'", di.bootblockclass);
+      infotext.push_back(linebuffer);
+		}
+    infotext.push_back("");
+	}
+	
 	int w = 16;
 	for (int i = 0; i < 1024; i += w) {
 		for (int j = 0; j < w; j++) {

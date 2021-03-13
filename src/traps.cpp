@@ -378,11 +378,11 @@ static uae_u32 REGPARAM2 m68k_call_handler (TrapContext *dummy_ctx)
   m68k_setpc (context->call68k_func_addr);
   fill_prefetch ();
 
-  /* End critical section: allow other traps run. */
-  uae_sem_post (&trap_mutex);
-
   /* Restore interrupts. */
   regs.intmask = context->saved_regs.intmask;
+
+  /* End critical section: allow other traps run. */
+  uae_sem_post (&trap_mutex);
 
   /* Dummy return value. */
   return 0;

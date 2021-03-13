@@ -153,6 +153,7 @@ static uae_u32 ham_linebuf[MAX_PIXELS_PER_LINE * 2];
 static uae_u8 *xlinebuffer;
 
 static int *amiga2aspect_line_map, *native2amiga_line_map;
+static int native2amiga_line_map_height;
 static uae_u8 **row_map;
 static uae_u8 row_tmp[MAX_PIXELS_PER_LINE * 32 / 8];
 static int max_drawn_amiga_line;
@@ -228,7 +229,7 @@ int coord_native_to_amiga_x (int x)
 
 int coord_native_to_amiga_y (int y)
 {
-	if (!native2amiga_line_map)
+	if (!native2amiga_line_map || y < 0 || y >= native2amiga_line_map_height)
 		return -1;
 	return native2amiga_line_map[y] + thisframe_y_adjust - minfirstline;
 }
@@ -1189,15 +1190,31 @@ static void init_ham_decoding (void)
 			}
 		}
 	} else {
-		/* OCS/ECS mode HAM6 */
-		while (unpainted_amiga-- > 0) {
-			int pv = pixdata.apixels[ham_decode_pixel++];
-			switch (pv & 0x30) 
-      {
-			  case 0x00: ham_lastcolor = colors_for_drawing.color_regs_ecs[pv] & 0xfff; break;
-			  case 0x10: ham_lastcolor &= 0xFF0; ham_lastcolor |= (pv & 0xF); break;
-			  case 0x20: ham_lastcolor &= 0x0FF; ham_lastcolor |= (pv & 0xF) << 8; break;
-			  case 0x30: ham_lastcolor &= 0xF0F; ham_lastcolor |= (pv & 0xF) << 4; break;
+  	if (!bpldualpf) {
+  	  /* OCS/ECS mode HAM6 */
+  		while (unpainted_amiga-- > 0) {
+  			int pv = pixdata.apixels[ham_decode_pixel++];
+  			switch (pv & 0x30) 
+        {
+  			  case 0x00: ham_lastcolor = colors_for_drawing.color_regs_ecs[pv] & 0xfff; break;
+  			  case 0x10: ham_lastcolor &= 0xFF0; ham_lastcolor |= (pv & 0xF); break;
+  			  case 0x20: ham_lastcolor &= 0x0FF; ham_lastcolor |= (pv & 0xF) << 8; break;
+  			  case 0x30: ham_lastcolor &= 0xF0F; ham_lastcolor |= (pv & 0xF) << 4; break;
+  			}
+  		}
+	  } else {
+			/* OCS/ECS mode HAM6 + DPF */
+			while (unpainted_amiga-- > 0) {
+				int pv = pixdata.apixels[ham_decode_pixel++];
+				int *lookup = bpldualpfpri ? dblpf_ind2 : dblpf_ind1;
+				int idx = lookup[pv];
+				switch (pv & 0x30)
+				{
+  				case 0x00: ham_lastcolor = colors_for_drawing.color_regs_ecs[idx] & 0xfff; break;
+  				case 0x10: ham_lastcolor &= 0xFF0; ham_lastcolor |= (idx & 0xF); break;
+  				case 0x20: ham_lastcolor &= 0x0FF; ham_lastcolor |= (idx & 0xF) << 8; break;
+  				case 0x30: ham_lastcolor &= 0xF0F; ham_lastcolor |= (idx & 0xF) << 4; break;
+				}
 			}
 		}
 	}
@@ -1248,17 +1265,34 @@ static void decode_ham (int pix, int stoppos, int blank)
 			}
 		}
 	} else {
-		/* OCS/ECS mode HAM6 */
-		while (todraw_amiga-- > 0) {
-			int pv = pixdata.apixels[ham_decode_pixel];
-			switch (pv & 0x30) 
-      {
-  			case 0x00: ham_lastcolor = colors_for_drawing.color_regs_ecs[pv] & 0xfff; break;
-			  case 0x10: ham_lastcolor &= 0xFF0; ham_lastcolor |= (pv & 0xF); break;
-			  case 0x20: ham_lastcolor &= 0x0FF; ham_lastcolor |= (pv & 0xF) << 8; break;
-			  case 0x30: ham_lastcolor &= 0xF0F; ham_lastcolor |= (pv & 0xF) << 4; break;
+	  if (!bpldualpf) {
+  	  /* OCS/ECS mode HAM6 */
+  		while (todraw_amiga-- > 0) {
+  			int pv = pixdata.apixels[ham_decode_pixel];
+  			switch (pv & 0x30) 
+        {
+    			case 0x00: ham_lastcolor = colors_for_drawing.color_regs_ecs[pv] & 0xfff; break;
+  			  case 0x10: ham_lastcolor &= 0xFF0; ham_lastcolor |= (pv & 0xF); break;
+  			  case 0x20: ham_lastcolor &= 0x0FF; ham_lastcolor |= (pv & 0xF) << 8; break;
+  			  case 0x30: ham_lastcolor &= 0xF0F; ham_lastcolor |= (pv & 0xF) << 4; break;
+  			}
+  			ham_linebuf[ham_decode_pixel++] = ham_lastcolor;
+  		}
+	  } else {
+			/* OCS/ECS mode HAM6 + DPF */
+			while (todraw_amiga-- > 0) {
+				int pv = pixdata.apixels[ham_decode_pixel];
+				int *lookup = bpldualpfpri ? dblpf_ind2 : dblpf_ind1;
+				int idx = lookup[pv];
+				switch (pv & 0x30)
+				{
+				case 0x00: ham_lastcolor = colors_for_drawing.color_regs_ecs[idx] & 0xfff; break;
+				case 0x10: ham_lastcolor &= 0xFF0; ham_lastcolor |= (idx & 0xF); break;
+				case 0x20: ham_lastcolor &= 0x0FF; ham_lastcolor |= (idx & 0xF) << 8; break;
+				case 0x30: ham_lastcolor &= 0xF0F; ham_lastcolor |= (idx & 0xF) << 4; break;
+				}
+				ham_linebuf[ham_decode_pixel++] = ham_lastcolor;
 			}
-			ham_linebuf[ham_decode_pixel++] = ham_lastcolor;
 		}
 	}
 }
@@ -1394,11 +1428,11 @@ static void clear_bitplane_border_aga (void)
 
 static void weird_bitplane_fix (int start, int end)
 {
-	int sh = lores_shift;
 	uae_u8 *p = pixdata.apixels + pixels_offset;
 
-	start >>= sh;
-	end >>= sh;
+  start = res_shift_from_window(start);
+	end = res_shift_from_window(end);
+	
 	if (!bpldualpf) {
 		// HAM is unaffected (probably because plane 5 is HAM control bit)
 		if (bplham)
@@ -1623,28 +1657,29 @@ static void init_aspect_maps (void)
 		xfree (amiga2aspect_line_map);
 
 	/* At least for this array the +1 is necessary. */
+	native2amiga_line_map_height = h;
 	amiga2aspect_line_map = xmalloc (int, (MAXVPOS + 1) * 2 + 1);
-  native2amiga_line_map = xmalloc (int, h);
+  native2amiga_line_map = xmalloc (int, native2amiga_line_map_height);
 
 	for (i = 0; i < maxl; i++) {
 		int v = i - min_ypos_for_screen;
 		if (v >= h && max_drawn_amiga_line < 0)
 			max_drawn_amiga_line = v;
-		if (i < min_ypos_for_screen || v >= h)
+		if (i < min_ypos_for_screen || v >= native2amiga_line_map_height)
 			v = -1;
 		amiga2aspect_line_map[i] = v;
 	}
 	if (max_drawn_amiga_line < 0)
 		max_drawn_amiga_line = maxl - min_ypos_for_screen;
 
-  for (i = 0; i < h; i++)
+  for (i = 0; i < native2amiga_line_map_height; i++)
   	native2amiga_line_map[i] = -1;
 
 	for (i = maxl - 1; i >= min_ypos_for_screen; i--) {
     int j;
 		if (amiga2aspect_line_map[i] == -1)
 			continue;
-  	for (j = amiga2aspect_line_map[i]; j < h && native2amiga_line_map[j] == -1; j++)
+  	for (j = amiga2aspect_line_map[i]; j < native2amiga_line_map_height && native2amiga_line_map[j] == -1; j++)
 	    native2amiga_line_map[j] = (i + currprefs.gfx_monitor.gfx_size.y) >> linedbl;
   }
 }
@@ -2345,6 +2380,8 @@ void reset_drawing (void)
   memset(spixels, 0, sizeof spixels);
   memset(&spixstate, 0, sizeof spixstate);
 
+  init_hardware_for_drawing_frame();
+  
   init_drawing_frame ();
 	pfield_set_linetoscr();
 }

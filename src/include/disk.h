@@ -20,11 +20,14 @@ struct diskinfo
 {
 	uae_u8 bootblock[1024];
 	bool bb_crc_valid;
-	uae_u32 crc32;
+	uae_u32 imagecrc32;
+	uae_u32 bootblockcrc32;
 	bool hd;
 	bool unreadable;
 	int bootblocktype;
 	TCHAR diskname[110];
+  TCHAR bootblockinfo[256];
+	TCHAR bootblockclass[256];
 };
 
 extern void DISK_init (void);
@@ -46,7 +49,7 @@ extern void DISK_reset (void);
 extern int disk_getwriteprotect (struct uae_prefs *p, const TCHAR *name);
 extern int disk_setwriteprotect (struct uae_prefs *p, int num, const TCHAR *name, bool writeprotected);
 extern bool disk_creatediskfile (struct uae_prefs *p, const TCHAR *name, int type, drive_type adftype, int hd, const TCHAR *disk_name, bool ffs, bool bootable, struct zfile *copyfrom);
-int DISK_examine_image (struct uae_prefs *p, int num, struct diskinfo *di);
+int DISK_examine_image (struct uae_prefs *p, int num, struct diskinfo *di, bool deepcheck);
 extern void DISK_reinsert (int num);
 
 extern void DSKLEN (uae_u16 v, int hpos);

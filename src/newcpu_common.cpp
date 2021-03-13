@@ -874,7 +874,7 @@ static void divul_overflow(uae_u16 extra, uae_s64 a)
 	}
 }
 
-static void divsl_divbyzero(uae_u16 extra, uae_s64 a)
+static void divsl_divbyzero(uae_u16 extra, uae_s64 a, uaecptr oldpc)
 {
 	if (currprefs.cpu_model >= 68040) {
 		SET_CFLG(0);
@@ -883,10 +883,10 @@ static void divsl_divbyzero(uae_u16 extra, uae_s64 a)
 		SET_ZFLG(1);
 		SET_CFLG(0);
 	}
-	Exception_cpu(5);
+	Exception_cpu_oldpc(5, oldpc);
 }
 
-static void divul_divbyzero(uae_u16 extra, uae_s64 a)
+static void divul_divbyzero(uae_u16 extra, uae_s64 a, uaecptr oldpc)
 {
 	if (currprefs.cpu_model >= 68040) {
 		SET_CFLG(0);
@@ -898,10 +898,10 @@ static void divul_divbyzero(uae_u16 extra, uae_s64 a)
 		SET_VFLG(1);
 		SET_CFLG(0);
 	}
-	Exception_cpu(5);
+	Exception_cpu_oldpc(5, oldpc);
 }
 
-bool m68k_divl (uae_u32 opcode, uae_u32 src, uae_u16 extra)
+int m68k_divl(uae_u32 opcode, uae_u32 src, uae_u16 extra, uaecptr oldpc)
 {
   if (extra & 0x800) {
   	/* signed variant */
@@ -914,8 +914,8 @@ bool m68k_divl (uae_u32 opcode, uae_u32 src, uae_u16 extra)
 		}
 
 		if (src == 0) {
-			divsl_divbyzero(extra, a);
-			return false;
+			divsl_divbyzero(extra, a, oldpc);
+			return 0;
   	}
 
 		if ((uae_u64)a == 0x8000000000000000UL && src == ~0u) {
@@ -948,8 +948,8 @@ bool m68k_divl (uae_u32 opcode, uae_u32 src, uae_u16 extra)
   	}
 
 		if (src == 0) {
-			divul_divbyzero(extra, a);
-			return false;
+			divul_divbyzero(extra, a, oldpc);
+			return 0;
 		}
 
   	rem = a % (uae_u64)src;
@@ -965,10 +965,10 @@ bool m68k_divl (uae_u32 opcode, uae_u32 src, uae_u16 extra)
 	    m68k_dreg(regs, (extra >> 12) & 7) = (uae_u32)quot;
   	}
   }
-	return true;
+	return 1;
 }
 
-bool m68k_mull (uae_u32 opcode, uae_u32 src, uae_u16 extra)
+int m68k_mull (uae_u32 opcode, uae_u32 src, uae_u16 extra)
 {
   if (extra & 0x800) {
   	/* signed */
@@ -1031,7 +1031,7 @@ bool m68k_mull (uae_u32 opcode, uae_u32 src, uae_u16 extra)
 			SET_NFLG(b < 0);
 	  }
   }
-	return true;
+	return 1;
 }
 
 uae_u32 exception_pc(int nr)
@@ -1259,14 +1259,6 @@ void Exception_build_68000_address_error_stack_frame(uae_u16 mode, uae_u16 opcod
 	x_put_word(m68k_areg(regs, 7) + 6, opcode);
 	x_put_word(m68k_areg(regs, 7) + 8, regs.sr);
 	x_put_long(m68k_areg(regs, 7) + 10, pc);
-}
-
-void cpu_restore_fixup(void)
-{
-	if (mmufixup[0].reg >= 0) {
-		m68k_areg(regs, mmufixup[0].reg & 15) = mmufixup[0].value;
-		mmufixup[0].reg = -1;
-	}
 }
 
 // Low word: Clear + Z and N

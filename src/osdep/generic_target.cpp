@@ -35,6 +35,7 @@
 #include "drawing.h"
 #include "picasso96.h"
 #include "driveclick.h"
+#include "fsdb.h"
 
 
 #ifdef WITH_LOGGING
@@ -316,6 +317,14 @@ void fetch_screenshotpath(char *out, int size)
   strncat(out, "/screenshots/", size - 1);
 }
 
+bool get_plugin_path (TCHAR *out, int len, const TCHAR *path)
+{
+	strncpy(out, start_path_data, len - 1);
+	strncat(out, "/", len - 1);
+	strncat(out, path, len - 1);
+	strncat(out, "/", len - 1);
+	return my_existsfile(out);
+}
 
 int target_cfgfile_load (struct uae_prefs *p, const char *filename, int type, int isdefault)
 {

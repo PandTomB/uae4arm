@@ -14,14 +14,15 @@
 
 #define STATUSLINE_MS 3000
 
-static const char *numbers = { /* ugly  0123456789CHD%+-PNK */
-	"+++++++--++++-+++++++++++++++++-++++++++++++++++++++++++++++++++++++++++++++-++++++-++++----++---+--------------+++++++++++++++++++++"
-	"+xxxxx+--+xx+-+xxxxx++xxxxx++x+-+x++xxxxx++xxxxx++xxxxx++xxxxx++xxxxx++xxxx+-+x++x+-+xxx++-+xx+-+x---+----------+xxxxx++x+++x++x++x++"
-	"+x+++x+--++x+-+++++x++++++x++x+++x++x++++++x++++++++++x++x+++x++x+++x++x++++-+x++x+-+x++x+--+x++x+--+x+----+++--+x---x++xx++x++x+x+++"
-	"+x+-+x+---+x+-+xxxxx++xxxxx++xxxxx++xxxxx++xxxxx+--++x+-+xxxxx++xxxxx++x+----+xxxx+-+x++x+----+x+--+xxx+--+xxx+-+xxxxx++x+x+x++xx++++"
-	"+x+++x+---+x+-+x++++++++++x++++++x++++++x++x+++x+--+x+--+x+++x++++++x++x++++-+x++x+-+x++x+---+x+x+--+x+----+++--+x++++++x+x+x++x+x+++"
-	"+xxxxx+---+x+-+xxxxx++xxxxx+----+x++xxxxx++xxxxx+--+x+--+xxxxx++xxxxx++xxxx+-+x++x+-+xxx+---+x++xx--------------+x+----+x++xx++x++x++"
-	"+++++++---+++-++++++++++++++----+++++++++++++++++--+++--++++++++++++++++++++-++++++-++++------------------------+++----++++++++++++++"
+static const char *numbers = { /* ugly  0123456789CHD%+-PNKV */
+	"+++++++--++++-+++++++++++++++++-++++++++++++++++++++++++++++++++++++++++++++-++++++-++++----++---+--------------++++++++++-++++++++++++  +++"
+	"+xxxxx+--+xx+-+xxxxx++xxxxx++x+-+x++xxxxx++xxxxx++xxxxx++xxxxx++xxxxx++xxxx+-+x++x+-+xxx++-+xx+-+x---+----------+xxxxx++x+-+x++x++x++x+  +x+"
+	"+x+++x+--++x+-+++++x++++++x++x+++x++x++++++x++++++++++x++x+++x++x+++x++x++++-+x++x+-+x++x+--+x++x+--+x+----+++--+x---x++xx++x++x+x+++x+  +x+"
+	"+x+-+x+---+x+-+xxxxx++xxxxx++xxxxx++xxxxx++xxxxx+--++x+-+xxxxx++xxxxx++x+----+xxxx+-+x++x+----+x+--+xxx+--+xxx+-+xxxxx++x+x+x++xx+   +x++x+ "
+	"+x+++x+---+x+-+x++++++++++x++++++x++++++x++x+++x+--+x+--+x+++x++++++x++x++++-+x++x+-+x++x+---+x+x+--+x+----+++--+x++++++x+x+x++x+x++  +xx+  "
+	"+xxxxx+---+x+-+xxxxx++xxxxx+----+x++xxxxx++xxxxx+--+x+--+xxxxx++xxxxx++xxxx+-+x++x+-+xxx+---+x++xx--------------+x+----+x++xx++x++x+  +xx+  "
+	"+++++++---+++-++++++++++++++----+++++++++++++++++--+++--++++++++++++++++++++-++++++-++++------------------------+++----+++++++++++++  ++++  "
+//   x      x      x      x      x      x      x      x      x      x      x      x      x      x      x      x      x      x      x      x      x  
 };
 
 static void putpixel (uae_u8 *buf, int bpp, int x, xcolnr c8)
@@ -56,8 +57,8 @@ static void write_tdnumber (uae_u8 *buf, int bpp, int x, int y, int num, uae_u32
   int j;
   const char *numptr;
 
-  numptr = numbers + num * TD_NUM_WIDTH + NUMBERS_NUM * TD_NUM_WIDTH * y;
-  for (j = 0; j < TD_NUM_WIDTH; j++) {
+  numptr = numbers + num * TD_DEFAULT_NUM_WIDTH + NUMBERS_NUM * TD_DEFAULT_NUM_WIDTH * y;
+  for (j = 0; j < TD_DEFAULT_NUM_WIDTH; j++) {
   	if (*numptr == 'x')
       putpixel (buf, bpp, x + j, c1);
     else if (*numptr == '+')
@@ -87,10 +88,10 @@ void draw_status_line_single (uae_u8 *buf, int bpp, int y, int totalwidth, uae_u
   if(!currprefs.cdslots[0].inuse)
     ledmask &= ~(1 << LED_CD);
 
-  x_start = totalwidth - TD_PADX - VISIBLE_LEDS * TD_WIDTH;
+  x_start = totalwidth - TD_PADX - VISIBLE_LEDS * TD_DEFAULT_WIDTH;
   for(led = 0; led < LED_MAX; ++led) {
     if(!(ledmask & (1 << led)))
-      x_start += TD_WIDTH;
+      x_start += TD_DEFAULT_WIDTH;
   }
 
 	for (led = LED_MAX - 1; led >= 0; --led) {
@@ -161,6 +162,8 @@ void draw_status_line_single (uae_u8 *buf, int bpp, int y, int totalwidth, uae_u
 			  num1 = fps / 100;
 			  num2 = (fps - num1 * 100) / 10;
 			  num3 = fps % 10;
+			  num1 %= 10;
+			  num2 %= 10;
 			  if (num1 == 0)
 				  am = 2;
       }
@@ -175,13 +178,18 @@ void draw_status_line_single (uae_u8 *buf, int bpp, int y, int totalwidth, uae_u
 			  on = 1;
 				on_rgb = 0xcccc00;
 				num1 = gui_data.cpu_halted >= 10 ? 11 : -1;
-				num2 = gui_data.cpu_halted >= 10 ? gui_data.cpu_halted / 10 : 11;
+				num2 = gui_data.cpu_halted >= 10 ? (gui_data.cpu_halted / 10) % 10 : 11;
 				num3 = gui_data.cpu_halted % 10;
 				am = 2;
 			} else {
 			  num1 = idle / 100;
 			  num2 = (idle - num1 * 100) / 10;
 			  num3 = idle % 10;
+			  num1 %= 10;
+			  num2 %= 10;
+			  if (!num1 && !num2) {
+					num2 = -2;
+				}
 				am = num1 > 0 ? 3 : 2;
       }
 		} else {
@@ -207,29 +215,31 @@ void draw_status_line_single (uae_u8 *buf, int bpp, int y, int totalwidth, uae_u
 		if (!border) {
 			putpixel (buf, bpp, x - 1, cb);
     }
-    for (j = 0; j < TD_LED_WIDTH; j++) {
+    for (j = 0; j < TD_DEFAULT_LED_WIDTH; j++) {
 	    putpixel (buf, bpp, x + j, c);
     }
 		if (!border) {
 			putpixel (buf, bpp, x + j, cb);
 		}
 
-	  if (y >= TD_PADY && y - TD_PADY < TD_NUM_HEIGHT) {
+	  if (y >= TD_PADY && y - TD_PADY < TD_DEFAULT_NUM_HEIGHT) {
 			if (num3 >= 0) {
-				x += (TD_LED_WIDTH - am * TD_NUM_WIDTH) / 2;
+				x += (TD_DEFAULT_LED_WIDTH - am * TD_DEFAULT_NUM_WIDTH) / 2;
         if(num1 > 0) {
         	write_tdnumber (buf, bpp, x, y - TD_PADY, num1, pen_rgb, c2);
-        	x += TD_NUM_WIDTH;
+        	x += TD_DEFAULT_NUM_WIDTH;
         }
 				if (num2 >= 0) {
           write_tdnumber (buf, bpp, x, y - TD_PADY, num2, pen_rgb, c2);
-        	x += TD_NUM_WIDTH;
-        }
+        	x += TD_DEFAULT_NUM_WIDTH;
+        } else if (num2 < -1) {
+					x += TD_DEFAULT_NUM_WIDTH;
+				}
         write_tdnumber (buf, bpp, x, y - TD_PADY, num3, pen_rgb, c2);
-				x += TD_NUM_WIDTH;
+				x += TD_DEFAULT_NUM_WIDTH;
       }
 	  }
-	  x_start += TD_WIDTH;
+	  x_start += TD_DEFAULT_WIDTH;
   }
 }
 

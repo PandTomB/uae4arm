@@ -14,6 +14,7 @@ ifeq ($(PLATFORM),rpi4)
 else ifeq ($(PLATFORM),rpi3)
   CPU_FLAGS += -march=armv8-a -mfpu=neon-fp-armv8 -mfloat-abi=hard -mtune=cortex-a53
   MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DARM_HAS_DIV -DARMV6_ASSEMBLY
+  MORE_CFLAGS += -DFAST_COPPER_DEFAULT_ON
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
   LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11 -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
@@ -23,6 +24,7 @@ else ifeq ($(PLATFORM),rpi3)
 else ifeq ($(PLATFORM),rpi3sdl1)
   CPU_FLAGS += -march=armv8-a -mfpu=neon-fp-armv8 -mfloat-abi=hard -mtune=cortex-a53
   MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DARM_HAS_DIV -DARMV6_ASSEMBLY
+  MORE_CFLAGS += -DFAST_COPPER_DEFAULT_ON
   LDFLAGS += -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11 -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
   ifeq ($(USE_SDL_VERSION),)
@@ -31,6 +33,7 @@ else ifeq ($(PLATFORM),rpi3sdl1)
 else ifeq ($(PLATFORM),rpi2)
 	CPU_FLAGS += -march=armv7-a -mfpu=neon -mfloat-abi=hard -mtune=cortex-a8
 	MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON -DRASPBERRY -DARMV6_ASSEMBLY
+  MORE_CFLAGS += -DFAST_COPPER_DEFAULT_ON
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
   LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11 -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
@@ -40,6 +43,7 @@ else ifeq ($(PLATFORM),rpi2)
 else ifeq ($(PLATFORM),rpi1)
 	CPU_FLAGS += -march=armv6zk -mfpu=vfp -mfloat-abi=hard
   MORE_CFLAGS += -DRASPBERRY -DARMV6_ASSEMBLY
+  MORE_CFLAGS += -DFAST_COPPER_DEFAULT_ON
   MORE_CFLAGS += -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
   LDFLAGS += -lbcm_host -lvchiq_arm -lvcos -licui18n -licuuc -licudata -llzma -lfreetype -logg -lm -lX11 -L/opt/vc/lib
   PROFILER_PATH = /home/pi/test/uae4arm
@@ -49,6 +53,7 @@ else ifeq ($(PLATFORM),rpi1)
 else ifeq ($(PLATFORM),Pandora)
   CPU_FLAGS += -march=armv7-a -mfpu=neon -mfloat-abi=softfp -mtune=cortex-a8
   MORE_CFLAGS += -DARMV6T2 -DUSE_ARMNEON  -DARMV6_ASSEMBLY -DPANDORA -msoft-float
+  MORE_CFLAGS += -DFAST_COPPER_DEFAULT_ON
   PROFILER_PATH = /media/MAINSD/pandora/test
   ifeq ($(USE_SDL_VERSION),)
     USE_SDL_VERSION = sdl1
@@ -211,6 +216,7 @@ OBJS =	\
 	src/scsiemul.o \
 	src/statusline.o \
 	src/traps.o \
+	src/tinyxml2.o \
 	src/uaelib.o \
 	src/uaeresource.o \
 	src/zfile.o \

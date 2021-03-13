@@ -160,7 +160,7 @@ static void parse_ram(struct uae_prefs *p, xmlNode *node)
           else if(strcmp((const char *) attr, "z3") == 0)
             p->z3fastmem[0].size = size;
           else if(strcmp((const char *) attr, "chip") == 0)
-            p->chipmem_size = size;
+            p->chipmem.size = size;
           xmlFree(attr);
         }
 
@@ -275,7 +275,7 @@ static void parse_peripheral(struct uae_prefs *p, xmlNode *node)
           }
         }
         else if(strcmp((const char *)content, "a-501") == 0)
-          p->bogomem_size = 0x00080000;
+          p->bogomem.size = 0x00080000;
         else if(strcmp((const char *)content, "cpu") == 0)
         {
           xmlChar *attr = xmlGetProp(curr_node, (const xmlChar *) _T("type"));

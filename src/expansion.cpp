@@ -239,7 +239,7 @@ static bool expamem_z3hack(struct uae_prefs *p)
  */
 static void addextrachip (uae_u32 sysbase)
 {
-	if (currprefs.chipmem_size <= 0x00200000)
+	if (currprefs.chipmem.size <= 0x00200000)
 		return;
 	if (sysbase & 0x80000001)
 		return;
@@ -263,11 +263,11 @@ static void addextrachip (uae_u32 sysbase)
 			ml = next;
 			continue;
 		}
-		if (upper >= currprefs.chipmem_size)
+		if (upper >= currprefs.chipmem.size)
 			return;
-		uae_u32 added = currprefs.chipmem_size - upper;
+		uae_u32 added = currprefs.chipmem.size - upper;
 		uae_u32 first = get_long (ml + 16);
-		put_long (ml + 24, currprefs.chipmem_size); // mh_Upper
+		put_long (ml + 24, currprefs.chipmem.size); // mh_Upper
 		put_long (ml + 28, get_long (ml + 28) + added); // mh_Free
 		uae_u32 next = 0;
 		while (first) {
@@ -277,7 +277,7 @@ static void addextrachip (uae_u32 sysbase)
 		if (next) {
 		  uae_u32 bytes = get_long (next + 4);
 		  if (next + bytes == 0x00200000) {
-			  put_long (next + 4, currprefs.chipmem_size - next);
+			  put_long (next + 4, currprefs.chipmem.size - next);
 		  } else {
 			  put_long (0x00200000 + 0, 0);
 			  put_long (0x00200000 + 4, added);
@@ -483,6 +483,7 @@ static void expamem_next(addrbank *mapped, addrbank *next)
 			aci.doinit = true;
 			aci.prefs = &currprefs;
 			aci.rc = cards[ecard]->rc;
+			aci.devnum = (ec->flags >> 16) & 255;
 			ec->initrc(&aci);
 		} else {
 			call_card_init(ecard);
@@ -1609,7 +1610,7 @@ static uaecptr check_boot_rom (struct uae_prefs *p, int *boot_rom_type)
     return b;
 	if (p->rtgboards[0].rtgmem_size)
 		return b;
-	if (p->chipmem_size > 2 * 1024 * 1024)
+	if (p->chipmem.size > 2 * 1024 * 1024)
     return b;
 	if (p->boot_rom >= 3)
 		return b;
@@ -1759,8 +1760,8 @@ static void reset_ac_data(struct uae_prefs *p)
 	expamem_z3_highram_real = 0;
 	expamem_z3_highram_uae = 0;
 
-	if (p->mbresmem_high_size >= 128 * 1024 * 1024)
-		expamem_z3_pointer_uae += (p->mbresmem_high_size - 128 * 1024 * 1024) + 16 * 1024 * 1024;
+	if (p->mbresmem_high.size >= 128 * 1024 * 1024)
+		expamem_z3_pointer_uae += (p->mbresmem_high.size - 128 * 1024 * 1024) + 16 * 1024 * 1024;
 	expamem_board_pointer = 0;
 	expamem_board_size = 0;
 	memset(slots_20, 0, sizeof slots_20);
@@ -2309,16 +2310,19 @@ void expansion_init (void)
 {
 	if (savestate_state != STATE_RESTORE) {
 
+    mapped_free(&fastmem_bank[0]);
     fastmem_bank[0].reserved_size = 0;
 		fastmem_bank[0].mask = 0;
     fastmem_bank[0].baseaddr = NULL;
 
 #ifdef PICASSO96
+    mapped_free(gfxmem_banks[0]);
 		gfxmem_banks[0]->reserved_size = 0;
 		gfxmem_banks[0]->mask = 0;
 		gfxmem_banks[0]->baseaddr = NULL;
 #endif
 
+    mapped_free(&z3fastmem_bank[0]);
     z3fastmem_bank[0].reserved_size = 0;
 		z3fastmem_bank[0].mask = 0;
     z3fastmem_bank[0].baseaddr = NULL;

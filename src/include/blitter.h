@@ -12,22 +12,21 @@
 #include "uae/types.h"
 
 struct bltinfo {
-    int blitzero;
-    int blitashift,blitbshift,blitdownashift,blitdownbshift;
-    uae_u16 bltadat, bltbdat, bltcdat,bltddat;
-    uae_u16 bltaold, bltahold, bltbold, bltbhold, bltafwm, bltalwm;
-    int vblitsize,hblitsize;
-    int bltamod,bltbmod,bltcmod,bltdmod;
-    int got_cycle;
+  int blitzero;
+  int blitashift,blitbshift,blitdownashift,blitdownbshift;
+  uae_u16 bltadat, bltbdat, bltcdat,bltddat;
+  uae_u16 bltaold, bltahold, bltbold, bltbhold, bltafwm, bltalwm;
+  int vblitsize,hblitsize;
+  int bltamod,bltbmod,bltcmod,bltdmod;
+  int got_cycle;
+  int nasty_cnt, wait_nasty;
+  int blitter_nasty, blit_interrupt;
+  // blitter is active and D may write to visible bitplane addresses
+  int blitter_dangerous_bpl;
+  int blit_main, blit_finald, blit_pending;
 };
 
-extern enum blitter_states {
-    BLT_done, BLT_init, BLT_read, BLT_work, BLT_write, BLT_next
-} bltstate;
-
 extern struct bltinfo blt_info;
-
-extern int blitter_nasty, blit_interrupt, blitter_dangerous_bpl;
 
 extern void check_is_blit_dangerous (uaecptr *bplpt, int planes, int words);
 
@@ -42,8 +41,9 @@ extern void reset_blit (int);
 extern int blitnasty (void);
 extern void blitter_handler (uae_u32);
 extern void build_blitfilltable (void);
-extern void do_blitter (int, int, uaecptr);
+extern void do_blitter (int, int);
 extern void decide_blitter (int hpos);
+extern bool decide_blitter_maybe_write(int hpos, uaecptr addr, uae_u16 v);
 extern void blitter_done_notify (int hpos);
 extern void blitter_slowdown (int, int, int, int);
 extern void blitter_check_start (void);
@@ -56,10 +56,5 @@ typedef void blitter_func(uae_u8*, uae_u8*, uae_u8*, uaecptr, struct bltinfo *);
 extern blitter_func * const blitfunc_dofast[256];
 extern blitter_func * const blitfunc_dofast_desc[256];
 extern uae_u32 blit_masktable[BLITTER_MAX_WORDS];
-
-#define BLIT_MODE_IMMEDIATE -1
-#define BLIT_MODE_APPROXIMATE 0
-#define BLIT_MODE_COMPATIBLE 1
-#define BLIT_MODE_EXACT 2
 
 #endif /* UAE_BLITTER_H */

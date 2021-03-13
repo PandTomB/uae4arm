@@ -717,7 +717,7 @@ static void gayle_map_pcmcia (void)
 		idx++;
 	}
 	map_banks_cond (&dummy_bank, 0xa0, 8, 0);
-	if (currprefs.chipmem_size <= 4 * 1024 * 1024 && !pcmcia_override)
+	if (currprefs.chipmem.size <= 4 * 1024 * 1024 && !pcmcia_override)
 		map_banks_cond (&dummy_bank, PCMCIA_COMMON_START >> 16, PCMCIA_COMMON_SIZE >> 16, 0);
 }
 

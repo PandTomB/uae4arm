@@ -6,7 +6,10 @@
 * Copyright 1995,1996 Bernd Schmidt
 */
 
+#include "sysconfig.h"
 #include "sysdeps.h"
+#include <ctype.h>
+
 #include "readcpu.h"
 
 int nr_cpuop_funcs;
@@ -168,7 +171,7 @@ static amodes mode_from_str (const TCHAR *str)
 	if (_tcsncmp (str, _T("PC8r"), 4) == 0) return PC8r;
 	if (_tcsncmp (str, _T("Immd"), 4) == 0) return imm;
 	abort ();
-	return (amodes)0;
+	return Dreg;
 }
 
 STATIC_INLINE amodes mode_from_mr (int mode, int reg)
@@ -194,7 +197,7 @@ STATIC_INLINE amodes mode_from_mr (int mode, int reg)
 		}
 	}
 	abort ();
-	return (amodes)0;
+	return Dreg;
 }
 
 static void build_insn (int insn)
@@ -208,14 +211,13 @@ static void build_insn (int insn)
 	int flaglive = 0, flagdead = 0;
   int cflow = 0;
 
-  // Mask of flags set/used
-  unsigned char flags_set = 0;
-  unsigned char flags_used = 0;
-
 	id = defs68k[insn];
 
   // Control flow information
   cflow = id.cflow;
+
+	// Mask of flags set/used
+	unsigned char flags_set = 0, flags_used = 0;
 
   for (i = 0, n = 4; i < 5; i++, n--) {
   	switch (id.flaginfo[i].flagset) {
@@ -370,6 +372,7 @@ out2:
 
 		/* parse the source address */
 		usesrc = 1;
+
 		switch (opcstr[pos++]) {
 		case 'D':
 			srcmode = Dreg;
@@ -449,7 +452,7 @@ out2:
 			    srcpos = bitpos[bitE];
     		}
     		break;
-      case 'p': srcmode = immi; srcreg = bitval[bitp];
+      case 'p': srcmode = immi; srcreg = bitval[bitK];
 				if (CPU_EMU_SIZE < 5) {
 					/* 0..3 */
 					srcgather = 1;
@@ -816,30 +819,13 @@ endofline:
 		table68k[opc].flaglive = flaglive;
 #endif
 	  table68k[opc].cflow = cflow;
+
 nomatch:
 		/* FOO! */;
 	}
 }
 
-
-void read_table68k (void)
-{
-	int i;
-
-	free (table68k);
-	table68k = xmalloc (struct instr, 65536);
-	for (i = 0; i < 65536; i++) {
-		table68k[i].mnemo = i_ILLG;
-		table68k[i].handler = -1;
-	}
-	for (i = 0; i < n_defs68k; i++) {
-		build_insn (i);
-	}
-}
-
-static int imismatch;
-
-static void handle_merges (uae_s32 opcode)
+static void handle_merges (long int opcode)
 {
 	uae_u16 smsk;
 	uae_u16 dmsk;
@@ -894,20 +880,20 @@ static void handle_merges (uae_s32 opcode)
 				|| table68k[code].suse != table68k[opcode].suse
 				|| table68k[code].duse != table68k[opcode].duse)
 			{
-				imismatch++; continue;
+				continue;
 			}
 			if (table68k[opcode].suse
 				&& (table68k[opcode].spos != table68k[code].spos
 				|| table68k[opcode].smode != table68k[code].smode
 				|| table68k[opcode].stype != table68k[code].stype))
 			{
-				imismatch++; continue;
+				continue;
 			}
 			if (table68k[opcode].duse
 				&& (table68k[opcode].dpos != table68k[code].dpos
 				|| table68k[opcode].dmode != table68k[code].dmode))
 			{
-				imismatch++; continue;
+				continue;
 			}
 
 			if (code != opcode)
@@ -916,11 +902,10 @@ static void handle_merges (uae_s32 opcode)
 	}
 }
 
-void do_merges (void)
+static void do_merges (void)
 {
-	uae_s32 opcode;
+	long int opcode;
 	int nr = 0;
-	imismatch = 0;
 	for (opcode = 0; opcode < 65536; opcode++) {
 		if (table68k[opcode].handler != -1 || table68k[opcode].mnemo == i_ILLG)
 			continue;
@@ -930,7 +915,24 @@ void do_merges (void)
 	nr_cpuop_funcs = nr;
 }
 
-int get_no_mismatches (void)
+void init_table68k(void)
 {
-	return imismatch;
+	int i;
+
+	free(table68k);
+	table68k = xmalloc(struct instr, 65536);
+	for (i = 0; i < 65536; i++) {
+		table68k[i].mnemo = i_ILLG;
+		table68k[i].handler = -1;
+	}
+	for (i = 0; i < n_defs68k; i++) {
+		build_insn(i);
+	}
+	do_merges();
+}
+
+void exit_table68k(void)
+{
+	free(table68k);
+	table68k = NULL;
 }

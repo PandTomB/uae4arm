@@ -26,7 +26,7 @@ typedef uae_u32 REGPARAM3 cpuop_func (uae_u32) REGPARAM;
 typedef void REGPARAM3 cpuop_func_ce (uae_u32) REGPARAM;
 
 struct cputbl {
-  cpuop_func *handler;
+	cpuop_func *handler_ff;
   uae_u16 opcode;
 	uae_s8 length;
 	uae_s8 disp020[2];
@@ -374,12 +374,13 @@ extern void REGPARAM3 MakeFromSR (void) REGPARAM;
 extern void REGPARAM3 MakeFromSR_T0(void) REGPARAM;
 extern void REGPARAM3 Exception (int) REGPARAM;
 extern void REGPARAM3 Exception_cpu(int) REGPARAM;
+extern void REGPARAM3 Exception_cpu_oldpc(int, uaecptr) REGPARAM;
 extern void NMI (void);
 extern void doint (void);
 extern int m68k_move2c (int, uae_u32 *);
 extern int m68k_movec2 (int, uae_u32 *);
-extern bool m68k_divl (uae_u32, uae_u32, uae_u16);
-extern bool m68k_mull (uae_u32, uae_u32, uae_u16);
+extern int m68k_divl (uae_u32, uae_u32, uae_u16, uaecptr);
+extern int m68k_mull (uae_u32, uae_u32, uae_u16);
 extern void init_m68k (void);
 extern void m68k_go (int);
 extern int getMulu68kCycles(uae_u16 src);
@@ -396,7 +397,6 @@ extern void Exception_build_stack_frame_common(uae_u32 oldpc, uae_u32 currpc, in
 extern void Exception_build_stack_frame(uae_u32 oldpc, uae_u32 currpc, uae_u32 ssw, int nr, int format);
 extern void Exception_build_68000_address_error_stack_frame(uae_u16 mode, uae_u16 opcode, uaecptr fault_addr, uaecptr pc);
 extern uae_u32 exception_pc(int nr);
-extern void cpu_restore_fixup(void);
 extern bool privileged_copro_instruction(uae_u16 opcode);
 extern bool generates_group1_exception(uae_u16 opcode);
 
@@ -443,24 +443,24 @@ extern void fill_prefetch (void);
 #define CPU_OP_NAME(a) op ## a
 
 /* 68040 */
-extern const struct cputbl op_smalltbl_1_ff[];
-extern const struct cputbl op_smalltbl_41_ff[];
+extern const struct cputbl op_smalltbl_1[];
+extern const struct cputbl op_smalltbl_41[];
 /* 68030 */
-extern const struct cputbl op_smalltbl_2_ff[];
-extern const struct cputbl op_smalltbl_42_ff[];
+extern const struct cputbl op_smalltbl_2[];
+extern const struct cputbl op_smalltbl_42[];
 /* 68020 */
-extern const struct cputbl op_smalltbl_3_ff[];
-extern const struct cputbl op_smalltbl_43_ff[];
+extern const struct cputbl op_smalltbl_3[];
+extern const struct cputbl op_smalltbl_43[];
 /* 68010 */
-extern const struct cputbl op_smalltbl_4_ff[];
-extern const struct cputbl op_smalltbl_44_ff[];
-extern const struct cputbl op_smalltbl_11_ff[]; // prefetch
-extern const struct cputbl op_smalltbl_13_ff[]; // CE
+extern const struct cputbl op_smalltbl_4[];
+extern const struct cputbl op_smalltbl_44[];
+extern const struct cputbl op_smalltbl_11[]; // prefetch
+extern const struct cputbl op_smalltbl_13[]; // CE
 /* 68000 */
-extern const struct cputbl op_smalltbl_5_ff[];
-extern const struct cputbl op_smalltbl_45_ff[];
-extern const struct cputbl op_smalltbl_12_ff[]; // prefetch
-extern const struct cputbl op_smalltbl_14_ff[]; // CE
+extern const struct cputbl op_smalltbl_5[];
+extern const struct cputbl op_smalltbl_45[];
+extern const struct cputbl op_smalltbl_12[]; // prefetch
+extern const struct cputbl op_smalltbl_14[]; // CE
 
 extern cpuop_func *cpufunctbl[65536] ASM_SYM_FOR_FUNC ("cpufunctbl");
 

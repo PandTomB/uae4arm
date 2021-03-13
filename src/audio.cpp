@@ -807,7 +807,7 @@ static void audio_setirq_event(uae_u32 nr)
 static void setirq (int nr, int which)
 {
 	// audio interrupts are delayed by 2 cycles
-	if (currprefs.cpu_compatible) {
+	if (!currprefs.cachesize && currprefs.cpu_compatible) {
 		event2_newevent_xx (-1, 2 * CYCLE_UNIT + CYCLE_UNIT / 2, nr, audio_setirq_event);
 	} else {
 		audio_setirq_event(nr);
@@ -821,12 +821,14 @@ static void newsample (int nr, sample8_t sample)
 	cdp->data.current_sample = sample;
 }    
 
-STATIC_INLINE void setdr (int nr)
+static void setdr (int nr, bool startup)
 {
 	struct audio_channel_data *cdp = audio_channel + nr;
-	cdp->dr = true;
-	if (cdp->wlen == 1) {
-		cdp->dsr = true;
+	if (dmaen(DMA_MASTER)) {
+		cdp->dr = true;
+		if (!startup && cdp->wlen == 1) {
+			cdp->dsr = true;
+		}
 	}
 }
 
@@ -896,6 +898,7 @@ static void audio_state_channel2 (int nr, bool perfin)
 			// routines in common tracker players to lose notes.
 		  newsample (nr, (cdp->dat2 >> 0) & 0xff);
 		  zerostate (nr);
+      cdp->dmaofftime_active = false;
 		}
 	}
 
@@ -905,7 +908,7 @@ static void audio_state_channel2 (int nr, bool perfin)
 		if (chan_ena) {
 			cdp->evtime = MAX_EV;
 			cdp->state = 1;
-			cdp->dr = true;
+			setdr(nr, true);
 			cdp->wlen = cdp->len;
 			cdp->ptx_written = false;
 			/* Some programs first start short empty sample and then later switch to
@@ -939,7 +942,7 @@ static void audio_state_channel2 (int nr, bool perfin)
 		if (!cdp->dat_written)
 			return;
 		setirq (nr, 10);
-		setdr (nr);
+		setdr (nr, false);
 		if (cdp->wlen != 1)
 			cdp->wlen = (cdp->wlen - 1) & 0xffff;
 		cdp->state = 5;
@@ -958,7 +961,7 @@ static void audio_state_channel2 (int nr, bool perfin)
 		}
 		loaddat (nr);
 		if (napnav)
-			setdr (nr);
+			setdr (nr, false);
 		cdp->state = 2;
 		loadper (nr);
 		cdp->pbufldl = true;
@@ -978,7 +981,7 @@ static void audio_state_channel2 (int nr, bool perfin)
 			loaddat (nr, true);
 		if (chan_ena) {
 			if (audap)
-				setdr (nr);
+				setdr (nr, false);
 			if (cdp->intreq2 && audap)
 				setirq (nr, 21);
 		} else {
@@ -1003,7 +1006,7 @@ static void audio_state_channel2 (int nr, bool perfin)
 			if (cdp->intreq2 && napnav)
 				setirq (nr, 31);
 			if (napnav)
-				setdr (nr);
+				setdr (nr, false);
 		} else {
 			if (isirq (nr)) {
 				zerostate (nr);
@@ -1391,7 +1394,7 @@ void AUDxDAT (int nr, uae_u16 v)
 	cdp->dat = v;
 	cdp->dat_written = true;
 	// AUDxLEN is processed after 2 cycle delay
-	if (cdp->per < 124 * CYCLE_UNIT || currprefs.cpu_compatible) {
+	if (!currprefs.cachesize && (cdp->per < 124 * CYCLE_UNIT || currprefs.cpu_compatible)) {
 		event2_newevent_xx(-1, 2 * CYCLE_UNIT, nr | (chan_ena ? 0x100 : 0), audxdat_func);
 	} else {
 		audxdat_func(nr | (chan_ena ? 0x100 : 0));

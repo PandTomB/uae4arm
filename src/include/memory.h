@@ -396,6 +396,9 @@ extern bool read_kickstart_version(struct uae_prefs *p);
 #define memory_get_longi(addr) (call_mem_get_func(get_mem_bank(addr).lgeti, addr))
 #define memory_get_wordi(addr) (call_mem_get_func(get_mem_bank(addr).wgeti, addr))
 
+#define dma_put_word(addr,v) put_word(addr, v)
+#define dma_put_byte(addr,v) put_byte(addr, v)
+
 STATIC_INLINE uae_u32 get_long(uaecptr addr)
 {
   return memory_get_long(addr);

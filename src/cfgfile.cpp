@@ -939,6 +939,8 @@ static bool cfgfile_readramboard(const TCHAR *option, const TCHAR *value, const 
 	_stprintf(tmp1, _T("%s_size"), name);
 	if (!_tcsicmp(option, tmp1)) {
 		v = 0;
+		if (!_tcsicmp(tmp1, _T("chipmem_size")))
+			return false;
 		cfgfile_intval(option, value, tmp1, &v, 0x100000);
 		rb->size = v;
 		return true;
@@ -1202,12 +1204,12 @@ static void cfgfile_save_options (struct zfile *f, struct uae_prefs *p, int type
 		_tcscpy(tmp, _T("fastmem_size"));
 		cfgfile_write(f, tmp, _T("%d"), p->fastmem[0].size / 0x100000);
   }
-	cfgfile_write (f, _T("a3000mem_size"), _T("%d"), p->mbresmem_low_size / 0x100000);
-	cfgfile_write (f, _T("mbresmem_size"), _T("%d"), p->mbresmem_high_size / 0x100000);
+	cfgfile_write (f, _T("a3000mem_size"), _T("%d"), p->mbresmem_low.size / 0x100000);
+	cfgfile_write (f, _T("mbresmem_size"), _T("%d"), p->mbresmem_high.size / 0x100000);
 	_tcscpy(tmp, _T("z3mem_size"));
 	cfgfile_write(f, tmp, _T("%d"), p->z3fastmem[0].size / 0x100000);
   cfgfile_write (f, _T("z3mem_start"), _T("0x%x"), p->z3autoconfig_start);
-  cfgfile_write (f, _T("bogomem_size"), _T("%d"), p->bogomem_size / 0x40000);
+  cfgfile_write (f, _T("bogomem_size"), _T("%d"), p->bogomem.size / 0x40000);
 	struct rtgboardconfig *rbc = &p->rtgboards[0];
 	if (rbc->rtgmem_size) {
 		_tcscpy(tmp, _T("gfxcard_size"));
@@ -1215,7 +1217,7 @@ static void cfgfile_save_options (struct zfile *f, struct uae_prefs *p, int type
 		_tcscpy(tmp, _T("gfxcard_type"));
 		cfgfile_dwrite_str(f, tmp, gfxboard_get_configname(rbc->rtgmem_type));
 	}
-  cfgfile_write (f, _T("chipmem_size"), _T("%d"), p->chipmem_size == 0x20000 ? -1 : (p->chipmem_size == 0x40000 ? 0 : p->chipmem_size / 0x80000));
+  cfgfile_write (f, _T("chipmem_size"), _T("%d"), p->chipmem.size == 0x20000 ? -1 : (p->chipmem.size == 0x40000 ? 0 : p->chipmem.size / 0x80000));
 	// do not save aros rom special space
 	if (!(p->custom_memory_sizes[0] == 512 * 1024 && p->custom_memory_sizes[1] == 512 * 1024 && p->custom_memory_addrs[0] == 0xa80000 && p->custom_memory_addrs[1] == 0xb00000)) {
 		if (p->custom_memory_sizes[0])
@@ -2767,10 +2769,10 @@ static int cfgfile_parse_hardware (struct uae_prefs *p, const TCHAR *option, TCH
 		|| cfgfile_intval (option, value, _T("fatgary"), &p->cs_fatgaryrev, 1)
 		|| cfgfile_intval (option, value, _T("ramsey"), &p->cs_ramseyrev, 1)
 	  || cfgfile_doubleval (option, value, _T("chipset_refreshrate"), &p->chipset_refreshrate)
-		|| cfgfile_intval (option, value, _T("a3000mem_size"), &p->mbresmem_low_size, 0x100000)
-		|| cfgfile_intval (option, value, _T("mbresmem_size"), &p->mbresmem_high_size, 0x100000)
+		|| cfgfile_intval (option, value, _T("a3000mem_size"), &p->mbresmem_low.size, 0x100000)
+		|| cfgfile_intval (option, value, _T("mbresmem_size"), &p->mbresmem_high.size, 0x100000)
 	  || cfgfile_intval (option, value, _T("z3mem_start"), &p->z3autoconfig_start, 1)
-	  || cfgfile_intval (option, value, _T("bogomem_size"), &p->bogomem_size, 0x40000)
+	  || cfgfile_intval (option, value, _T("bogomem_size"), &p->bogomem.size, 0x40000)
 	  || cfgfile_intval (option, value, _T("rtg_modes"), &p->picasso96_modeflags, 1)
 	  || cfgfile_intval (option, value, _T("floppy_speed"), &p->floppy_speed, 1)
 		|| cfgfile_intval (option, value, _T("cd_speed"), &p->cd_speed, 1)
@@ -2815,7 +2817,19 @@ static int cfgfile_parse_hardware (struct uae_prefs *p, const TCHAR *option, TCH
 		return 1;
 	}
 
+  if (cfgfile_readramboard(option, value, _T("chipmem"), &p->chipmem)) {
+		return 1;
+	}
+	if (cfgfile_readramboard(option, value, _T("bogomem"), &p->bogomem)) {
+		return 1;
+	}
 	if (cfgfile_readramboard(option, value, _T("fastmem"), &p->fastmem[0])) {
+		return 1;
+	}
+  if (cfgfile_readramboard(option, value, _T("a3000mem"), &p->mbresmem_low)) {
+		return 1;
+	}
+	if (cfgfile_readramboard(option, value, _T("mbresmem"), &p->mbresmem_high)) {
 		return 1;
 	}
 	if (cfgfile_readramboard(option, value, _T("z3mem"), &p->z3fastmem[0])) {
@@ -2912,11 +2926,11 @@ static int cfgfile_parse_hardware (struct uae_prefs *p, const TCHAR *option, TCH
 
   if (cfgfile_intval (option, value, _T("chipmem_size"), &dummyint, 1)) {
   	if (dummyint < 0)
-	    p->chipmem_size = 0x20000; /* 128k, prototype support */
+	    p->chipmem.size = 0x20000; /* 128k, prototype support */
   	else if (dummyint == 0)
-	    p->chipmem_size = 0x40000; /* 256k */
+	    p->chipmem.size = 0x40000; /* 256k */
   	else
-	    p->chipmem_size = dummyint * 0x80000;
+	    p->chipmem.size = dummyint * 0x80000;
   	return 1;
   }
 
@@ -3727,11 +3741,11 @@ int parse_cmdline_option (struct uae_prefs *p, TCHAR c, const TCHAR *arg)
 	    break;
 
     case 'b':
-	    p->bogomem_size = _tstoi (arg) * 0x40000;
+	    p->bogomem.size = _tstoi (arg) * 0x40000;
 	    break;
 
     case 'c':
-	    p->chipmem_size = _tstoi (arg) * 0x80000;
+	    p->chipmem.size = _tstoi (arg) * 0x80000;
 	    break;
 
 	  case 'l':
@@ -4209,7 +4223,7 @@ void default_prefs (struct uae_prefs *p, bool reset, int type)
 	p->scsi = 0;
 	p->turbo_emulation = 0;
 	p->boot_rom = 0;
-#ifdef PANDORA
+#ifdef FAST_COPPER_DEFAULT_ON
   p->fast_copper = 1;
 #else
 	p->fast_copper = 0;
@@ -4265,12 +4279,12 @@ void default_prefs (struct uae_prefs *p, bool reset, int type)
 	p->filesys_max_name = 107;
 
   p->fastmem[0].size = 0x00000000;
-	p->mbresmem_low_size = 0x00000000;
-	p->mbresmem_high_size = 0x00000000;
+	p->mbresmem_low.size = 0x00000000;
+	p->mbresmem_high.size = 0x00000000;
   p->z3fastmem[0].size = 0x00000000;
   p->z3autoconfig_start = 0x10000000;
-  p->chipmem_size = 0x00080000;
-  p->bogomem_size = 0x00080000;
+  p->chipmem.size = 0x00080000;
+  p->bogomem.size = 0x00080000;
 	p->rtgboards[0].rtgmem_size = 0x00000000;
 	p->rtgboards[0].rtgmem_type = GFXBOARD_UAE_Z3;
 	p->custom_memory_addrs[0] = 0;
@@ -4336,8 +4350,8 @@ static void buildin_default_prefs_68020 (struct uae_prefs *p)
 	p->address_space_24 = 1;
 	p->cpu_compatible = 0;
 	p->chipset_mask = CSMASK_ECS_AGNUS | CSMASK_ECS_DENISE | CSMASK_AGA;
-	p->chipmem_size = 0x200000;
-	p->bogomem_size = 0;
+	p->chipmem.size = 0x200000;
+	p->bogomem.size = 0;
 	p->m68k_speed = -1;
 }
 
@@ -4371,12 +4385,12 @@ static void buildin_default_prefs (struct uae_prefs *p)
 	p->socket_emu = 0;
 	p->sound_volume_cd = 0;
 
-	p->chipmem_size = 0x00080000;
-	p->bogomem_size = 0x00080000;
+	p->chipmem.size = 0x00080000;
+	p->bogomem.size = 0x00080000;
 	memset(p->fastmem, 0, sizeof(struct ramboard));
 	memset(p->z3fastmem, 0, sizeof(struct ramboard));
-	p->mbresmem_low_size = 0x00000000;
-	p->mbresmem_high_size = 0x00000000;
+	p->mbresmem_low.size = 0x00000000;
+	p->mbresmem_high.size = 0x00000000;
 	p->rtgboards[0].rtgmem_size = 0x00000000;
 	p->rtgboards[0].rtgmem_type = GFXBOARD_UAE_Z3;
 	for (int i = 0; i < MAX_EXPANSION_BOARDS; i++) {
@@ -4466,9 +4480,9 @@ static int bip_a4000 (struct uae_prefs *p, int config, int compa, int romcheck)
 	roms[3] = 12;
 	roms[4] = -1;
 
-	p->bogomem_size = 0;
-	p->chipmem_size = 0x200000;
-	p->mbresmem_low_size = 8 * 1024 * 1024;
+	p->bogomem.size = 0;
+	p->chipmem.size = 0x200000;
+	p->mbresmem_low.size = 8 * 1024 * 1024;
 	p->cpu_model = 68030;
 	p->fpu_model = 68882;
 	switch (config)
@@ -4580,12 +4594,12 @@ static int bip_a600 (struct uae_prefs *p, int config, int compa, int romcheck)
 	set_68000_compa (p, compa);
 	p->cs_compatible = CP_A600;
 	built_in_chipset_prefs (p);
-	p->bogomem_size = 0;
-	p->chipmem_size = 0x100000;
+	p->bogomem.size = 0;
+	p->chipmem.size = 0x100000;
 	if (config > 0)
 		p->cs_rtc = 1;
 	if (config == 1)
-		p->chipmem_size = 0x200000;
+		p->chipmem.size = 0x200000;
 	if (config == 2)
 		p->fastmem[0].size = 0x400000;
 	p->chipset_mask = CSMASK_ECS_AGNUS | CSMASK_ECS_DENISE;
@@ -4601,12 +4615,12 @@ static int bip_a500p (struct uae_prefs *p, int config, int compa, int romcheck)
 	set_68000_compa (p, compa);
 	p->cs_compatible = CP_A500P;
 	built_in_chipset_prefs (p);
-	p->bogomem_size = 0;
-  p->chipmem_size = 0x100000;
+	p->bogomem.size = 0;
+  p->chipmem.size = 0x100000;
 	if (config > 0)
 		p->cs_rtc = 1;
 	if (config == 1)
-		p->chipmem_size = 0x200000;
+		p->chipmem.size = 0x200000;
 	if (config == 2)
 		p->fastmem[0].size = 0x400000;
 	p->chipset_mask = CSMASK_ECS_AGNUS | CSMASK_ECS_DENISE;
@@ -4631,13 +4645,13 @@ static int bip_a500 (struct uae_prefs *p, int config, int compa, int romcheck)
 	  case 2: // KS 1.3, ECS Agnus, 1.0M Chip
 		  roms[0] = 6;
 		  roms[1] = 32;
-		  p->bogomem_size = 0;
-		  p->chipmem_size = 0x100000;
+		  p->bogomem.size = 0;
+		  p->chipmem.size = 0x100000;
 		  break;
 	  case 3: // KS 1.3, OCS Agnus, 0.5M Chip
 		  roms[0] = 6;
 		  roms[1] = 32;
-		  p->bogomem_size = 0;
+		  p->bogomem.size = 0;
 		  p->chipset_mask = 0;
 		  p->cs_rtc = 0;
 		  p->floppyslots[1].dfxtype = DRV_NONE;
@@ -4646,7 +4660,7 @@ static int bip_a500 (struct uae_prefs *p, int config, int compa, int romcheck)
     	roms[0] = 5;
     	roms[1] = 4;
     	roms[2] = 3;
-		  p->bogomem_size = 0;
+		  p->bogomem.size = 0;
 	    p->chipset_mask = 0;
 		  p->cs_rtc = 0;
 		  p->floppyslots[1].dfxtype = DRV_NONE;
@@ -4658,7 +4672,11 @@ static int bip_a500 (struct uae_prefs *p, int config, int compa, int romcheck)
 		  p->chipset_mask = 0;
 		  break;
 	}
+#ifdef FAST_COPPER_DEFAULT_ON
+  p->fast_copper = 1;
+#else
   p->fast_copper = 0;
+#endif
 	set_68000_compa (p, compa);
 	p->cs_compatible = CP_A500;
 	built_in_chipset_prefs (p);
@@ -4735,7 +4753,7 @@ int built_in_chipset_prefs (struct uae_prefs *p)
 		  } else if (p->cpu_compatible) {
 			  // very A500-like
 	      p->cs_df0idhw = 0;
-			  if (p->bogomem_size || p->chipmem_size > 0x80000 || p->fastmem[0].size)
+			  if (p->bogomem.size || p->chipmem.size > 0x80000 || p->fastmem[0].size)
 				  p->cs_rtc = 1;
   			p->cs_ciatodbug = true;
 		  } else {
@@ -4753,7 +4771,7 @@ int built_in_chipset_prefs (struct uae_prefs *p)
 		  break;
 	  case CP_A500: // A500
     	p->cs_df0idhw = 0;
-		  if (p->bogomem_size || p->chipmem_size > 0x80000 || p->fastmem[0].size)
+		  if (p->bogomem.size || p->chipmem.size > 0x80000 || p->fastmem[0].size)
 			  p->cs_rtc = 1;
 			p->cs_ciatodbug = true;
 		  break;
@@ -4933,11 +4951,15 @@ int bip_a2000 (struct uae_prefs *p, int rom)
   }
 	p->cs_compatible = CP_A2000;
 	built_in_chipset_prefs (p);
-  p->chipmem_size = 0x00080000;
-  p->bogomem_size = 0x00080000;
+  p->chipmem.size = 0x00080000;
+  p->bogomem.size = 0x00080000;
 	p->chipset_mask = 0;
   p->cpu_compatible = 0;
+#ifdef FAST_COPPER_DEFAULT_ON
+  p->fast_copper = 1;
+#else
   p->fast_copper = 0;
+#endif
   p->nr_floppies = 1;
 	p->floppyslots[1].dfxtype = DRV_NONE;
   return configure_rom (p, roms, 0);

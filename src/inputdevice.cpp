@@ -1594,8 +1594,9 @@ static void get_mouse_position(int *xp, int *yp, int inx, int iny)
 #endif
   {
     x = coord_native_to_amiga_x (x);
-		if (y >= 0)
+		if (y >= 0) {
 	    y = coord_native_to_amiga_y (y) << 1;
+	  }
   }
 	*xp = x;
 	*yp = y;
@@ -2361,7 +2362,7 @@ static bool inputdevice_handle_inputcode2(int code, int state, const TCHAR *s)
 {
 	static int tracer_enable;
 	int newstate;
-  int onoffstate;
+  int onoffstate = state & ~SET_ONOFF_MASK_PRESS;
 
 	if (s != NULL && s[0] == 0)
 		s = NULL;
@@ -2374,8 +2375,6 @@ static bool inputdevice_handle_inputcode2(int code, int state, const TCHAR *s)
 			return true; // wait for next frame
 		}
 	}
-
-  onoffstate = state & ~SET_ONOFF_MASK_PRESS;
 
 	if (onoffstate == SET_ONOFF_ON_VALUE)
 		newstate = 1;
@@ -2423,6 +2422,9 @@ static bool inputdevice_handle_inputcode2(int code, int state, const TCHAR *s)
 		break;
 	case AKS_HARDRESET:
 		uae_reset (1, 1);
+		break;
+	case AKS_RESTART:
+		uae_restart(-1, NULL);
 		break;
 	case AKS_TOGGLESTATUSLINE:
 	  if (currprefs.leds_on_screen & STATUSLINE_CHIPSET) {
@@ -4183,8 +4185,8 @@ void inputdevice_default_prefs (struct uae_prefs *p)
 	p->input_joymouse_deadzone = 33;
 	p->input_joystick_deadzone = 33;
 	p->input_joymouse_speed = 10;
-	p->input_analog_joystick_mult = 15;
-	p->input_analog_joystick_offset = -1;
+	p->input_analog_joystick_mult = 18;
+	p->input_analog_joystick_offset = -5;
 	p->input_mouse_speed = 100;
 	p->input_autofire_linecnt = 600;
 	p->input_keyboard_type = 0;
@@ -5035,9 +5037,9 @@ void setmousestate (int mouse, int axis, int data, int isabs)
 		*mouse_p += data;
 		d = (*mouse_p - *oldm_p) * currprefs.input_mouse_speed / 100.0f;
 	} else {
-		d = data - *oldm_p;
+		d = (float)(data - *oldm_p);
 		*oldm_p = data;
-		*mouse_p += d;
+		*mouse_p += (int)d;
 		if (axis == 0) {
 			lastmx = data;
 		} else {
@@ -5550,7 +5552,9 @@ void inputdevice_fix_prefs(struct uae_prefs *p, bool userconfig)
 					struct jport jpt = { 0 };
 					memcpy(&jpt.idc, &jp->idc, sizeof(struct inputdevconfig));
 					jpt.id = JPORT_UNPLUGGED;
-					write_log(_T("Unplugged stored, port %d '%s' (%s)\n"), i, jp->idc.name, jp->idc.configname);
+				  jpt.mode = jp->mode;
+					jpt.autofire = jp->autofire;
+					write_log(_T("Unplugged stored, port %d '%s' (%s) %d %d\n"), i, jp->idc.name, jp->idc.configname, jp->mode, jp->autofire);
 					inputdevice_store_used_device(&jpt, i, defaultports);
 					freejport(p, i);
 					inputdevice_get_previous_joy(p, i, userconfig);

@@ -148,7 +148,7 @@ static int gui_create_rtarea_flag(struct uae_prefs *p)
   if(p->rtgboards[0].rtgmem_size)
     flag |= 16;
 
-  if (p->chipmem_size > 2 * 1024 * 1024)
+  if (p->chipmem.size > 2 * 1024 * 1024)
     flag |= 32;
 
   return flag;

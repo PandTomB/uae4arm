@@ -236,9 +236,9 @@ static bool uae_mman_info(addrbank *ab, struct uae_mman_data *md)
 	} else if (!_tcscmp(ab->label, _T("chip"))) {
 		start = 0;
 		got = true;
-		if (!expansion_get_autoconfig_by_address(&currprefs, 0x00200000, 0) && currprefs.chipmem_size == 2 * 1024 * 1024)
+		if (!expansion_get_autoconfig_by_address(&currprefs, 0x00200000, 0) && currprefs.chipmem.size == 2 * 1024 * 1024)
 			barrier = true;
-		if (currprefs.chipmem_size > 2 * 1024 * 1024)
+		if (currprefs.chipmem.size > 2 * 1024 * 1024)
 			barrier = true;
 	} else if (!_tcscmp(ab->label, _T("kick"))) {
 		start = 0xf80000;
@@ -307,7 +307,7 @@ static bool uae_mman_info(addrbank *ab, struct uae_mman_data *md)
 	} else if (!_tcscmp(ab->label, _T("bogo"))) {
 		start = 0x00C00000;
 		got = true;
-		if (currprefs.bogomem_size <= 0x100000)
+		if (currprefs.bogomem.size <= 0x100000)
 			barrier = true;
 	} else if (!_tcscmp(ab->label, _T("custmem1"))) {
 		start = currprefs.custom_memory_addrs[0];

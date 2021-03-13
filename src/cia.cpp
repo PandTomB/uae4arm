@@ -51,7 +51,7 @@ static uae_u32 ciaata_passed, ciaatb_passed, ciabta_passed, ciabtb_passed;
 
 static uae_u32 ciaatod, ciabtod, ciaatol, ciabtol, ciaaalarm, ciabalarm;
 static int ciaatlatch, ciabtlatch;
-static bool oldovl, oldcd32mute;
+static bool oldovl;
 static bool led;
 
 static unsigned int ciabpra;
@@ -631,10 +631,7 @@ static void bfe001_change (void)
       map_overlay (0);
     }
   }
-	if (currprefs.cs_cd32cd && (v & 1) != oldcd32mute) {
-		oldcd32mute = v & 1;
-		akiko_mute (oldcd32mute ? 0 : 1);
-	}
+	akiko_mute((v & 1) == 0);
 }
 
 static uae_u8 ReadCIAA (unsigned int addr, uae_u32 *flags)
@@ -719,6 +716,8 @@ static uae_u8 ReadCIAA (unsigned int addr, uae_u32 *flags)
     	ciaatol = ciaatod;
   	}
   	return (uae_u8)(ciaatol >> 16);
+  case 11:
+    return 0xff;
   case 12:
   	return ciaasdr;
   case 13:
@@ -816,6 +815,8 @@ static uae_u8 ReadCIAB (unsigned int addr, uae_u32 *flags)
   	  ciabtol = ciabtod;
   	}
   	return (uae_u8)(ciabtol >> 16);
+  case 11:
+    return 0xff;
   case 12:
   	return ciabsdr;
   case 13:
@@ -1174,7 +1175,6 @@ void cia_set_overlay (bool overlay)
 void CIA_reset (void)
 {
   kblostsynccnt = 0;
-	oldcd32mute = 1;
 	ciab_tod_event_state = 0;
 
   if (!savestate_state) {
@@ -1184,7 +1184,7 @@ void CIA_reset (void)
     ciaapra = 0;  ciaadra = 0;
     ciaatod = ciabtod = 0; ciaatodon = ciabtodon = 0;
     ciaaicr = ciabicr = ciaaimask = ciabimask = 0;
-    ciaacra = ciaacrb = ciabcra = ciabcrb = 0x4; /* outmode = toggle; */
+    ciaacra = ciaacrb = ciabcra = ciabcrb = 0;
     ciaala = ciaalb = ciabla = ciablb = ciaata = ciaatb = ciabta = ciabtb = 0xFFFF;
 	  ciaaalarm = ciabalarm = 0;
   	ciabpra = 0x8C; ciabdra = 0;

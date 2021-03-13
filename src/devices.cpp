@@ -257,11 +257,11 @@ void devices_restore_start(void)
 {
 	restore_cia_start ();
 	restore_blkdev_start();
-  changed_prefs.bogomem_size = 0;
-  changed_prefs.chipmem_size = 0;
+  changed_prefs.bogomem.size = 0;
+  changed_prefs.chipmem.size = 0;
 	changed_prefs.fastmem[0].size = 0;
 	changed_prefs.z3fastmem[0].size = 0;
-	changed_prefs.mbresmem_low_size = 0;
-	changed_prefs.mbresmem_high_size = 0;
+	changed_prefs.mbresmem_low.size = 0;
+	changed_prefs.mbresmem_high.size = 0;
 	restore_expansion_boards(NULL);
 }
