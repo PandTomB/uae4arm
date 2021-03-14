@@ -36,6 +36,7 @@ extern void custom_reset (bool hardreset, bool keyboardreset);
 extern int intlev (void);
 
 extern void do_copper (void);
+extern void check_copperlist_write(uaecptr addr);
 
 extern void notice_new_xcolors (void);
 extern void init_row_map (void);

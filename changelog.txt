@@ -1,3 +1,4 @@
+2021-03-14 - Fixes for fast copper
 2021-03-13 - Merge with WinUAE up to 4.5.0 b17
 2021-03-07 - Two small bugfixes (rp9 parsing; fmv when line doubling)
 2021-03-06 - Merge WinUAE 4.4.0

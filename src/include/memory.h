@@ -645,6 +645,9 @@ extern int addr_valid (const TCHAR*,uaecptr,uae_u32);
 extern void REGPARAM3 chipmem_lput (uaecptr, uae_u32) REGPARAM;
 extern void REGPARAM3 chipmem_wput (uaecptr, uae_u32) REGPARAM;
 extern void REGPARAM3 chipmem_bput (uaecptr, uae_u32) REGPARAM;
+extern void REGPARAM3 chipmem_lput_fc (uaecptr, uae_u32) REGPARAM;
+extern void REGPARAM3 chipmem_wput_fc (uaecptr, uae_u32) REGPARAM;
+extern void REGPARAM3 chipmem_bput_fc (uaecptr, uae_u32) REGPARAM;
 
 extern void REGPARAM3 chipmem_agnus_wput (uaecptr, uae_u32) REGPARAM;
 
@@ -652,7 +655,7 @@ extern uae_u32 chipmem_full_mask;
 extern addrbank dummy_bank;
 
 STATIC_INLINE uae_u32 chipmem_lget_indirect(uae_u32 PT) {
-  return do_get_mem_long((uae_u32 *)&chipmem_bank.baseaddr[PT & chipmem_bank.mask]);
+  return do_get_mem_long((uae_u32 *)&chipmem_bank.baseaddr[PT & chipmem_full_mask]);
 }
 STATIC_INLINE uae_u32 chipmem_wget_indirect (uae_u32 addr) {
   addr &= chipmem_full_mask;
