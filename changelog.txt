@@ -1,3 +1,5 @@
+2021-03-20 - Fast copper improvement
+           - Small bugfixes and cleanups
 2021-03-16 - Bugfix JIT AARCH64 (DIVS)
 2021-03-16 - Fixes for load/save of statefiles
 2021-03-14 - Fixes for fast copper
