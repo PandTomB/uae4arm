@@ -1,3 +1,4 @@
+2021-03-21 - Bugfix: use hardfile with A600/A1200/A4000 IDE controller
 2021-03-20 - Fast copper improvement
            - Small bugfixes and cleanups
 2021-03-16 - Bugfix JIT AARCH64 (DIVS)
