@@ -1,3 +1,6 @@
+2021-04-02 - For better performance, let compiler decide about inlining (profiler can also do a better job with this)
+             JIT: one more host register (LR) for 32 bit version
+             JIT: reduce usage of scratch register
 2021-03-21 - Bugfix: use hardfile with A600/A1200/A4000 IDE controller
 2021-03-20 - Fast copper improvement
            - Small bugfixes and cleanups
